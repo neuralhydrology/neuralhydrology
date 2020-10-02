@@ -14,8 +14,8 @@ this code in our day-to-day research and will continue to integrate our new rese
 
 **Note:** We will gradually add more examples/documentation over the next couple of days/weeks.
 
-- Documentation: [neuralhydrology.readthedocs.io](neuralhydrology.readthedocs.io)
-- Research Blog: [neuralhydrology.github.io](neuralhydrology.github.io)
+- Documentation: [neuralhydrology.readthedocs.io](https://neuralhydrology.readthedocs.io)
+- Research Blog: [neuralhydrology.github.io](https://neuralhydrology.github.io)
 - Bug reports/Feature requests [https://github.com/neuralhydrology/neuralhydrology/issues](https://github.com/neuralhydrology/neuralhydrology/issues)
 
 # Getting started
