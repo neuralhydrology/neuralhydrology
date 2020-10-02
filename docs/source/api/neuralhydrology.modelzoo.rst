@@ -1,0 +1,21 @@
+nh.modelzoo
+===========
+
+.. automodule:: neuralhydrology.modelzoo
+   :members:
+   :undoc-members:
+   :show-inheritance:
+
+.. toctree::
+   :maxdepth: 4
+
+   neuralhydrology.modelzoo.basemodel
+   neuralhydrology.modelzoo.cudalstm
+   neuralhydrology.modelzoo.ealstm
+   neuralhydrology.modelzoo.embcudalstm
+   neuralhydrology.modelzoo.fc
+   neuralhydrology.modelzoo.head
+   neuralhydrology.modelzoo.lstm
+   neuralhydrology.modelzoo.multifreqlstm
+   neuralhydrology.modelzoo.odelstm
+   neuralhydrology.modelzoo.template

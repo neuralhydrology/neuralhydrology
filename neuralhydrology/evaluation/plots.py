@@ -1,0 +1,235 @@
+from typing import Tuple
+
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+
+
+def percentile_plot(y: np.ndarray,
+                    y_hat: np.ndarray,
+                    title: str = '') -> Tuple[mpl.figure.Figure, mpl.axes._subplots.Axes]:
+    """Plot the time series of simulated percentiles and observed values.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Array of observed values.
+    y_hat : np.ndarray
+        Array of simulated values, where the last dimension contains the samples for each time step.
+    title : str, optional
+        Title of the plot.
+
+    Returns
+    -------
+    Tuple[mpl.figure.Figure, mpl.axes.Axis]
+        The percentile plot.
+    """
+    fig, ax = plt.subplots()
+
+    y_median = np.median(y_hat, axis=-1).flatten()
+    y_25 = np.percentile(y_hat, 25, axis=-1).flatten()
+    y_75 = np.percentile(y_hat, 75, axis=-1).flatten()
+    y_10 = np.percentile(y_hat, 10, axis=-1).flatten()
+    y_90 = np.percentile(y_hat, 90, axis=-1).flatten()
+    y_05 = np.percentile(y_hat, 5, axis=-1).flatten()
+    y_95 = np.percentile(y_hat, 95, axis=-1).flatten()
+
+    x = np.arange(len(y_05))
+    ax.fill_between(x, y_05, y_95, color='#35B779', label='05-95 percentile')
+    ax.fill_between(x, y_10, y_90, color='#31688E', label='10-90 percentile')
+    ax.fill_between(x, y_25, y_75, color="#440154", label='25-75 percentile')
+    ax.plot(y_median, '-', color='red', label="median")
+    ax.plot(y.flatten(), '--', color='black', label="observed")
+    ax.legend()
+    ax.set_title(title)
+
+    return fig, ax
+
+
+def regression_plot(y: np.ndarray,
+                    y_hat: np.ndarray,
+                    title: str = '') -> Tuple[mpl.figure.Figure, mpl.axes._subplots.Axes]:
+    """Plot the time series of observed and simulated values.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Array of observed values.
+    y_hat : np.ndarray
+        Array of simulated values.
+    title : str, optional
+        Title of the plot.
+
+    Returns
+    -------
+    Tuple[mpl.figure.Figure, mpl.axes.Axis]
+        The regression plot.
+    """
+
+    fig, ax = plt.subplots()
+
+    ax.plot(y.flatten(), label="observed", lw=1)
+    ax.plot(y_hat.flatten(), label="simulated", alpha=.8, lw=1)
+
+    box = ax.get_position()
+    ax.set_position([box.x0, box.y0 + box.height * 0.1, box.width, box.height * 0.9])
+    ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.08), ncol=2)
+    ax.set_title(title)
+
+    return fig, ax
+
+
+def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple[mpl.figure.Figure, np.ndarray]:
+    """Plots probability plot alongside a hydrograph with simulation percentiles.
+    
+    The probability plot itself is analogous to the calibration plot for classification tasks. The plot compares the 
+    theoretical percentiles of the estimated conditional distributions (over time) with the respective relative 
+    empirical counts. 
+    The probability plot is often also referred to as probability integral transform diagram, Q-Q plot, or predictive 
+    Q-Q plot. 
+    
+
+    Parameters
+    ----------
+    y : np.ndarray
+        Array of observed values.
+    y_hat : np.ndarray
+        Array of simulated values.
+    title : str, optional
+        Title of the plot, by default empty.
+
+    Returns
+    -------
+    Tuple[mpl.figure.Figure, np.ndarray]
+        The uncertainty plot.
+    """
+
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(7, 3), gridspec_kw={'width_ratios': [3, 5]})
+
+    # only take part of y to have a better zoom-in
+    y_flat = y.flatten()
+    x_bnd = np.arange(0, 400)
+    y_bnd_len = len(x_bnd)
+
+    # hydrograph:
+    y_r = [0, 0, 0, 0, 0, 0]  # used later for probability-plot
+    quantiles = [0.9, 0.80, 0.50, 0.20, 0.1]
+    labels_and_colors = {
+        'labels': ['05-95 PI', '10-90 PI', '25-75 PI', '40-60 PI', '45-55 PI'],
+        'colors': ['#FDE725', '#8FD744', '#21908C', '#31688E', '#443A83']
+    }
+    for idx in range(len(quantiles)):
+        lb = round(50 - (quantiles[idx] * 100) / 2)
+        ub = round(50 + (quantiles[idx] * 100) / 2)
+        y_lb = np.percentile(y_hat[x_bnd, :, :], lb, axis=-1).flatten()
+        y_ub = np.percentile(y_hat[x_bnd, :, :], ub, axis=-1).flatten()
+        y_r[idx] = np.sum(((y_flat[x_bnd] > y_lb) * (y_flat[x_bnd] < y_ub))) / y_bnd_len
+        if idx <= 3:
+            axs[1].fill_between(x_bnd,
+                                y_lb,
+                                y_ub,
+                                color=labels_and_colors['colors'][idx],
+                                label=labels_and_colors['labels'][idx])
+
+    y_median = np.median(y_hat, axis=-1).flatten()
+    axs[1].plot(x_bnd, y_median[x_bnd], '-', color='red', label="median")
+    axs[1].plot(x_bnd, y_flat[x_bnd], '--', color='black', label="observed")
+    axs[1].legend(prop={'size': 5})
+    axs[1].set_ylabel("runoff")
+    axs[1].set_xlabel("time index")
+    # probability-plot:
+    quantiles = np.arange(0, 101, 5)
+    y_r = quantiles * 0.0
+    for idx in range(len(y_r)):
+        ub = quantiles[idx]
+        y_ub = np.percentile(y_hat[x_bnd, :, :], ub, axis=-1).flatten()
+        y_r[idx] = np.sum(y_flat[x_bnd] < y_ub) / y_bnd_len
+
+    axs[0].plot([0, 1], [0, 1], 'k--')
+    axs[0].plot(quantiles / 100, y_r, 'ro', ms=3.0)
+    axs[0].set_axisbelow(True)
+    axs[0].yaxis.grid(color='#ECECEC', linestyle='dashed')
+    axs[0].xaxis.grid(color='#ECECEC', linestyle='dashed')
+    axs[0].xaxis.set_ticks(np.arange(0, 1, 0.2))
+    axs[0].yaxis.set_ticks(np.arange(0, 1, 0.2))
+    axs[0].set_xlabel("cumulative nominal quantiles")
+    axs[0].set_ylabel("cumulative empirical quantiles")
+
+    axs[0].set_title(title)
+
+    fig.tight_layout()
+
+    return fig, axs
+
+
+def prediction_intervall_plot(y: np.ndarray,
+                              y_hat: np.ndarray,
+                              title: str = '') -> Tuple[mpl.figure.Figure, np.ndarray]:
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(7, 3), gridspec_kw={'width_ratios': [3, 5]})
+
+    y_flat = y.flatten()
+
+    # only take part of y to have a better zoom-in
+    x_bnd = np.arange(0, 1400)
+    y_len = len(x_bnd)
+
+    # hydrograph:
+    y_r = [0, 0, 0, 0, 0, 0]  # used later for probability-plot
+    quantiles = [0.95, 0.9, 0.80, 0.50, 0.20, 0.1]
+    labels_and_colors = {
+        'labels': [
+            '2.5-97.5 percentile', '05-95 percentile', '10-90 percentile', '25-75 percentile', '40-60 percentile',
+            '45-55 percentile'
+        ],
+        'colors': ['#FDE725', '#8FD744', '#35B779', '#21908C', '#31688E', '#443A83']
+    }
+    for idx in range(len(quantiles)):
+        lb = round(50 - (quantiles[idx] * 100) / 2)
+        ub = round(50 + (quantiles[idx] * 100) / 2)
+        y_lb = np.percentile(y_hat[x_bnd, :, :], lb, axis=-1).flatten()
+        y_ub = np.percentile(y_hat[x_bnd, :, :], ub, axis=-1).flatten()
+        y_r[idx] = np.sum(((y_flat[x_bnd] > y_lb) * (y_flat[x_bnd] < y_ub))) / y_len
+        if idx <= 3:
+            axs[1].fill_between(x_bnd,
+                                y_lb,
+                                y_ub,
+                                color=labels_and_colors['colors'][idx],
+                                label=labels_and_colors['labels'][idx])
+
+    y_median = np.median(y_hat, axis=-1).flatten()
+    axs[1].plot(x_bnd, y_median[x_bnd], '-', color='red', label="median")
+    axs[1].plot(x_bnd, y_flat[x_bnd], '--', color='black', label="observed")
+    axs[1].legend(prop={'size': 5})
+
+    # probability-plot:
+    axs[0].plot([0, 1], [0, 1], 'k--')
+    for idx in range(1, len(quantiles) - 1):
+        # move description out of the way:
+        is_quantile_small = quantiles[idx] <= 0.5
+        ha_argument = 'right' if is_quantile_small else 'left'
+        text_pos = 1 if is_quantile_small else 0
+        l_coord = [text_pos, quantiles[idx]] if is_quantile_small else [quantiles[idx], text_pos]
+
+        axs[0].plot(l_coord, [y_r[idx], y_r[idx]], ':', color='#ffb95a')
+        axs[0].text(text_pos,
+                    y_r[idx],
+                    f'{round(y_r[idx], 2)}',
+                    fontsize=8,
+                    va='center',
+                    ha=ha_argument,
+                    c='#ffb95a',
+                    backgroundcolor='w')
+
+    axs[0].plot(quantiles, y_r, 'ro-')
+    axs[0].set_axisbelow(True)
+    axs[0].yaxis.grid(color='#ECECEC', linestyle='dashed')
+    axs[0].xaxis.grid(color='#ECECEC', linestyle='dashed')
+    axs[0].xaxis.set_ticks(np.arange(0, 1, 0.2))
+    axs[0].yaxis.set_ticks(np.arange(0, 1, 0.2))
+    axs[0].set_xlabel("prediction intervals")
+    axs[0].set_ylabel("obs in quantiles")
+    axs[0].set_title(title)
+
+    fig.tight_layout()
+
+    return fig, axs

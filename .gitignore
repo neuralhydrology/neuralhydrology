@@ -1,0 +1,19 @@
+# file extensions
+**/*.pyc
+**/*.h5
+**/*.p
+!test/test_data/*.p
+*.swp
+.coverage
+
+# folder
+build/*
+dist/*
+neuralhydrology.egg-info/*
+.vscode/*
+.idea/*
+runs/*
+configs/*
+.ipynb_checkpoints/*
+data/*
+docs/build/*

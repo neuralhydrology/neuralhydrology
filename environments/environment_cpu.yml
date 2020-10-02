@@ -1,0 +1,30 @@
+name: neuralhydrology
+channels:
+  - pytorch
+  - defaults
+  - anaconda
+dependencies:
+  - bokeh
+  - cpuonly
+  - h5py
+  - hdf5
+  - jupyter
+  - matplotlib
+  - netcdf4
+  - numba
+  - pandas
+  - pip
+  - pytest
+  - pytest-cov
+  - python=3.7
+  - pytorch
+  - ruamel.yaml
+  - scipy
+  - sphinx
+  - tqdm
+  - xarray
+  - yapf
+  - pip:
+    - tensorboard
+    - sphinx-rtd-theme
+

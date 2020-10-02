@@ -1,0 +1,275 @@
+# --- Experiment configurations --------------------------------------------------------------------
+
+# experiment name, used as folder name
+experiment_name: development_run
+
+# place to store run directory (if empty runs are stored in code_dir/runs/)
+run_dir:
+
+# files to specify training, validation and test basins (relative to code root or absolute path)
+train_basin_file: ./data/8_basins_dev_set.txt
+validation_basin_file: ./data/8_basins_dev_set.txt
+test_basin_file: ./data/8_basins_dev_set.txt
+
+# training, validation and test time periods (format = 'dd/mm/yyyy')
+train_start_date: '01/10/1999'
+train_end_date: '30/09/2008'
+validation_start_date: '01/10/1980'
+validation_end_date: '30/09/1989'
+test_start_date: '01/10/1989'
+test_end_date: '30/09/1999'
+
+# if you want to use different (continuous or split) periods per basin (and period) define path to pickle files here.
+per_basin_train_periods_file:
+per_basin_validation_periods_file:
+per_basin_test_periods_file:
+
+# fixed seed, leave empty to use a random seed
+seed:
+
+# which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu or None]
+device: cuda:0
+
+# --- Validation configuration ---------------------------------------------------------------------
+
+# specify after how many epochs to perform validation
+validate_every: 1
+
+# specify how many random basins to use for validation
+validate_n_random_basins: 4
+
+# By default, validation is cached (even is this argument is empty). Set to False, if you do not want to use it.
+cache_validation_data: True
+
+# specify which metrics to calculate during validation (see neuralhydrology.evaluation.metrics)
+# this can either be a list or a dictionary. If a dictionary is used, the inner keys must match the name of the
+# target_variable specified below. Using dicts allows for different metrics per target variable.
+metrics:
+- NSE
+- KGE
+- Alpha-NSE
+- Beta-NSE
+
+# --- Model configuration --------------------------------------------------------------------------
+
+# base model type [lstm, ealstm, cudalstm, embcudalstm, multifreqlstm]
+# (has to match the if statement in modelzoo/__init__.py)
+model: cudalstm
+
+# path to weight file that should be used as initial weights. Leave empty to start from random weights
+checkpoint_path:
+
+# prediction head [regression]. Define the head specific parameters below
+head: regression
+
+# ----> Regression settings <----
+output_activation: linear
+
+# ----> Embedding network settings <----
+
+# define number of neurons per layer in the FC network used as embedding/shortcut network
+embedding_hiddens:
+- 30
+- 20
+- 64
+
+# activation function of embedding network (currently only tanh supported)
+embedding_activation: tanh
+
+# dropout applied to embedding network
+embedding_dropout: 0.0
+
+# ----> MultiFreqLSTM settings <----
+
+# Use an individual LSTM per frequencies (True) vs. use a single shared LSTM for all frequencies (False)
+per_frequency_lstm: True
+
+# how to transfer states from lower to higher frequencies. One of [identity, linear, None].
+transfer_multifreq_states:
+    h: identity
+    c: identity
+
+# ----> ODE-LSTM settings <----
+# method to use to solve the ODE. One of [euler, rk4, heun]
+ode_method: euler
+
+# number of iterations to break each ODE solving step into.
+ode_num_unfolds: 4
+
+# lowest frequency that will be used to randomly aggregate the first slice of the input sequence.
+# See ODELSTM for more details on the frequency randomization.
+ode_random_freq_lower_bound: 6D
+
+# ----> General settings <----
+
+# Number of cell states of the LSTM
+hidden_size: 64
+
+# Initial bias value of the forget gate
+initial_forget_bias: 3
+
+# Dropout applied to the output of the LSTM
+output_dropout: 0.4
+
+# --- Training configuration -----------------------------------------------------------------------
+
+# specify optimizer [Adam]
+optimizer: Adam
+
+# specify loss [MSE, NSE, RMSE]
+loss: MSE
+
+# add regularization terms.
+# Options: tie_frequencies (couples the different frequencies' predictions in an MSE error term)
+regularization:
+#- tie_frequencies
+
+# specify learning rates to use starting at specific epochs (0 is the initial learning rate)
+learning_rate:
+    0: 1e-3
+    10: 5e-4
+    20: 1e-4
+
+# Mini-batch size
+batch_size: 256
+
+# Number of training epochs
+epochs: 30
+
+# adds noise with given std to the labels during training. Leave empty or set to 0 if not used.
+target_noise_std: 0.005
+
+# If a value, clips the gradients during training to that norm.
+clip_gradient_norm: 1
+
+# Defines the time step frequencies to use (daily, hourly, ...). If used, predict_last_n and seq_length must be dicts.
+# Use pandas frequency strings to define frequencies. Note: the strings need to include values, e.g. '1D' instead of 'D'
+# https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html?highlight=frequency#timeseries-offset-aliases
+#use_frequencies:
+#- 1D
+#- 1H
+
+# Subset of frequencies from use_frequencies that are "evaluation-only", i.e., the model will get input and produce
+# output in the frequencies listed here, but they will not be considered in the calculation of loss and regularization
+# terms.
+#no_loss_frequencies:
+#- 1H
+
+# Defines which time steps are used to calculate the loss. Can't be larger than seq_length.
+# If use_frequencies is used, this needs to be a dict mapping each frequency to a predict_last_n-value, else an int.
+predict_last_n: 1
+
+# Length of the input sequence
+# If use_frequencies is used, this needs to be a dict mapping each frequency to a seq_length, else an int.
+seq_length: 365
+
+# Number of parallel workers used in the data pipeline
+num_workers: 16
+
+# Log the training loss every n steps
+log_interval: 5
+
+# If true, writes logging results into tensorboard file
+log_tensorboard: True
+
+# If a value and greater than 0, logs n random basins as figures during validation
+log_n_figures: 2
+
+# Save model weights every n epochs
+save_weights_every: 1
+
+# Store the results of the validation to disk
+save_validation_results: False
+
+
+# --- Data configurations --------------------------------------------------------------------------
+
+# which data set to use [camels_us, camels_gb, global, hourly_camels_us]
+dataset: camels_us
+
+# Path to data set root
+data_dir: /datadisk/data/CAMELS
+
+# Set to True, if train data file should be save to disk. If empty or False, train data is not saved.
+save_train_data: False
+
+# If existing train data file exist, specify path to the pickle file here
+train_data_file:
+
+# Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
+# can be either a list of forcings or a single forcing product
+forcings: maurer_extended
+
+# variables to use as time series input (names match the data file column headers)
+# Note: In case of multiple input forcing products, you have to append the forcing product behind
+# each variable. E.g., 'prcp(mm/day)' of the daymet product is 'prcp(mm/day)_daymet'
+# To use different dynamic inputs per frequency, this variable must contain a dict mapping each frequency to its
+# list of variables. E.g., to use precipitation from daymet for daily and from nldas_hourly for hourly predictions:
+#   1D:
+#     - prcp(mm/day)_daymet
+#   1H:
+#     - total_precipitation_nldas_hourly
+dynamic_inputs:
+- prcp(mm/day)
+- srad(W/m2)
+- tmax(C)
+- tmin(C)
+- vp(Pa)
+
+# which columns to use as target
+target_variables:
+- QObs(mm/d)
+
+# clip negative predictions to zero for all variables listed below. Should be a list, even for single variables.
+clip_target_to_zero:
+- QObs(mm/d)
+
+zero_center_target: True
+
+# Which CAMELS attributes to use. Leave empty if none should be used
+camels_attributes:
+- elev_mean
+- slope_mean
+- area_gages2
+- frac_forest
+- lai_max
+- lai_diff
+- gvf_max
+- gvf_diff
+- soil_depth_pelletier
+- soil_depth_statsgo
+- soil_porosity
+- soil_conductivity
+- max_water_content
+- sand_frac
+- silt_frac
+- clay_frac
+- carbonate_rocks_frac
+- geol_permeability
+- p_mean
+- pet_mean
+- aridity
+- frac_snow
+- high_prec_freq
+- high_prec_dur
+- low_prec_freq
+- low_prec_dur
+
+# Path to pickle file(s) containing additional data. Each pickle file must contain a dictionary
+# with one key for each basin and the value is a time indexed data frame, where each column is a 
+# feature.
+# Convention: If a column is used as static input, the value to use for specific sample should be in
+# same row (datetime) as the target discharge value.
+additional_feature_files:
+
+# columns of the data frame to use as (additional) static inputs for each sample. Must be present in
+# the above linked additional feature files. Leave empty to not use any
+static_inputs:
+
+# whether to use basin id one hot encoding as (additional) static input
+use_basin_id_encoding: False
+
+
+
+
+
