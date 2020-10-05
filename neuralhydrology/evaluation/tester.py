@@ -258,12 +258,12 @@ class BaseTester(object):
                         # stack dates and time_steps so we don't just evaluate every 24H when use_frequencies=[1D, 1H]
                         obs = xr.isel(time_step=slice(-frequency_factor, None)) \
                             .stack(datetime=['date', 'time_step'])[f"{target_variable}_obs"]
-                        obs['datetime'] = [c[0] + c[1] for c in obs.coords['datetime'].values]
+                        obs['datetime'] = obs.coords['date'] + obs.coords['time_step']
                         # check if not empty (in case no observations exist in this period
                         if not all(obs.isnull()):
                             sim = xr.isel(time_step=slice(-frequency_factor, None)) \
                                 .stack(datetime=['date', 'time_step'])[f"{target_variable}_sim"]
-                            sim['datetime'] = [c[0] + c[1] for c in sim.coords['datetime'].values]
+                            sim['datetime'] = sim.coords['date'] + sim.coords['time_step']
 
                             # clip negative predictions to zero, if variable is listed in config 'clip_target_to_zero'
                             if target_variable in self.cfg.clip_targets_to_zero:
