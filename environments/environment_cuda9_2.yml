@@ -27,4 +27,5 @@ dependencies:
   - pip:
     - tensorboard
     - sphinx-rtd-theme
-
+    - nbsphinx
+    - nbsphinx-link

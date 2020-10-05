@@ -10,18 +10,22 @@
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
 #
+import datetime
 import os
 import sys
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
+about = {}
+with open('../../neuralhydrology/__about__.py', "r") as fp:
+    exec(fp.read(), about)
 
-project = 'NeuralHydrology'
-copyright = '2020, Frederik Kratzert'
+project = 'neuralHydrology'
+copyright = f'{datetime.datetime.now().year}, Frederik Kratzert'
 author = 'Frederik Kratzert'
 
 # The full version, including alpha/beta/rc tags
-release = '0.9.0-beta'
+release = about["__version__"]
 
 # -- General configuration ---------------------------------------------------
 
@@ -31,7 +35,9 @@ release = '0.9.0-beta'
 extensions = [
     'sphinx.ext.autodoc',  # autodocument
     'sphinx.ext.napoleon',  # google and numpy doc string support
-    'sphinx.ext.mathjax'  # latex rendering of equations using MathJax
+    'sphinx.ext.mathjax',  # latex rendering of equations using MathJax
+    'nbsphinx',  # for direct embedding of jupyter notebooks into sphinx docs
+    'nbsphinx_link'  # to be able to include notebooks from outside of the docs folder
 ]
 
 # Add any paths that contain templates here, relative to this directory.
@@ -40,7 +46,7 @@ templates_path = ['_templates']
 # List of patterns, relative to source directory, that match files and
 # directories to ignore when looking for source files.
 # This pattern also affects html_static_path and html_extra_path.
-exclude_patterns = []
+exclude_patterns = ['**.ipynb_checkpoints']
 
 # -- Options for HTML output -------------------------------------------------
 

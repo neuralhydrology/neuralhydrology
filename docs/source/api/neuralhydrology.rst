@@ -1,5 +1,5 @@
-neuralhydrology
-===============
+neuralhydrology API
+===================
 
 .. automodule:: neuralhydrology
    :members:

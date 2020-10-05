@@ -3,13 +3,17 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to NeuralHydrology's documentation!
+Welcome to neuralHydrology's documentation!
 ===========================================
 
+The documentation is still work-in-progress. Stay tuned for a lot of updates during the next days/weeks, as well as
+a handful of tutorials.
+
 .. toctree::
-   :maxdepth: 5
+   :maxdepth: 2
    :caption: Contents:
 
    usage/quickstart
    usage/models
+   tutorials/index
    api/neuralhydrology
