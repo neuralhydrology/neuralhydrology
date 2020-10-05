@@ -8,7 +8,7 @@ import numpy as np
 from numba import njit
 from xarray.core.dataarray import DataArray
 
-from neuralhydrology.data.utils import infer_frequency
+from neuralhydrology.data import utils
 
 
 def get_available_signatures() -> List[str]:
@@ -26,7 +26,7 @@ def get_available_signatures() -> List[str]:
     return signatures
 
 
-def calculate_all_signatures(da: DataArray, prcp: DataArray, datetime_coord: str = 'date') -> Dict[str, float]:
+def calculate_all_signatures(da: DataArray, prcp: DataArray, datetime_coord: str = None) -> Dict[str, float]:
     """Calculate all signatures with default values.
 
     Parameters
@@ -36,34 +36,35 @@ def calculate_all_signatures(da: DataArray, prcp: DataArray, datetime_coord: str
     prcp : DataArray
         Array of precipitation values.
     datetime_coord : str, optional
-        Datetime coordinate in the passed DataArray.
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
 
     Returns
     -------
     Dict[str, float]
         Dictionary with signature names as keys and signature values as values.
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
+
     results = {
-        "high_q_freq": high_q_freq(da, coord=datetime_coord),
+        "high_q_freq": high_q_freq(da, datetime_coord=datetime_coord),
         "high_q_dur": high_q_dur(da),
-        "low_q_freq": low_q_freq(da, coord=datetime_coord),
+        "low_q_freq": low_q_freq(da, datetime_coord=datetime_coord),
         "low_q_dur": low_q_dur(da),
         "zero_q_freq": zero_q_freq(da),
         "q95": q95(da),
         "q5": q5(da),
         "q_mean": q_mean(da),
-        "hfd_mean": hfd_mean(da, coord=datetime_coord),
+        "hfd_mean": hfd_mean(da, datetime_coord=datetime_coord),
         "baseflow_index": baseflow_index(da)[0],
         "slope_fdc": slope_fdc(da),
-        "stream_elas": stream_elas(da, prcp, coord=datetime_coord),
-        "runoff_ratio": runoff_ratio(da, prcp, coord=datetime_coord)
+        "stream_elas": stream_elas(da, prcp, datetime_coord=datetime_coord),
+        "runoff_ratio": runoff_ratio(da, prcp, datetime_coord=datetime_coord)
     }
     return results
 
 
-def calculate_signatures(da: DataArray,
-                         signatures: List[str],
-                         datetime_coord: str = 'date',
+def calculate_signatures(da: DataArray, signatures: List[str], datetime_coord: str = None,
                          prcp: DataArray = None) -> Dict[str, float]:
     """Calculate the specified signatures with default values.
 
@@ -74,7 +75,7 @@ def calculate_signatures(da: DataArray,
     signatures : List[str]
         List of names of the signatures to calculate.
     datetime_coord : str, optional
-        Datetime coordinate in the passed DataArray.
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
     prcp : DataArray, optional
         Array of precipitation values. Required for signatures 'runoff_ratio' and 'streamflow_elas'.
 
@@ -88,14 +89,17 @@ def calculate_signatures(da: DataArray,
     ValueError
         If a passed signature name does not exist.
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
+
     values = {}
     for signature in signatures:
         if signature == "high_q_freq":
-            values["high_q_freq"] = high_q_freq(da, coord=datetime_coord)
+            values["high_q_freq"] = high_q_freq(da, datetime_coord=datetime_coord)
         elif signature == "high_q_dur":
             values["high_q_dur"] = high_q_dur(da)
         elif signature == "low_q_freq":
-            values["low_q_freq"] = low_q_freq(da, coord=datetime_coord)
+            values["low_q_freq"] = low_q_freq(da, datetime_coord=datetime_coord)
         elif signature == "low_q_dur":
             values["low_q_dur"] = low_q_dur(da)
         elif signature == "zero_q_freq":
@@ -107,15 +111,15 @@ def calculate_signatures(da: DataArray,
         elif signature == "q_mean":
             values["q_mean"] = q_mean(da)
         elif signature == "hfd_mean":
-            values["hfd_mean"] = hfd_mean(da, coord=datetime_coord)
+            values["hfd_mean"] = hfd_mean(da, datetime_coord=datetime_coord)
         elif signature == "baseflow_index":
-            values["baseflow_index"] = baseflow_index(da, coord=datetime_coord)[0]
+            values["baseflow_index"] = baseflow_index(da, datetime_coord=datetime_coord)[0]
         elif signature == "slope_fdc":
             values["slope_fdc"] = slope_fdc(da)
         elif signature == "runoff_ratio":
-            values["runoff_ratio"] = runoff_ratio(da, prcp, coord=datetime_coord)
+            values["runoff_ratio"] = runoff_ratio(da, prcp, datetime_coord=datetime_coord)
         elif signature == "stream_elas":
-            values["stream_elas"] = stream_elas(da, prcp, coord=datetime_coord)
+            values["stream_elas"] = stream_elas(da, prcp, datetime_coord=datetime_coord)
         else:
             ValueError(f"Unknown signatures {signature}")
     return values
@@ -199,7 +203,6 @@ def low_q_dur(da: DataArray, threshold: float = 0.2) -> float:
     .. [#] Westerberg, I. K. and McMillan, H. K.: Uncertainty in hydrological signatures.
         Hydrology and Earth System Sciences, 2015, 19, 3951--3968, doi:10.5194/hess-19-3951-2015
     """
-
     mean_flow = float(da.mean())
     idx = np.where(da.values < threshold * mean_flow)[0]
     if len(idx) > 0:
@@ -225,14 +228,13 @@ def zero_q_freq(da: DataArray) -> float:
     float
         Zero-flow frequency.
     """
-
     # number of steps with zero flow
     n_steps = (da == 0).sum()
 
     return float(n_steps / len(da))
 
 
-def high_q_freq(da: DataArray, coord: str = 'date', threshold: float = 9.) -> float:
+def high_q_freq(da: DataArray, datetime_coord: str = None, threshold: float = 9.) -> float:
     """Calculate high-flow frequency.
 
     Frequency of high-flow events (>`threshold` times the median flow) [#]_, [#]_ (Table 2).
@@ -241,8 +243,8 @@ def high_q_freq(da: DataArray, coord: str = 'date', threshold: float = 9.) -> fl
     ----------
     da : DataArray
         Array of flow values.
-    coord : str, optional
-        Datetime coordinate in `da`.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
     threshold : float, optional
         High-flow threshold. Values larger than ``threshold * median`` are considered high flows.
 
@@ -258,10 +260,12 @@ def high_q_freq(da: DataArray, coord: str = 'date', threshold: float = 9.) -> fl
     .. [#] Westerberg, I. K. and McMillan, H. K.: Uncertainty in hydrological signatures.
         Hydrology and Earth System Sciences, 2015, 19, 3951--3968, doi:10.5194/hess-19-3951-2015
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
 
     # determine the date of the first January 1st in the data period
-    first_date = da.coords[coord][0].values.astype('datetime64[s]').astype(datetime)
-    last_date = da.coords[coord][-1].values.astype('datetime64[s]').astype(datetime)
+    first_date = da.coords[datetime_coord][0].values.astype('datetime64[s]').astype(datetime)
+    last_date = da.coords[datetime_coord][-1].values.astype('datetime64[s]').astype(datetime)
 
     if first_date == datetime.strptime(f'{first_date.year}-01-01', '%Y-%m-%d'):
         start_date = first_date
@@ -277,7 +281,7 @@ def high_q_freq(da: DataArray, coord: str = 'date', threshold: float = 9.) -> fl
     hqfs = []
     while end_date < last_date:
 
-        data = da.sel({coord: slice(start_date, end_date)})
+        data = da.sel({datetime_coord: slice(start_date, end_date)})
 
         # number of steps with discharge higher than threshold * median in a one year period
         n_steps = (data > (threshold * median_flow)).sum()
@@ -290,7 +294,7 @@ def high_q_freq(da: DataArray, coord: str = 'date', threshold: float = 9.) -> fl
     return np.mean(hqfs)
 
 
-def low_q_freq(da: DataArray, coord: str = 'date', threshold: float = 0.2) -> float:
+def low_q_freq(da: DataArray, datetime_coord: str = None, threshold: float = 0.2) -> float:
     """Calculate Low-flow frequency.
 
     Frequency of low-flow events (<`threshold` times the median flow) [#]_, [#]_ (Table 2).
@@ -299,8 +303,8 @@ def low_q_freq(da: DataArray, coord: str = 'date', threshold: float = 0.2) -> fl
     ----------
     da : DataArray
         Array of flow values.
-    coord : str, optional
-        Datetime coordinate in `da`.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
     threshold : float, optional
         Low-flow threshold. Values below ``threshold * median`` are considered low flows.
 
@@ -316,10 +320,12 @@ def low_q_freq(da: DataArray, coord: str = 'date', threshold: float = 0.2) -> fl
     .. [#] Westerberg, I. K. and McMillan, H. K.: Uncertainty in hydrological signatures.
         Hydrology and Earth System Sciences, 2015, 19, 3951--3968, doi:10.5194/hess-19-3951-2015
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
 
     # determine the date of the first January 1st in the data period
-    first_date = da.coords[coord][0].values.astype('datetime64[s]').astype(datetime)
-    last_date = da.coords[coord][-1].values.astype('datetime64[s]').astype(datetime)
+    first_date = da.coords[datetime_coord][0].values.astype('datetime64[s]').astype(datetime)
+    last_date = da.coords[datetime_coord][-1].values.astype('datetime64[s]').astype(datetime)
 
     if first_date == datetime.strptime(f'{first_date.year}-01-01', '%Y-%m-%d'):
         start_date = first_date
@@ -335,7 +341,7 @@ def low_q_freq(da: DataArray, coord: str = 'date', threshold: float = 0.2) -> fl
     lqfs = []
     while end_date < last_date:
 
-        data = da.sel({coord: slice(start_date, end_date)})
+        data = da.sel({datetime_coord: slice(start_date, end_date)})
 
         # number of steps with discharge lower than threshold * median in a one year period
         n_steps = (data < (threshold * mean_flow)).sum()
@@ -348,7 +354,7 @@ def low_q_freq(da: DataArray, coord: str = 'date', threshold: float = 0.2) -> fl
     return np.mean(lqfs)
 
 
-def hfd_mean(da: DataArray, coord: str = 'date') -> float:
+def hfd_mean(da: DataArray, datetime_coord: str = None) -> float:
     """Calculate mean half-flow duration.
 
     Mean half-flow date (step on which the cumulative discharge since October 1st
@@ -358,8 +364,8 @@ def hfd_mean(da: DataArray, coord: str = 'date') -> float:
     ----------
     da : DataArray
         Array of flow values.
-    coord : str, optional
-        Datetime coordinate name in `da`.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
 
     Returns
     -------
@@ -371,10 +377,12 @@ def hfd_mean(da: DataArray, coord: str = 'date') -> float:
     .. [#] Court, A.: Measures of streamflow timing. Journal of Geophysical Research (1896-1977), 1962, 67, 4335--4339,
         doi:10.1029/JZ067i011p04335
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
 
     # determine the date of the first October 1st in the data period
-    first_date = da.coords[coord][0].values.astype('datetime64[s]').astype(datetime)
-    last_date = da.coords[coord][-1].values.astype('datetime64[s]').astype(datetime)
+    first_date = da.coords[datetime_coord][0].values.astype('datetime64[s]').astype(datetime)
+    last_date = da.coords[datetime_coord][-1].values.astype('datetime64[s]').astype(datetime)
 
     if first_date > datetime.strptime(f'{first_date.year}-10-01', '%Y-%m-%d'):
         start_date = datetime.strptime(f'{first_date.year + 1}-10-01', '%Y-%m-%d')
@@ -387,7 +395,7 @@ def hfd_mean(da: DataArray, coord: str = 'date') -> float:
     while end_date < last_date:
 
         # compute cumulative sum for the selected period
-        data = da.sel({coord: slice(start_date, end_date)})
+        data = da.sel({datetime_coord: slice(start_date, end_date)})
         cs = data.cumsum(skipna=True)
 
         # find steps with more cumulative discharge than the half annual sum
@@ -417,7 +425,6 @@ def q5(da: DataArray) -> float:
     float
         5th flow quantile.
     """
-
     return float(da.quantile(0.05))
 
 
@@ -498,7 +505,7 @@ def baseflow_index(da: DataArray,
                    alpha: float = 0.98,
                    warmup: int = 30,
                    n_passes: int = None,
-                   coord: str = 'date') -> Tuple[float, DataArray]:
+                   datetime_coord: str = None) -> Tuple[float, DataArray]:
     """Calculate baseflow index.
 
     Ratio of mean baseflow to mean discharge [#]_. If `da` contains NaN values, the baseflow is calculated for each
@@ -515,8 +522,9 @@ def baseflow_index(da: DataArray,
     n_passes : int, optional
         Number of passes (alternating forward and backward) to perform. Should be an odd number. If None, will use
         3 for daily and 9 for hourly data and fail for all other input frequencies.
-    coord : str, optional
-        Datetime coordinate in `da`, used to infer the frequency if `n_passes` is None.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified. Used to infer the 
+        frequency if `n_passes` is None.
 
     Returns
     -------
@@ -535,9 +543,11 @@ def baseflow_index(da: DataArray,
         Lyne and Hollick Filter. Australasian Journal of Water Resources, Taylor & Francis, 2013, 17, 25--34,
         doi:10.7158/13241583.2013.11465417
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
 
     if n_passes is None:
-        freq = infer_frequency(da[coord].values)
+        freq = utils.infer_frequency(da[datetime_coord].values)
         if freq == '1D':
             n_passes = 3
         elif freq == '1H':
@@ -595,7 +605,7 @@ def slope_fdc(da: DataArray, lower_quantile: float = 0.33, upper_quantile: float
     return value
 
 
-def runoff_ratio(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
+def runoff_ratio(da: DataArray, prcp: DataArray, datetime_coord: str = None) -> float:
     """Calculate runoff ratio.
 
     Runoff ratio (ratio of mean discharge to mean precipitation) [#]_ (Eq. 2).
@@ -606,8 +616,8 @@ def runoff_ratio(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
         Array of flow values.
     prcp : DataArray
         Array of precipitation values.
-    coord : str, optional
-        Datetime dimension name in `da`.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
 
     Returns
     -------
@@ -620,11 +630,14 @@ def runoff_ratio(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
         analysis of hydrologic similarity based on catchment function in the eastern USA.
         Hydrology and Earth System Sciences, 2011, 15, 2895--2911, doi:10.5194/hess-15-2895-2011
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
+
     # rename precip coordinate name (to avoid problems with 'index' or 'date')
-    prcp = prcp.rename({list(prcp.coords.keys())[0]: coord})
+    prcp = prcp.rename({list(prcp.coords.keys())[0]: datetime_coord})
 
     # slice prcp to the same time window as the discharge
-    prcp = prcp.sel({coord: slice(da.coords[coord][0], da.coords[coord][-1])})
+    prcp = prcp.sel({datetime_coord: slice(da.coords[datetime_coord][0], da.coords[datetime_coord][-1])})
 
     # calculate runoff ratio
     value = da.mean() / prcp.mean()
@@ -632,7 +645,7 @@ def runoff_ratio(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
     return float(value)
 
 
-def stream_elas(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
+def stream_elas(da: DataArray, prcp: DataArray, datetime_coord: str = None) -> float:
     """Calculate stream elasticity.
 
     Streamflow precipitation elasticity (sensitivity of streamflow to changes in precipitation at
@@ -644,8 +657,8 @@ def stream_elas(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
         Array of flow values.
     prcp : DataArray
         Array of precipitation values.
-    coord : str, optional
-        Datetime dimension name in `da`.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
 
     Returns
     -------
@@ -657,15 +670,18 @@ def stream_elas(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
     .. [#] Sankarasubramanian, A., Vogel, R. M., and Limbrunner, J. F.: Climate elasticity of streamflow in the
         United States. Water Resources Research, 2001, 37, 1771--1781, doi:10.1029/2000WR900330
     """
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(da)
+
     # rename precip coordinate name (to avoid problems with 'index' or 'date')
-    prcp = prcp.rename({list(prcp.coords.keys())[0]: coord})
+    prcp = prcp.rename({list(prcp.coords.keys())[0]: datetime_coord})
 
     # slice prcp to the same time window as the discharge
-    prcp = prcp.sel({coord: slice(da.coords[coord][0], da.coords[coord][-1])})
+    prcp = prcp.sel({datetime_coord: slice(da.coords[datetime_coord][0], da.coords[datetime_coord][-1])})
 
     # determine the date of the first October 1st in the data period
-    first_date = da.coords[coord][0].values.astype('datetime64[s]').astype(datetime)
-    last_date = da.coords[coord][-1].values.astype('datetime64[s]').astype(datetime)
+    first_date = da.coords[datetime_coord][0].values.astype('datetime64[s]').astype(datetime)
+    last_date = da.coords[datetime_coord][-1].values.astype('datetime64[s]').astype(datetime)
 
     if first_date > datetime.strptime(f'{first_date.year}-10-01', '%Y-%m-%d'):
         start_date = datetime.strptime(f'{first_date.year + 1}-10-01', '%Y-%m-%d')
@@ -685,8 +701,8 @@ def stream_elas(da: DataArray, prcp: DataArray, coord: str = 'date') -> float:
 
     values = []
     while end_date < last_date:
-        q = da.sel({coord: slice(start_date, end_date)})
-        p = prcp.sel({coord: slice(start_date, end_date)})
+        q = da.sel({datetime_coord: slice(start_date, end_date)})
+        p = prcp.sel({datetime_coord: slice(start_date, end_date)})
 
         val = (q.mean() - q_mean_total) / (p.mean() - p_mean_total) * (p_mean_total / q_mean_total)
         values.append(val)

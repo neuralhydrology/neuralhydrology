@@ -5,6 +5,8 @@ import pandas as pd
 from scipy import stats, signal
 from xarray.core.dataarray import DataArray
 
+from neuralhydrology.data import utils
+
 
 def get_available_metrics() -> List[str]:
     """Get list of available metrics.
@@ -513,7 +515,11 @@ def fdc_flv(obs: DataArray, sim: DataArray, l: float = 0.3) -> float:
     return flv * 100
 
 
-def mean_peak_timing(obs: DataArray, sim: DataArray, window: int = None, resolution: str = '1D') -> float:
+def mean_peak_timing(obs: DataArray,
+                     sim: DataArray,
+                     window: int = None,
+                     resolution: str = '1D',
+                     datetime_coord: str = None) -> float:
     """Mean difference in peak flow timing.
     
     Uses scipy.find_peaks to find peaks in the observed time series. Starting with all observed peaks, those with a
@@ -536,6 +542,8 @@ def mean_peak_timing(obs: DataArray, sim: DataArray, window: int = None, resolut
         for a resolution of '1H' the the window size is 12.
     resolution : str, optional
         Temporal resolution of the time series in pandas format, e.g. '1D' for daily and '1H' for hourly.
+    datetime_coord : str, optional
+        Name of datetime coordinate. Tried to infer automatically if not specified.
         
 
     Returns
@@ -558,6 +566,10 @@ def mean_peak_timing(obs: DataArray, sim: DataArray, window: int = None, resolut
     # heuristic to get indices of peaks and their corresponding height.
     peaks, properties = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
 
+    # infer name of datetime index
+    if datetime_coord is None:
+        datetime_coord = utils.infer_datetime_coord(obs)
+
     if window is None:
         # infer a reasonable window size
         window = max((0.5 * pd.to_timedelta('1D')) // pd.to_timedelta(resolution), 3)
@@ -567,8 +579,8 @@ def mean_peak_timing(obs: DataArray, sim: DataArray, window: int = None, resolut
     for idx in peaks:
         # skip peaks at the start and end of the sequence and peaks around missing observations
         # (NaNs that were removed in obs & sim would result in windows that span too much time).
-        if (idx - window < 0) or (idx + window >= len(obs)) or (pd.date_range(obs[idx - window]['datetime'].values,
-                                                                              obs[idx + window]['datetime'].values,
+        if (idx - window < 0) or (idx + window >= len(obs)) or (pd.date_range(obs[idx - window][datetime_coord].values,
+                                                                              obs[idx + window][datetime_coord].values,
                                                                               freq=resolution).size != 2 * window + 1):
             continue
 
@@ -584,7 +596,7 @@ def mean_peak_timing(obs: DataArray, sim: DataArray, window: int = None, resolut
         peak_obs = obs[idx]
 
         # calculate the time difference between the peaks
-        delta = peak_obs.coords['datetime'] - peak_sim.coords['datetime']
+        delta = peak_obs.coords[datetime_coord] - peak_sim.coords[datetime_coord]
 
         timing_error = np.abs(delta.values / pd.to_timedelta(resolution))
 
@@ -593,7 +605,8 @@ def mean_peak_timing(obs: DataArray, sim: DataArray, window: int = None, resolut
     return np.mean(timing_errors) if len(timing_errors) > 0 else np.nan
 
 
-def calculate_all_metrics(obs: DataArray, sim: DataArray, resolution: str = "1D") -> Dict[str, float]:
+def calculate_all_metrics(obs: DataArray, sim: DataArray, resolution: str = "1D",
+                          datetime_coord: str = None) -> Dict[str, float]:
     """Calculate all metrics with default values.
     
     Parameters
@@ -604,7 +617,9 @@ def calculate_all_metrics(obs: DataArray, sim: DataArray, resolution: str = "1D"
         Simulated time series.
     resolution : str, optional
         Temporal resolution of the time series in pandas format, e.g. '1D' for daily and '1H' for hourly.
-
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
+        
     Returns
     -------
     Dict[str, float]
@@ -621,13 +636,17 @@ def calculate_all_metrics(obs: DataArray, sim: DataArray, resolution: str = "1D"
         "FHV": fdc_fhv(obs, sim),
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
-        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution)
+        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
     }
 
     return results
 
 
-def calculate_metrics(obs: DataArray, sim: DataArray, metrics: List[str], resolution: str = "1D") -> Dict[str, float]:
+def calculate_metrics(obs: DataArray,
+                      sim: DataArray,
+                      metrics: List[str],
+                      resolution: str = "1D",
+                      datetime_coord: str = None) -> Dict[str, float]:
     """Calculate specific metrics with default values.
     
     Parameters
@@ -640,6 +659,8 @@ def calculate_metrics(obs: DataArray, sim: DataArray, metrics: List[str], resolu
         List of metric names.
     resolution : str, optional
         Temporal resolution of the time series in pandas format, e.g. '1D' for daily and '1H' for hourly.
+    datetime_coord : str, optional
+        Datetime coordinate in the passed DataArray. Tried to infer automatically if not specified.
 
     Returns
     -------
@@ -673,7 +694,7 @@ def calculate_metrics(obs: DataArray, sim: DataArray, metrics: List[str], resolu
             elif metric.lower() == "flv":
                 values["FLV"] = fdc_flv(obs, sim)
             elif metric.lower() == "peak-timing":
-                values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution)
+                values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
             else:
                 raise RuntimeError(f"Unknown metric {metric}")
 
