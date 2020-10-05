@@ -1,27 +1,28 @@
-Models
-======
+Modelzoo
+========
 
-The following section gives an overview over all implemented models.
+The following section gives an overview of all implemented models. See `Implementing a new model`_ for details
+on how to add your own model to the neuralHydrology package.
+
+BaseModel
+---------
+Abstract base class from which all models derive. Do not use this class for model training.
 
 CudaLSTM
 --------
 :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` is a network using the standard PyTorch LSTM implementation.
-All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed at each time step.
-Initial forget gate bias can be set (in config.yml) and will be set during model initialization.
+All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
+The initial forget gate bias can be defined in config.yml (``initial_forget_bias``) and will be set accordingly during
+model initialization.
 
 EA-LSTM
 -------
-:py:class:`neuralhydrology.modelzoo.ealstm.EALSTM` is an implementation of the Entity-Aware LSTM, as used
-in the 2019 HESS paper. The static features (``x_s`` and/or ``x_one_hot``) are used to compute the input gate
-activations, while ``x_d`` is used in all other gates of the network.
-Initial forget gate bias can be set, and if ``embedding_hiddens`` is passed, the input gate consists of the so-defined
+:py:class:`neuralhydrology.modelzoo.ealstm.EALSTM` is an implementation of the Entity-Aware LSTM, as introduced in
+`Kratzert et al. "Towards learning universal, regional, and local hydrological behaviors via machine learning applied to large-sample datasets" <https://hess.copernicus.org/articles/23/5089/2019/hess-23-5089-2019.html>`__.
+The static features (``x_s`` and/or ``x_one_hot``) are used to compute the input gate activations, while the dynamic
+inputs ``x_d`` are used in all other gates of the network.
+The initial forget gate bias can be defined in config.yml (``initial_forget_bias``). If ``embedding_hiddens`` is passed, the input gate consists of the so-defined
 FC network and not a single linear layer.
-
-LSTM
-----
-:py:class:`neuralhydrology.modelzoo.lstm.LSTM` is an own LSTM implementation.
-Momentarily, the only advantage compared to CudaLSTM is the return of the entire cell state array.
-This class will be most likely adapted/changed in the near future to provide much more flexibility for various settings.
 
 EmbCudaLSTM
 -----------
@@ -31,6 +32,26 @@ with the only difference that static inputs (``x_s`` and/or ``x_one_hot``) are p
 at each time step.
 
 
+LSTM
+----
+:py:class:`neuralhydrology.modelzoo.lstm.LSTM` is a PyTorch port of the CudaLSTM that returns all gate and state
+activations for all time steps. This class is implemented for exploratory reasons. You can use the method
+``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` model into an ``LSTM`` model. This allows to use the fast
+CUDA implementation for training, and only use this class for inference with more detailed outputs.
+
+MultiFreqLSTM
+-------------
+:py:class:`neuralhydrology.modelzoo.multifreqlstm.MultiFreqLSTM` is a newly proposed model by Gauch et al. (pre-print
+published soon). This model allows the training on more than one temporal frequency (e.g. daily and hourly inputs) and
+returns multi-frequency model predictions accordingly. A more detailed tutorial will follow shortly.
+
+ODELSTM
+-------
+:py:class:`neuralhydrology.modelzoo.odelstm.ODELSTM` is a PyTorch implementation of the ODE-LSTM proposed by
+`Lechner and Hasani <https://arxiv.org/abs/2006.04418>`_. This model can be used with unevenly sampled inputs and can
+be queried to return predictions for any arbitrary time step.
+
+
 Implementing a new model
 ------------------------
 The listing below shows the skeleton of a template model you can use to start implementing your own model.
@@ -38,7 +59,7 @@ Once you have implemented your model, make sure to modify :py:func:`neuralhydrol
 Furthermore, make sure to select a *unique* model abbreviation that will be used to specify the model in the config.yml
 files.
 
-::
+.. code-block:: python
 
     from typing import Dict
 
@@ -105,4 +126,3 @@ files.
             # Implement forward pass here #
             ###############################
             pass
-

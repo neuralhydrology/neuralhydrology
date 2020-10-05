@@ -1,0 +1,46 @@
+# Workflow to run the pytest test suite.
+
+name: pytest CI
+
+on:
+  pull_request:
+    branches:
+      - master
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      # Checkout the repository under $GITHUB_WORKSPACE
+      - uses: actions/checkout@v2
+
+      # initialize conda
+      - name: Conda setup
+        uses: s-weigand/setup-conda@v1
+        with:
+          update-conda: true
+          python-version: 3.7
+
+      # cache the conda installation to speedup the CI runs
+      - uses: actions/cache@v2
+        id: cache
+        with:
+          path: /usr/share/miniconda/envs/neuralhydrology
+          key: ${{ runner.os }}-conda-cache-${{ hashFiles('environments/environment_cuda10_2.yml') }}
+
+      # on cache miss, create the env from scratch
+      - name: Conda environment creation
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          conda env create -f environments/environment_cuda10_2.yml
+          source activate neuralhydrology
+
+      # Run the tests
+      - name: Testing with pytest
+        run: |
+          source activate neuralhydrology
+          pytest --cov=neuralhydrology

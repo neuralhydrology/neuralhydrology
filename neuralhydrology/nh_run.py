@@ -99,7 +99,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
     start_training(base_config)
 
 
-def eval_run(run_dir: Path, period: str, epoch: int, gpu: int = None):
+def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
     """Start evaluating a trained model.
     
     Parameters

@@ -1,0 +1,2 @@
+conda:
+    file: environments/environment_cpu.yml

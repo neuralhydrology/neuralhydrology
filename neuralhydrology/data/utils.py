@@ -4,6 +4,8 @@ from typing import List, Tuple, Union
 import numpy as np
 import pandas as pd
 import xarray
+from xarray.core.dataarray import DataArray
+from xarray.core.dataset import Dataset
 
 ########################################################################################################################
 #                                           CAMELS US utility functions                                                #
@@ -512,3 +514,30 @@ def infer_frequency(index: Union[pd.DatetimeIndex, np.ndarray]) -> str:
     if pd.to_timedelta(native_frequency) == pd.to_timedelta(0):
         raise ValueError('Inferred dataset frequency is zero.')
     return native_frequency
+
+
+def infer_datetime_coord(xr: Union[DataArray, Dataset]) -> str:
+    """Checks for coordinate with 'date' in its name and returns the name.
+    
+    Parameters
+    ----------
+    xr : Union[DataArray, Dataset]
+        Array to infer coordinate name of.
+        
+    Returns
+    -------
+    str
+        Name of datetime coordinate name.
+        
+    Raises
+    ------
+    RuntimeError
+        If none or multiple coordinates with 'date' in its name are found.
+    """
+    candidates = [c for c in list(xr.coords) if "date" in c]
+    if len(candidates) > 1:
+        raise RuntimeError("Found multiple coordinates with 'date' in its name.")
+    if not candidates:
+        raise RuntimeError("Did not find any coordinate with 'date' in its name")
+
+    return candidates[0]
