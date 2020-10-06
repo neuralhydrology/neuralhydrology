@@ -1,4 +1,5 @@
 import logging
+from typing import Dict
 
 import torch
 import torch.nn as nn
@@ -34,13 +35,24 @@ def get_head(cfg: Config, n_in: int, n_out: int) -> nn.Module:
 
 
 class Regression(nn.Module):
-    """
-    Regression head with different output activations.
+    """Single-layer regression head with different output activations.
+    
+    Parameters
+    ----------
+    n_in : int
+        Number of input neurons.
+    n_out : int
+        Number of output neurons.
+    activation: str, optional
+        Output activation function. Can be specified in the config using the `output_activation` argument. Supported
+        are {'linear', 'relu', 'softplus'}. If not specified (or an unsupported activation function is specified), will
+        default to 'linear' activation.
     """
 
     def __init__(self, n_in: int, n_out: int, activation: str = "linear"):
         super(Regression, self).__init__()
 
+        # TODO: Add multi-layer support
         layers = [nn.Linear(n_in, n_out)]
         if activation != "linear":
             if activation.lower() == "relu":
@@ -51,5 +63,16 @@ class Regression(nn.Module):
                 LOGGER.warning(f"## WARNING: Ignored output activation {activation} and used 'linear' instead.")
         self.net = nn.Sequential(*layers)
 
-    def forward(self, x: torch.Tensor):
+    def forward(self, x: torch.Tensor) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on the Regression head.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Dictionary, containing the model predictions in the 'y_hat' key.
+        """
         return {'y_hat': self.net(x)}

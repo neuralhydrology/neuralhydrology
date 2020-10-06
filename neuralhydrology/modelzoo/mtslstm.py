@@ -22,11 +22,11 @@ class MTSLSTM(BaseModel):
     Each branch processes the inputs at its respective timescale. Finally, one prediction head per timescale generates
     the predictions for that timescale based on the LSTM output.
     Optionally, one can specify:
-      - a different hidden size for each LSTM branch (use a dict in the ``hidden_size`` config argument)
-      - different dynamic input variables for each timescale (use a dict in the ``dynamic_inputs`` config argument)
-      - the strategy to transfer states from the initial shared low-resolution LSTM to the per-timescale
-         higher-resolution LSTMs. By default, this is a linear transfer layer, but you can specify 'identity' to use an
-         identity operation or 'None' to turn off any transfer (via the ``transfer_mtlstm_states`` config argument).
+    - a different hidden size for each LSTM branch (use a dict in the ``hidden_size`` config argument)
+    - different dynamic input variables for each timescale (use a dict in the ``dynamic_inputs`` config argument)
+    - the strategy to transfer states from the initial shared low-resolution LSTM to the per-timescale
+    higher-resolution LSTMs. By default, this is a linear transfer layer, but you can specify 'identity' to use an
+    identity operation or 'None' to turn off any transfer (via the ``transfer_mtlstm_states`` config argument).
 
 
     The sMTS-LSTM variant has the same overall architecture, but the weights of the per-timescale branches (including

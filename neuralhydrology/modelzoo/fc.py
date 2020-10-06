@@ -6,6 +6,25 @@ from neuralhydrology.utils.config import Config
 
 
 class FC(nn.Module):
+    """Auxiliary class to build (multi-layer) fully-connected networks.
+    
+    This class is used in different places of the codebase to build fully-connected networks. E.g., the `EA-LSTM` and
+    `EmbCudaLSTM` use this class to create embedding networks for the static inputs.
+    Use the config argument `embedding_hiddens` to specify the hidden neurons of the embedding network. If only one
+    number is specified the embedding network consists of a single linear layer that maps the input into the specified
+    dimension.
+    Use the config argument `embedding_activation` to specify the activation function for intermediate layers. Currently
+    supported are 'tanh' and 'sigmoid'.
+    Use the config argument `embedding_dropout` to specify the dropout rate in intermediate layers.
+    
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    input_size : int, optional
+        Number of input features. If not specified, the number of input features is the sum of all static inputs (i.e.,
+        catchment attributes, one-hot-encoding, etc.)
+    """
 
     def __init__(self, cfg: Config, input_size: int = None):
         super(FC, self).__init__()
@@ -44,7 +63,7 @@ class FC(nn.Module):
             layers.append(nn.Linear(input_size, output_size))
 
         self.net = nn.Sequential(*layers)
-        self.reset_parameters()
+        self._reset_parameters()
 
     def _get_activation(self, name: str) -> nn.Module:
         if name.lower() == "tanh":
@@ -55,7 +74,8 @@ class FC(nn.Module):
             raise NotImplementedError(f"{name} currently not supported as activation in this class")
         return activation
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
+        """Special initialization of certain model weights."""
         for layer in self.net:
             if isinstance(layer, nn.modules.linear.Linear):
                 n_in = layer.weight.shape[1]
@@ -64,4 +84,17 @@ class FC(nn.Module):
                 nn.init.constant_(layer.bias, val=0)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
+        """Perform a forward pass on the FC model.
+        
+        Parameters
+        ----------
+        x : torch.Tensor
+            Input data of shape [any, any, input size]
+
+        Returns
+        -------
+        torch.Tensor
+            Embedded inputs of shape [any, any, output_size], where 'output_size' is the last number specified in the 
+            `embedding_hiddens` config argument.
+        """
         return self.net(x)

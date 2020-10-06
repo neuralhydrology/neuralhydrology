@@ -17,6 +17,8 @@ class LSTM(BaseModel):
     The idea of this model is to be able to train an LSTM using the nn.LSTM layer, which uses the
     optimized CuDNN implementation, and later to copy the weights into this model for a more 
     in-depth network analysis.
+    Can be used with trained models. For instance, from the `CudaLSTM` or `EmbCudaLSTM` classes, the CudNN LSTM layer can be
+    accessed as `model.lstm`, where `model` is a `CudaLSTM` or `EmbCudaLSTM` instance.
 
     Note: Currently only supports one-layer CuDNN LSTMs
     
@@ -50,11 +52,9 @@ class LSTM(BaseModel):
 
         self.head = get_head(cfg=cfg, n_in=self._hidden_size, n_out=self.output_size)
 
-    def forward(self,
-                data: Dict[str, torch.Tensor],
-                h_0: torch.Tensor = None,
+    def forward(self, data: Dict[str, torch.Tensor], h_0: torch.Tensor = None,
                 c_0: torch.Tensor = None) -> Dict[str, torch.Tensor]:
-        """Forward pass through the LSTM network
+        """Perform a forward pass on the LSTM model.
         
         Parameters
         ----------
@@ -141,9 +141,10 @@ class _LSTMCell(nn.Module):
         self.b_hh = nn.Parameter(torch.FloatTensor(4 * hidden_size))
         self.b_ih = nn.Parameter(torch.FloatTensor(4 * hidden_size))
 
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
+        """Special initialization of certain model weights."""
         stdv = math.sqrt(3 / self.hidden_size)
         for weight in self.parameters():
             if len(weight.shape) > 1:
