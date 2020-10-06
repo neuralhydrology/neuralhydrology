@@ -57,7 +57,7 @@ class ODELSTM(BaseModel):
             raise ValueError('ODELSTM does not support per-frequency input variables or hidden sizes.')
 
         # Note: be aware that frequency_factors and slice_timesteps have a slightly different meaning here vs. in
-        # multifreqlstm. Here, the frequency_factor is relative to the _lowest_ (not the next-lower) frequency.
+        # MTSLSTM. Here, the frequency_factor is relative to the _lowest_ (not the next-lower) frequency.
         # slice_timesteps[freq] is the input step (counting backwards) in the next-*lower* frequency from where on input
         # data at frequency freq is available.
         self._frequency_factors = {}
