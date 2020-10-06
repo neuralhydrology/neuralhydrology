@@ -1,7 +1,7 @@
-MultiFreqLSTM
-=============
+MTSLSTM
+=======
 
-.. automodule:: neuralhydrology.modelzoo.multifreqlstm
+.. automodule:: neuralhydrology.modelzoo.mtslstm
    :members:
    :undoc-members:
    :show-inheritance:

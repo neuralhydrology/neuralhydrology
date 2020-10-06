@@ -11,7 +11,7 @@ def pytest_addoption(parser):
     parser.addoption('--smoke-test',
                      action='store_true',
                      default=False,
-                     help='Skips some tests for faster execution. Out of the single-frequency '
+                     help='Skips some tests for faster execution. Out of the single-timescale '
                      'models and forcings, only test cudalstm on forcings that include daymet.')
 
 
@@ -44,13 +44,13 @@ def get_config(tmpdir: Fixture[str]) -> Fixture[Callable[[str], dict]]:
 
 
 @pytest.fixture(params=['lstm', 'ealstm', 'cudalstm', 'embcudalstm'])
-def single_freq_model(request) -> str:
-    """Fixture that provides models that support predicting only a single frequency.
+def single_timescale_model(request) -> str:
+    """Fixture that provides models that support predicting only a single timescale.
 
     Returns
     -------
     str
-        Name of the single-frequency model.
+        Name of the single-timescale model.
     """
     if request.config.getoption('--smoke-test') and request.param != 'cudalstm':
         pytest.skip('--smoke-test skips this test.')
@@ -62,7 +62,7 @@ def single_freq_model(request) -> str:
                         (['daymet',
                           'nldas'], ['prcp(mm/day)_daymet', 'tmax(C)_daymet', 'PRCP(mm/day)_nldas', 'Tmax(C)_nldas'])],
                 ids=lambda param: str(param[0]))
-def single_freq_forcings(request) -> Dict[str, Union[str, List[str]]]:
+def single_timescale_forcings(request) -> Dict[str, Union[str, List[str]]]:
     """Fixture that provides daily forcings.
 
     Returns
@@ -75,14 +75,14 @@ def single_freq_forcings(request) -> Dict[str, Union[str, List[str]]]:
     return {'forcings': request.param[0], 'variables': request.param[1]}
 
 
-@pytest.fixture(params=['multifreqlstm', 'odelstm'])
-def multi_freq_model(request) -> str:
-    """Fixture that provides multifrequency models.
+@pytest.fixture(params=['mtslstm', 'odelstm'])
+def multi_timescale_model(request) -> str:
+    """Fixture that provides multi-timescale models.
 
     Returns
     -------
     str
-        Name of the multifrequency model.
+        Name of the multi-timescale model.
     """
     return request.param
 

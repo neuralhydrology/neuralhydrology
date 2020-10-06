@@ -35,7 +35,7 @@ metrics:
 
 # --- Model configuration --------------------------------------------------------------------------
 
-# base model type [lstm, ealstm, cudalstm, embcudalstm, multifreqlstm]
+# base model type [lstm, ealstm, cudalstm, embcudalstm, mtslstm]
 # (has to match the if statement in modelzoo/__init__.py)
 model: cudalstm
 
