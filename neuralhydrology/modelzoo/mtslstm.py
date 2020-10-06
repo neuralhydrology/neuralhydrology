@@ -32,6 +32,11 @@ class MTSLSTM(BaseModel):
     The sMTS-LSTM variant has the same overall architecture, but the weights of the per-timescale branches (including
     the output heads) are shared.
     Thus, unlike MTS-LSTM, the sMTS-LSTM cannot use per-timescale hidden sizes or dynamic input variables.
+    
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
     """
 
     def __init__(self, cfg: Config):
@@ -89,7 +94,7 @@ class MTSLSTM(BaseModel):
 
         # create layer depending on selected frequencies
         self._init_modules(input_sizes)
-        self.reset_parameters()
+        self._reset_parameters()
 
         # frequency factors are needed to determine the time step of information transfer
         self._init_frequency_factors_and_slice_timesteps()
@@ -131,7 +136,7 @@ class MTSLSTM(BaseModel):
                 slice_timestep = int(self._seq_lengths[self._frequencies[idx + 1]] / self._frequency_factors[idx])
                 self._slice_timestep[freq] = slice_timestep
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
         if self.cfg.initial_forget_bias is not None:
             for freq in self._frequencies:
                 hidden_size = self._hidden_size[freq]
@@ -167,6 +172,18 @@ class MTSLSTM(BaseModel):
         return x_d
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on the MTS-LSTM model.
+        
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Input data for the forward pass. See the documentation overview of all models for details on the dict keys.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Model predictions for each target timescale.
+        """
         x_d = {freq: self._prepare_inputs(data, freq) for freq in self._frequencies}
 
         # initial states for lowest frequencies are set to zeros
