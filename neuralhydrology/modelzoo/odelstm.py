@@ -297,9 +297,9 @@ class _ODERNNCell(nn.Module):
         self.bias = nn.Parameter(torch.FloatTensor(hidden_size))
         self.scale = nn.Parameter(torch.FloatTensor(hidden_size))
 
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
         """Reset the paramters of the ODERNNCell. """
         nn.init.orthogonal_(self.w_hh)
         nn.init.xavier_uniform_(self.w_ih)
