@@ -468,7 +468,7 @@ class Config(object):
 
     @property
     def shared_mtslstm(self) -> bool:
-        return self._cfg.get("shared_mtslstm", True)
+        return self._cfg.get("shared_mtslstm", False)
 
     @property
     def static_inputs(self) -> List[str]:
