@@ -2,36 +2,65 @@ import logging
 import pickle
 import sys
 from pathlib import Path
-from typing import List
+from typing import List, Dict
 
 import numpy as np
+import pandas as pd
 from numba import njit
 from tqdm import tqdm
 
-from .pet import get_priestley_taylor_pet
-from .utils import load_camels_us_attributes, load_camels_us_forcings, load_basin_file
+from neuralhydrology.datautils import pet, utils
 
 LOGGER = logging.getLogger(__name__)
 
 
-def precalculate_dyn_climate_indices(data_dir: Path, basin_file: Path, window_length: int, forcings: str):
-    basins = load_basin_file(basin_file=basin_file)
-    camels_attributes = load_camels_us_attributes(data_dir=data_dir, basins=basins)
+def calculate_dyn_climate_indices(data_dir: Path,
+                                  basins: List[str],
+                                  window_length: int,
+                                  forcings: str,
+                                  output_file: Path = None) -> Dict[str, pd.DataFrame]:
+    """Calculate dynamic climate indices.
+    
+    Compared to the long-term static climate indices included in the CAMELS data set, this function computes the same
+    climate indices by a moving window approach over the entire data set. That is, for each time step, the climate 
+    indices are re-computed from the last `window_length` time steps. The resulting dictionary of DataFrames can be
+    used with the `additional_feature_files` argument.
+    
+    Parameters
+    ----------
+    data_dir : Path
+        Path to the CAMELS US directory.
+    basins : List[str]
+        List of basin ids.
+    window_length : int
+        Look-back period to use to compute the climate indices.
+    forcings : str
+        Can be e.g. 'daymet' or 'nldas', etc. Must match the folder names in the 'basin_mean_forcing' directory. 
+    output_file : Path, optional
+        If specified, stores the resulting dictionary of DataFrames to this location as a pickle dump.
+
+    Returns
+    -------
+    Dict[str, pd.DataFrame]
+        Dictionary with one time-indexed DataFrame per basin. By definition, the climate indices for a given day in the
+        DataFrame are computed from the `window_length` previous time steps (including the given day).
+    """
+    camels_attributes = utils.load_camels_us_attributes(data_dir=data_dir, basins=basins)
     additional_features = {}
     new_columns = [
         'p_mean_dyn', 'pet_mean_dyn', 'aridity_dyn', 't_mean_dyn', 'frac_snow_dyn', 'high_prec_freq_dyn',
         'high_prec_dur_dyn', 'low_prec_freq_dyn', 'low_prec_dur_dyn'
     ]
     for basin in tqdm(basins, file=sys.stdout):
-        df, _ = load_camels_us_forcings(data_dir=data_dir, basin=basin, forcings=forcings)
+        df, _ = utils.load_camels_us_forcings(data_dir=data_dir, basin=basin, forcings=forcings)
         lat = camels_attributes.loc[camels_attributes.index == basin, 'gauge_lat'].values
         elev = camels_attributes.loc[camels_attributes.index == basin, 'elev_mean'].values
-        df["PET(mm/d)"] = get_priestley_taylor_pet(t_min=df["tmin(C)"].values,
-                                                   t_max=df["tmax(C)"].values,
-                                                   s_rad=df["srad(W/m2)"].values,
-                                                   lat=lat,
-                                                   elev=elev,
-                                                   doy=df.index.dayofyear.values)
+        df["PET(mm/d)"] = pet.get_priestley_taylor_pet(t_min=df["tmin(C)"].values,
+                                                       t_max=df["tmax(C)"].values,
+                                                       s_rad=df["srad(W/m2)"].values,
+                                                       lat=lat,
+                                                       elev=elev,
+                                                       doy=df.index.dayofyear.values)
 
         for col in new_columns:
             df[col] = np.nan
@@ -41,7 +70,7 @@ def precalculate_dyn_climate_indices(data_dir: Path, basin_file: Path, window_le
             df['vp(Pa)'].values, df['PET(mm/d)'].values
         ]).T
 
-        new_features = numba_climate_indexes(x, window_length=window_length)
+        new_features = _numba_climate_indexes(x, window_length=window_length)
 
         if np.sum(np.isnan(new_features)) > 0:
             raise ValueError(f"NaN in new features of basin {basin}")
@@ -62,20 +91,16 @@ def precalculate_dyn_climate_indices(data_dir: Path, basin_file: Path, window_le
 
         additional_features[basin] = df
 
-    filename = f"dyn_climate_indices_{forcings}_{len(basins)}basins_{window_length}lookback.p"
-
-    output_file = Path(__file__).parent.parent.parent / 'data' / filename
-
-    with output_file.open("wb") as fp:
-        pickle.dump(additional_features, fp)
-
-    LOGGER.info(f"Precalculated features successfully stored at {output_file}")
+    if output_file is not None:
+        with output_file.open("wb") as fp:
+            pickle.dump(additional_features, fp)
+        LOGGER.info(f"Precalculated features successfully stored at {output_file}")
 
     return additional_features
 
 
 @njit
-def numba_climate_indexes(features: np.ndarray, window_length: int) -> np.ndarray:
+def _numba_climate_indexes(features: np.ndarray, window_length: int) -> np.ndarray:
     n_samples = features.shape[0]
     new_features = np.zeros((n_samples - 365 + 1, 9))
 
@@ -94,11 +119,11 @@ def numba_climate_indexes(features: np.ndarray, window_length: int) -> np.ndarra
         low_prec_freq = precip_days[precip_days[:, 0] < 1].shape[0] / precip_days.shape[0]
 
         idx = np.where(x[:, 0] < 1)[0]
-        groups = split_list(idx)
+        groups = _split_list(idx)
         low_prec_dur = np.mean(np.array([len(p) for p in groups]))
 
         idx = np.where(x[:, 0] >= 5 * p_mean)[0]
-        groups = split_list(idx)
+        groups = _split_list(idx)
         high_prec_dur = np.mean(np.array([len(p) for p in groups]))
 
         new_features[i, 0] = p_mean
@@ -115,16 +140,15 @@ def numba_climate_indexes(features: np.ndarray, window_length: int) -> np.ndarra
 
 
 @njit
-def split_list(alist: List) -> List:
-    newlist = []
+def _split_list(a_list: List) -> List:
+    new_list = []
     start = 0
-    end = 0
-    for index, value in enumerate(alist):
-        if index < len(alist) - 1:
-            if alist[index + 1] > value + 1:
+    for index, value in enumerate(a_list):
+        if index < len(a_list) - 1:
+            if a_list[index + 1] > value + 1:
                 end = index + 1
-                newlist.append(alist[start:end])
+                new_list.append(a_list[start:end])
                 start = end
         else:
-            newlist.append(alist[start:len(alist)])
-    return newlist
+            new_list.append(a_list[start:len(a_list)])
+    return new_list

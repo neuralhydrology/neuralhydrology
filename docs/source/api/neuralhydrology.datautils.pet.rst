@@ -1,7 +1,7 @@
-utils
-=====
+pet
+===
 
-.. automodule:: neuralhydrology.data.utils
+.. automodule:: neuralhydrology.datautils.pet
    :members:
    :undoc-members:
    :show-inheritance:

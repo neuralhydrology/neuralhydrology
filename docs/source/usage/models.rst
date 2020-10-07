@@ -39,14 +39,14 @@ activations for all time steps. This class is implemented for exploratory reason
 ``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` model into an ``LSTM`` model. This allows to use the fast
 CUDA implementation for training, and only use this class for inference with more detailed outputs.
 
-MultiFreqLSTM
--------------
-:py:class:`neuralhydrology.modelzoo.multifreqlstm.MultiFreqLSTM` is a newly proposed model by Gauch et al. (pre-print
-published soon). This model allows the training on more than one temporal frequency (e.g. daily and hourly inputs) and
-returns multi-frequency model predictions accordingly. A more detailed tutorial will follow shortly.
+MTS-LSTM
+--------
+:py:class:`neuralhydrology.modelzoo.mtslstm.MTSLSTM` is a newly proposed model by Gauch et al. (pre-print
+published soon). This model allows the training on more than temporal resolution (e.g. daily and hourly inputs) and
+returns multi-timescale model predictions accordingly. A more detailed tutorial will follow shortly.
 
-ODELSTM
--------
+ODE-LSTM
+--------
 :py:class:`neuralhydrology.modelzoo.odelstm.ODELSTM` is a PyTorch implementation of the ODE-LSTM proposed by
 `Lechner and Hasani <https://arxiv.org/abs/2006.04418>`_. This model can be used with unevenly sampled inputs and can
 be queried to return predictions for any arbitrary time step.

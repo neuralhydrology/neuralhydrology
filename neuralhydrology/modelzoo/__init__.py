@@ -5,7 +5,7 @@ from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
 from neuralhydrology.modelzoo.lstm import LSTM
 from neuralhydrology.modelzoo.odelstm import ODELSTM
-from neuralhydrology.modelzoo.multifreqlstm import MultiFreqLSTM
+from neuralhydrology.modelzoo.mtslstm import MTSLSTM
 from neuralhydrology.utils.config import Config
 
 SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "lstm", "embcudalstm"]
@@ -35,8 +35,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = LSTM(cfg=cfg)
     elif cfg.model == "embcudalstm":
         model = EmbCudaLSTM(cfg=cfg)
-    elif cfg.model == "multifreqlstm":
-        model = MultiFreqLSTM(cfg=cfg)
+    elif cfg.model == "mtslstm":
+        model = MTSLSTM(cfg=cfg)
     elif cfg.model == "odelstm":
         model = ODELSTM(cfg=cfg)
     else:

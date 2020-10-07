@@ -5,7 +5,7 @@ import pandas as pd
 from scipy import stats, signal
 from xarray.core.dataarray import DataArray
 
-from neuralhydrology.data import utils
+from neuralhydrology.datautils import utils
 
 
 def get_available_metrics() -> List[str]:

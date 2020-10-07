@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from neuralhydrology.data.utils import sort_frequencies
+from neuralhydrology.datautils.utils import sort_frequencies
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.lstm import _LSTMCell
@@ -42,6 +42,11 @@ class ODELSTM(BaseModel):
     5. lowest-frequency steps to generate predict_last_n lowest-frequency predictions.
     6. repeat steps four and five for the next-higher frequency (using the same random-frequency bounds but
        generating predictions for the next-higher frequency).
+       
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
 
     References
     ----------
@@ -57,7 +62,7 @@ class ODELSTM(BaseModel):
             raise ValueError('ODELSTM does not support per-frequency input variables or hidden sizes.')
 
         # Note: be aware that frequency_factors and slice_timesteps have a slightly different meaning here vs. in
-        # multifreqlstm. Here, the frequency_factor is relative to the _lowest_ (not the next-lower) frequency.
+        # MTSLSTM. Here, the frequency_factor is relative to the _lowest_ (not the next-lower) frequency.
         # slice_timesteps[freq] is the input step (counting backwards) in the next-*lower* frequency from where on input
         # data at frequency freq is available.
         self._frequency_factors = {}
@@ -171,6 +176,18 @@ class ODELSTM(BaseModel):
         return torch.cat(x_d_randomized, dim=0)
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on the ODE-LSTM model.
+
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Input data for the forward pass. See the documentation overview of all models for details on the dict keys.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Model predictions for each target timescale.
+        """
 
         x_d = {freq: self._prepare_inputs(data, freq) for freq in self._frequencies}
 
@@ -245,34 +262,67 @@ class ODELSTM(BaseModel):
 
 
 class _ODERNNCell(nn.Module):
-    """An ODE-RNN cell (Adapted from https://github.com/mlech26l/learning-long-term-irregular-ts). """
+    """An ODE-RNN cell (Adapted from https://github.com/mlech26l/learning-long-term-irregular-ts) [#]_. 
+    
+    Parameters
+    ----------
+    input_size : int
+        Input dimension
+    hidden_size : int
+        Size of the cell's hidden state
+    num_unfolds : int
+        Number of steps into which each timestep will be broken down to solve the ODE.
+    method : {'euler', 'heun', 'rk4'}
+        Method to use for ODE solving (Euler's method, Heun's method, or Runge-Kutta 4)
+    
+    References
+    ----------
+    .. [#] Lechner, M.; Hasani, R.: Learning Long-Term Dependencies in Irregularly-Sampled Time Series. arXiv, 2020,
+        https://arxiv.org/abs/2006.04418.
+    """
 
-    def __init__(self, input_size: int, hidden_size: int, num_unfolds: int, method: str, tau=1):
+    def __init__(self, input_size: int, hidden_size: int, num_unfolds: int, method: str):
         super(_ODERNNCell, self).__init__()
         self.method = {
-            'euler': self.euler,
-            'heun': self.heun,
-            'rk4': self.rk4,
+            'euler': self._euler,
+            'heun': self._heun,
+            'rk4': self._rk4,
         }[method]
         self.input_size = input_size
         self.hidden_size = hidden_size
         self.num_unfolds = num_unfolds
-        self.tau = tau
 
         self.w_ih = nn.Parameter(torch.FloatTensor(hidden_size, input_size))
         self.w_hh = nn.Parameter(torch.FloatTensor(hidden_size, hidden_size))
         self.bias = nn.Parameter(torch.FloatTensor(hidden_size))
         self.scale = nn.Parameter(torch.FloatTensor(hidden_size))
 
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
+        """Reset the paramters of the ODERNNCell. """
         nn.init.orthogonal_(self.w_hh)
         nn.init.xavier_uniform_(self.w_ih)
         nn.init.zeros_(self.bias)
         nn.init.constant_(self.scale, 1.0)
 
     def forward(self, new_hidden_state: torch.Tensor, old_hidden_state: torch.Tensor, elapsed: float) -> torch.Tensor:
+        """Perform a forward pass on the ODERNNCell.
+        
+        Parameters
+        ----------
+        new_hidden_state : torch.Tensor
+            The current hidden state to be updated by the ODERNNCell.
+        old_hidden_state : torch.Tensor
+            The previous hidden state.
+        elapsed : float
+            Time elapsed between new and old hidden state.
+
+        Returns
+        -------
+        torch.Tensor
+            Predicted new hidden state
+        """
         delta_t = elapsed / self.num_unfolds
 
         hidden_state = old_hidden_state
@@ -280,29 +330,26 @@ class _ODERNNCell(nn.Module):
             hidden_state = self.method(new_hidden_state, hidden_state, delta_t)
         return hidden_state
 
-    def dfdt(self, inputs: torch.Tensor, hidden_state: torch.Tensor) -> torch.Tensor:
+    def _dfdt(self, inputs: torch.Tensor, hidden_state: torch.Tensor) -> torch.Tensor:
         h_in = torch.matmul(inputs, self.w_ih)
         h_rec = torch.matmul(hidden_state, self.w_hh)
         dh_in = self.scale * torch.tanh(h_in + h_rec + self.bias)
-        if self.tau > 0:
-            dh = dh_in - hidden_state * self.tau
-        else:
-            dh = dh_in
+        dh = dh_in - hidden_state
         return dh
 
-    def euler(self, inputs: torch.Tensor, hidden_state: torch.Tensor, delta_t: float) -> torch.Tensor:
-        dy = self.dfdt(inputs, hidden_state)
+    def _euler(self, inputs: torch.Tensor, hidden_state: torch.Tensor, delta_t: float) -> torch.Tensor:
+        dy = self._dfdt(inputs, hidden_state)
         return hidden_state + delta_t * dy
 
-    def heun(self, inputs: torch.Tensor, hidden_state: torch.Tensor, delta_t: float) -> torch.Tensor:
-        k1 = self.dfdt(inputs, hidden_state)
-        k2 = self.dfdt(inputs, hidden_state + delta_t * k1)
+    def _heun(self, inputs: torch.Tensor, hidden_state: torch.Tensor, delta_t: float) -> torch.Tensor:
+        k1 = self._dfdt(inputs, hidden_state)
+        k2 = self._dfdt(inputs, hidden_state + delta_t * k1)
         return hidden_state + delta_t * 0.5 * (k1 + k2)
 
-    def rk4(self, inputs: torch.Tensor, hidden_state: torch.Tensor, delta_t: float) -> torch.Tensor:
-        k1 = self.dfdt(inputs, hidden_state)
-        k2 = self.dfdt(inputs, hidden_state + k1 * delta_t * 0.5)
-        k3 = self.dfdt(inputs, hidden_state + k2 * delta_t * 0.5)
-        k4 = self.dfdt(inputs, hidden_state + k3 * delta_t)
+    def _rk4(self, inputs: torch.Tensor, hidden_state: torch.Tensor, delta_t: float) -> torch.Tensor:
+        k1 = self._dfdt(inputs, hidden_state)
+        k2 = self._dfdt(inputs, hidden_state + k1 * delta_t * 0.5)
+        k3 = self._dfdt(inputs, hidden_state + k2 * delta_t * 0.5)
+        k4 = self._dfdt(inputs, hidden_state + k3 * delta_t)
 
         return hidden_state + delta_t * (k1 + 2 * k2 + 2 * k3 + k4) / 6.0

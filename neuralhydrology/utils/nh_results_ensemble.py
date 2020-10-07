@@ -12,7 +12,7 @@ import xarray as xr
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from neuralhydrology.data.utils import sort_frequencies
+from neuralhydrology.datautils.utils import sort_frequencies
 from neuralhydrology.evaluation.metrics import calculate_metrics
 from neuralhydrology.utils.config import Config
 

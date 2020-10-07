@@ -10,6 +10,28 @@ from neuralhydrology.utils.config import Config
 
 
 class EALSTM(BaseModel):
+    """Entity-Aware LSTM (EA-LSTM) model class.
+
+    This model has been proposed by Kratzert et al. [#]_ as a variant of the standard LSTM. The main difference is that
+    the input gate of the EA-LSTM is modulated using only the static inputs, while the dynamic (time series) inputs are
+    used in all other parts of the model (i.e. forget gate, cell update gate and output gate).
+    To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set 
+    this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
+    the gradient flow. 
+    The `EALSTM` class does only support single timescale predictions. Use `MTSLSTM` to train an LSTM-based model and 
+    get predictions on multiple temporal resolutions at the same time.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+        
+    References
+    ----------
+    .. [#] Kratzert, F., Klotz, D., Shalev, G., Klambauer, G., Hochreiter, S., and Nearing, G.: Towards learning 
+        universal, regional, and local hydrological behaviors via machine learning applied to large-sample datasets, 
+        Hydrol. Earth Syst. Sci., 23, 5089–5110, https://doi.org/10.5194/hess-23-5089-2019, 2019.
+    """
 
     def __init__(self, cfg: Config):
         super(EALSTM, self).__init__(cfg=cfg)
@@ -36,9 +58,10 @@ class EALSTM(BaseModel):
         self.head = get_head(cfg=cfg, n_in=cfg.hidden_size, n_out=self.output_size)
 
         # initialize parameters
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
+        """Special initialization of certain model weights."""
         nn.init.orthogonal_(self.weight_ih.data)
 
         weight_hh_data = torch.eye(self.cfg.hidden_size)
@@ -51,7 +74,23 @@ class EALSTM(BaseModel):
             self.bias.data[:self.cfg.hidden_size] = self.cfg.initial_forget_bias
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on the EA-LSTM model.
 
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Dictionary, containing input features as key-value pairs.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Model outputs and intermediate states as a dictionary. 
+                - `y_hat`: model predictions of shape [batch size, sequence length, number of target variables].
+                - `h_n`: hidden state at the last time step of the sequence of shape 
+                    [batch size, sequence length, number of target variables].
+                - `c_n`: cell state at the last time step of the sequence of shape 
+                    [batch size, sequence length, number of target variables].
+        """
         if 'x_s' in data and 'x_one_hot' in data:
             x_s = torch.cat([data['x_s'], data['x_one_hot']], dim=-1)
         elif 'x_s' in data:

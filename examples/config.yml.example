@@ -52,7 +52,7 @@ metrics:
 
 # --- Model configuration --------------------------------------------------------------------------
 
-# base model type [lstm, ealstm, cudalstm, embcudalstm, multifreqlstm]
+# base model type [lstm, ealstm, cudalstm, embcudalstm, mtslstm]
 # (has to match the if statement in modelzoo/__init__.py)
 model: cudalstm
 
@@ -79,13 +79,13 @@ embedding_activation: tanh
 # dropout applied to embedding network
 embedding_dropout: 0.0
 
-# ----> MultiFreqLSTM settings <----
+# ----> MTSLSTM settings <----
 
 # Use an individual LSTM per frequencies (True) vs. use a single shared LSTM for all frequencies (False)
-per_frequency_lstm: True
+shared_mtslstm: True
 
 # how to transfer states from lower to higher frequencies. One of [identity, linear, None].
-transfer_multifreq_states:
+transfer_mtslstm_states:
     h: identity
     c: identity
 

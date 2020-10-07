@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from neuralhydrology.data.utils import sort_frequencies
+from neuralhydrology.datautils.utils import sort_frequencies
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.utils.config import Config
@@ -13,10 +13,34 @@ from neuralhydrology.utils.config import Config
 LOGGER = logging.getLogger(__name__)
 
 
-class MultiFreqLSTM(BaseModel):
+class MTSLSTM(BaseModel):
+    """Multi-Timescale LSTM (MTS-LSTM) from Gauch et al. (preprint to be released soon).
+
+    An LSTM architecture that allows simultaneous prediction at multiple timescales within one model.
+    There are two flavors of this model: MTS-LTSM and sMTS-LSTM (shared MTS-LSTM). The MTS-LSTM processes inputs at
+    low temporal resolutions up to a point in time. Then, the LSTM splits into one branch for each target timescale.
+    Each branch processes the inputs at its respective timescale. Finally, one prediction head per timescale generates
+    the predictions for that timescale based on the LSTM output.
+    Optionally, one can specify:
+    - a different hidden size for each LSTM branch (use a dict in the ``hidden_size`` config argument)
+    - different dynamic input variables for each timescale (use a dict in the ``dynamic_inputs`` config argument)
+    - the strategy to transfer states from the initial shared low-resolution LSTM to the per-timescale
+    higher-resolution LSTMs. By default, this is a linear transfer layer, but you can specify 'identity' to use an
+    identity operation or 'None' to turn off any transfer (via the ``transfer_mtlstm_states`` config argument).
+
+
+    The sMTS-LSTM variant has the same overall architecture, but the weights of the per-timescale branches (including
+    the output heads) are shared.
+    Thus, unlike MTS-LSTM, the sMTS-LSTM cannot use per-timescale hidden sizes or dynamic input variables.
+    
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    """
 
     def __init__(self, cfg: Config):
-        super(MultiFreqLSTM, self).__init__(cfg=cfg)
+        super(MTSLSTM, self).__init__(cfg=cfg)
         self.lstms = None
         self.transfer_fcs = None
         self.heads = None
@@ -26,22 +50,22 @@ class MultiFreqLSTM(BaseModel):
         self._frequency_factors = []
 
         self._seq_lengths = cfg.seq_length
-        self._per_frequency_lstm = self.cfg.per_frequency_lstm  # default: a distinct LSTM per frequency
-        self._transfer_multifreq_states = self.cfg.transfer_multifreq_states  # default: linear transfer layer
+        self._is_shared_mtslstm = self.cfg.shared_mtslstm  # default: a distinct LSTM per timescale
+        self._transfer_mtslstm_states = self.cfg.transfer_mtslstm_states  # default: linear transfer layer
         transfer_modes = [None, "None", "identity", "linear"]
-        if self._transfer_multifreq_states["h"] not in transfer_modes \
-                or self._transfer_multifreq_states["c"] not in transfer_modes:
-            raise ValueError(f"MultiFreqLSTM supports state transfer modes {transfer_modes}")
+        if self._transfer_mtslstm_states["h"] not in transfer_modes \
+                or self._transfer_mtslstm_states["c"] not in transfer_modes:
+            raise ValueError(f"MTS-LSTM supports state transfer modes {transfer_modes}")
 
         if len(cfg.use_frequencies) < 2:
-            raise ValueError("MultiFreqLSTM expects more than one input frequency")
+            raise ValueError("MTS-LSTM expects more than one input frequency")
         self._frequencies = sort_frequencies(cfg.use_frequencies)
 
         # start to count the number of inputs
         input_sizes = len(cfg.camels_attributes + cfg.hydroatlas_attributes + cfg.static_inputs)
 
-        # if not per_frequency_lstm, the LSTM gets an additional frequency flag as input.
-        if not self._per_frequency_lstm:
+        # if not is_shared_mtslstm, the LSTM gets an additional frequency flag as input.
+        if not self._is_shared_mtslstm:
             input_sizes += len(self._frequencies)
 
         if cfg.use_basin_id_encoding:
@@ -52,8 +76,8 @@ class MultiFreqLSTM(BaseModel):
         if isinstance(cfg.dynamic_inputs, list):
             input_sizes = {freq: input_sizes + len(cfg.dynamic_inputs) for freq in self._frequencies}
         else:
-            if not self._per_frequency_lstm:
-                raise ValueError(f'Different inputs not allowed if per_frequency_lstm is False.')
+            if not self._is_shared_mtslstm:
+                raise ValueError(f'Different inputs not allowed if shared_mtslstm is False.')
             input_sizes = {freq: input_sizes + len(cfg.dynamic_inputs[freq]) for freq in self._frequencies}
 
         if not isinstance(cfg.hidden_size, dict):
@@ -62,15 +86,15 @@ class MultiFreqLSTM(BaseModel):
         else:
             self._hidden_size = cfg.hidden_size
 
-        if (not self._per_frequency_lstm
-                or self._transfer_multifreq_states["h"] == "identity"
-                or self._transfer_multifreq_states["c"] == "identity") \
+        if (not self._is_shared_mtslstm
+            or self._transfer_mtslstm_states["h"] == "identity"
+            or self._transfer_mtslstm_states["c"] == "identity") \
                 and any(size != self._hidden_size[self._frequencies[0]] for size in self._hidden_size.values()):
-            raise ValueError("All hidden sizes must be equal if per_frequency_lstm=False or state transfer=identity.")
+            raise ValueError("All hidden sizes must be equal if shared_mtslstm=False or state transfer=identity.")
 
         # create layer depending on selected frequencies
         self._init_modules(input_sizes)
-        self.reset_parameters()
+        self._reset_parameters()
 
         # frequency factors are needed to determine the time step of information transfer
         self._init_frequency_factors_and_slice_timesteps()
@@ -83,7 +107,7 @@ class MultiFreqLSTM(BaseModel):
         for idx, freq in enumerate(self._frequencies):
             freq_input_size = input_sizes[freq]
 
-            if not self._per_frequency_lstm and idx > 0:
+            if not self._is_shared_mtslstm and idx > 0:
                 self.lstms[freq] = self.lstms[self._frequencies[idx - 1]]  # same LSTM for all frequencies.
                 self.heads[freq] = self.heads[self._frequencies[idx - 1]]  # same head for all frequencies.
             else:
@@ -92,10 +116,10 @@ class MultiFreqLSTM(BaseModel):
 
             if idx < len(self._frequencies) - 1:
                 for state in ["c", "h"]:
-                    if self._transfer_multifreq_states[state] == "linear":
+                    if self._transfer_mtslstm_states[state] == "linear":
                         self.transfer_fcs[f"{state}_{freq}"] = nn.Linear(self._hidden_size[freq],
                                                                          self._hidden_size[self._frequencies[idx + 1]])
-                    elif self._transfer_multifreq_states[state] == "identity":
+                    elif self._transfer_mtslstm_states[state] == "identity":
                         self.transfer_fcs[f"{state}_{freq}"] = nn.Identity()
                     else:
                         pass
@@ -112,7 +136,7 @@ class MultiFreqLSTM(BaseModel):
                 slice_timestep = int(self._seq_lengths[self._frequencies[idx + 1]] / self._frequency_factors[idx])
                 self._slice_timestep[freq] = slice_timestep
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
         if self.cfg.initial_forget_bias is not None:
             for freq in self._frequencies:
                 hidden_size = self._hidden_size[freq]
@@ -138,7 +162,7 @@ class MultiFreqLSTM(BaseModel):
         else:
             pass
 
-        if not self._per_frequency_lstm:
+        if not self._is_shared_mtslstm:
             # add frequency one-hot encoding
             idx = self._frequencies.index(freq)
             one_hot_freq = torch.zeros(x_d.shape[0], x_d.shape[1], len(self._frequencies)).to(x_d)
@@ -148,6 +172,18 @@ class MultiFreqLSTM(BaseModel):
         return x_d
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on the MTS-LSTM model.
+        
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Input data for the forward pass. See the documentation overview of all models for details on the dict keys.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Model predictions for each target timescale.
+        """
         x_d = {freq: self._prepare_inputs(data, freq) for freq in self._frequencies}
 
         # initial states for lowest frequencies are set to zeros
@@ -165,9 +201,9 @@ class MultiFreqLSTM(BaseModel):
                                                                                 (h_0_transfer, c_0_transfer))
 
                 # project the states through a hidden layer to the dimensions of the next LSTM
-                if self._transfer_multifreq_states["h"] is not None:
+                if self._transfer_mtslstm_states["h"] is not None:
                     h_0_transfer = self.transfer_fcs[f"h_{freq}"](h_n_slice1)
-                if self._transfer_multifreq_states["c"] is not None:
+                if self._transfer_mtslstm_states["c"] is not None:
                     c_0_transfer = self.transfer_fcs[f"c_{freq}"](c_n_slice1)
 
                 # get predictions of remaining part and concat results

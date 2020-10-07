@@ -1,7 +1,7 @@
-Caravan
+MTSLSTM
 =======
 
-.. automodule:: neuralhydrology.data.caravan
+.. automodule:: neuralhydrology.modelzoo.mtslstm
    :members:
    :undoc-members:
    :show-inheritance:

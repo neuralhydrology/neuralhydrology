@@ -10,6 +10,23 @@ from neuralhydrology.utils.config import Config
 
 
 class EmbCudaLSTM(BaseModel):
+    """EmbCudaLSTM model class, which adds embedding networks for static inputs to the standard LSTM.
+
+    This class extends the standard `CudaLSTM` class to preprocess the static inputs by an embedding network, prior
+    to concatenating those values to the dynamic (time series) inputs. Use the config argument `embedding_hiddens` to
+    specify the architecture of the fully-connected embedding network. No activation function is applied to the outputs
+    of the embedding network.
+    To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set 
+    this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
+    the gradient flow. 
+    The `EmbCudaLSTM` class does only support single timescale predictions. Use `MTSLSTM` to train a model and get 
+    predictions on multiple temporal resolutions at the same time.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    """
 
     def __init__(self, cfg: Config):
         super(EmbCudaLSTM, self).__init__(cfg=cfg)
@@ -27,14 +44,29 @@ class EmbCudaLSTM(BaseModel):
 
         self.head = get_head(cfg=cfg, n_in=cfg.hidden_size, n_out=self.output_size)
 
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self):
+    def _reset_parameters(self):
+        """Special initialization of certain model weights."""
         if self.cfg.initial_forget_bias is not None:
             self.lstm.bias_hh_l0.data[self.cfg.hidden_size:2 * self.cfg.hidden_size] = self.cfg.initial_forget_bias
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on the EmbCudaLSTM model.
 
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Dictionary, containing input features as key-value pairs.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Model outputs and intermediate states as a dictionary. 
+                - `y_hat`: model predictions of shape [batch size, sequence length, number of target variables].
+                - `h_n`: hidden state at the last time step of the sequence of shape [1, batch size, hidden size].
+                - `c_n`: cell state at the last time step of the sequence of shape [1, batch size, hidden size].
+        """
         x_d = data['x_d'].transpose(0, 1)
 
         if 'x_s' in data and 'x_one_hot' in data:
