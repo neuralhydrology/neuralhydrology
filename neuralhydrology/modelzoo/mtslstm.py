@@ -64,8 +64,8 @@ class MTSLSTM(BaseModel):
         # start to count the number of inputs
         input_sizes = len(cfg.camels_attributes + cfg.hydroatlas_attributes + cfg.static_inputs)
 
-        # if not is_shared_mtslstm, the LSTM gets an additional frequency flag as input.
-        if not self._is_shared_mtslstm:
+        # if is_shared_mtslstm, the LSTM gets an additional frequency flag as input.
+        if self._is_shared_mtslstm:
             input_sizes += len(self._frequencies)
 
         if cfg.use_basin_id_encoding:
@@ -76,8 +76,8 @@ class MTSLSTM(BaseModel):
         if isinstance(cfg.dynamic_inputs, list):
             input_sizes = {freq: input_sizes + len(cfg.dynamic_inputs) for freq in self._frequencies}
         else:
-            if not self._is_shared_mtslstm:
-                raise ValueError(f'Different inputs not allowed if shared_mtslstm is False.')
+            if self._is_shared_mtslstm:
+                raise ValueError(f'Different inputs not allowed if shared_mtslstm is used.')
             input_sizes = {freq: input_sizes + len(cfg.dynamic_inputs[freq]) for freq in self._frequencies}
 
         if not isinstance(cfg.hidden_size, dict):
@@ -86,11 +86,11 @@ class MTSLSTM(BaseModel):
         else:
             self._hidden_size = cfg.hidden_size
 
-        if (not self._is_shared_mtslstm
+        if (self._is_shared_mtslstm
             or self._transfer_mtslstm_states["h"] == "identity"
             or self._transfer_mtslstm_states["c"] == "identity") \
                 and any(size != self._hidden_size[self._frequencies[0]] for size in self._hidden_size.values()):
-            raise ValueError("All hidden sizes must be equal if shared_mtslstm=False or state transfer=identity.")
+            raise ValueError("All hidden sizes must be equal if shared_mtslstm is used or state transfer=identity.")
 
         # create layer depending on selected frequencies
         self._init_modules(input_sizes)
@@ -107,7 +107,7 @@ class MTSLSTM(BaseModel):
         for idx, freq in enumerate(self._frequencies):
             freq_input_size = input_sizes[freq]
 
-            if not self._is_shared_mtslstm and idx > 0:
+            if self._is_shared_mtslstm and idx > 0:
                 self.lstms[freq] = self.lstms[self._frequencies[idx - 1]]  # same LSTM for all frequencies.
                 self.heads[freq] = self.heads[self._frequencies[idx - 1]]  # same head for all frequencies.
             else:
@@ -162,7 +162,7 @@ class MTSLSTM(BaseModel):
         else:
             pass
 
-        if not self._is_shared_mtslstm:
+        if self._is_shared_mtslstm:
             # add frequency one-hot encoding
             idx = self._frequencies.index(freq)
             one_hot_freq = torch.zeros(x_d.shape[0], x_d.shape[1], len(self._frequencies)).to(x_d)
