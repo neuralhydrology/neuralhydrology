@@ -28,7 +28,7 @@ metrics:
   - Beta-NSE
 
 # --- Model configuration --------------------------------------------------------------------------
-model: multifreqlstm
+model: mtslstm
 head: regression
 output_activation: linear
 

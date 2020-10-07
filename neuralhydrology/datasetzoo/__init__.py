@@ -1,7 +1,7 @@
-from neuralhydrology.data.basedataset import BaseDataset
-from neuralhydrology.data.camelsus import CamelsUS
-from neuralhydrology.data.camelsgb import CamelsGB
-from neuralhydrology.data.hourlycamelsus import HourlyCamelsUS
+from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.datasetzoo.camelsus import CamelsUS
+from neuralhydrology.datasetzoo.camelsgb import CamelsGB
+from neuralhydrology.datasetzoo.hourlycamelsus import HourlyCamelsUS
 from neuralhydrology.utils.config import Config
 
 
@@ -45,7 +45,7 @@ def get_dataset(cfg: Config,
     -------
     BaseDataset
         A new data set instance, depending on the run configuration.
-        
+
     Raises
     ------
     NotImplementedError

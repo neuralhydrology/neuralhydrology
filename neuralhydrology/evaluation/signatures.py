@@ -8,7 +8,7 @@ import numpy as np
 from numba import njit
 from xarray.core.dataarray import DataArray
 
-from neuralhydrology.data import utils
+from neuralhydrology.datautils import utils
 
 
 def get_available_signatures() -> List[str]:

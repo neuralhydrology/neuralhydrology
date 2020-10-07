@@ -1,7 +1,7 @@
 BaseDataset
 ===========
 
-.. automodule:: neuralhydrology.data.basedataset
+.. automodule:: neuralhydrology.datasetzoo.basedataset
    :members:
    :undoc-members:
    :show-inheritance:

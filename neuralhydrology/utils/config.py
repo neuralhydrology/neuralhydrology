@@ -420,10 +420,6 @@ class Config(object):
         return self._cfg.get("per_basin_validation_periods_file", None)
 
     @property
-    def per_frequency_lstm(self) -> bool:
-        return self._cfg.get("per_frequency_lstm", True)
-
-    @property
     def predict_last_n(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("predict_last_n")
 
@@ -469,6 +465,10 @@ class Config(object):
     @property
     def seq_length(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("seq_length")
+
+    @property
+    def shared_mtslstm(self) -> bool:
+        return self._cfg.get("shared_mtslstm", True)
 
     @property
     def static_inputs(self) -> List[str]:
@@ -540,8 +540,8 @@ class Config(object):
         return self._get_value_verbose("train_start_date")
 
     @property
-    def transfer_multifreq_states(self) -> Dict[str, str]:
-        return self._cfg.get("transfer_multifreq_states", {'h': 'linear', 'c': 'linear'})
+    def transfer_mtslstm_states(self) -> Dict[str, str]:
+        return self._cfg.get("transfer_mtslstm_states", {'h': 'linear', 'c': 'linear'})
 
     @property
     def umal_extend_batch(self) -> bool:

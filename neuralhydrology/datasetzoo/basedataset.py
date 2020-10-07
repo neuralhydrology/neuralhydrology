@@ -13,7 +13,7 @@ from numba import njit, prange
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
-from neuralhydrology.data import utils
+from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
@@ -383,18 +383,16 @@ class BaseDataset(Dataset):
         self.num_samples = len(self.lookup_table)
 
     def _load_hydroatlas_attributes(self):
-        if self.is_train:
-            # sanity check attributes for NaN in per-feature standard deviation
-            utils.attributes_sanity_check(data_dir=self.cfg.data_dir,
-                                          attribute_set="hydroatlas",
-                                          basins=self.basins,
-                                          attribute_list=self.cfg.hydroatlas_attributes)
-
         df = utils.load_hydroatlas_attributes(self.cfg.data_dir, basins=self.basins)
 
         # remove all attributes not defined in the config
         drop_cols = [c for c in df.columns if c not in self.cfg.hydroatlas_attributes]
         df = df.drop(drop_cols, axis=1)
+
+        if self.is_train:
+            # sanity check attributes for NaN in per-feature standard deviation
+            utils.attributes_sanity_check(df=df)
+
         return df
 
     def _load_combined_attributes(self):

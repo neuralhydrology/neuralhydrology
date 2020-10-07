@@ -1,10 +1,11 @@
+from pathlib import Path
 from typing import Dict, List, Union
 
 import pandas as pd
 import xarray
 
-from neuralhydrology.data.basedataset import BaseDataset
-from neuralhydrology.data import utils
+from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
 
 
@@ -62,23 +63,104 @@ class CamelsGB(BaseDataset):
 
     def _load_basin_data(self, basin: str) -> pd.DataFrame:
         """Load input and output data from text files."""
-        df = utils.load_camels_gb_timeseries(data_dir=self.cfg.data_dir, basin=basin)
+        df = load_camels_gb_timeseries(data_dir=self.cfg.data_dir, basin=basin)
 
         return df
 
     def _load_attributes(self) -> pd.DataFrame:
         if self.cfg.camels_attributes:
-            if self.is_train:
-                # sanity check attributes for NaN in per-feature standard deviation
-                utils.attributes_sanity_check(data_dir=self.cfg.data_dir,
-                                              attribute_set=self.cfg.dataset,
-                                              basins=self.basins,
-                                              attribute_list=self.cfg.camels_attributes)
 
-            df = utils.load_camels_gb_attributes(self.cfg.data_dir, basins=self.basins)
+            df = load_camels_gb_attributes(self.cfg.data_dir, basins=self.basins)
 
             # remove all attributes not defined in the config
             drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
             df = df.drop(drop_cols, axis=1)
 
+            if self.is_train:
+                # sanity check attributes for NaN in per-feature standard deviation
+                utils.attributes_sanity_check(df=df)
+
             return df
+
+
+def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+    """Load CAMELS GB attributes from the dataset provided by [#]_
+
+    Parameters
+    ----------
+    data_dir : Path
+        Path to the CAMELS GB directory. This folder must contain an 'attributes' folder containing the corresponding 
+        csv files for each attribute group (ending with _attributes.csv).
+    basins : List[str], optional
+        If passed, return only attributes for the basins specified in this list. Otherwise, the attributes of all basins
+        are returned.
+
+    Returns
+    -------
+    pd.DataFrame
+        Basin-indexed DataFrame, containing the attributes as columns.
+
+    References
+    ----------
+    .. [#] Coxon, G., Addor, N., Bloomfield, J. P., Freer, J., Fry, M., Hannaford, J., Howden, N. J. K., Lane, R., 
+        Lewis, M., Robinson, E. L., Wagener, T., and Woods, R.: CAMELS-GB: Hydrometeorological time series and landscape 
+        attributes for 671 catchments in Great Britain, Earth Syst. Sci. Data Discuss., 
+        https://doi.org/10.5194/essd-2020-49,  in review, 2020. 
+    """
+    attributes_path = Path(data_dir) / 'attributes'
+
+    if not attributes_path.exists():
+        raise RuntimeError(f"Attribute folder not found at {attributes_path}")
+
+    txt_files = attributes_path.glob('*_attributes.csv')
+
+    # Read-in attributes into one big dataframe
+    dfs = []
+    for txt_file in txt_files:
+        df_temp = pd.read_csv(txt_file, sep=',', header=0, dtype={'gauge_id': str})
+        df_temp = df_temp.set_index('gauge_id')
+
+        dfs.append(df_temp)
+
+    df = pd.concat(dfs, axis=1)
+
+    if basins:
+        # drop rows of basins not contained in the passed list
+        drop_basins = [b for b in df.index if b not in basins]
+        df = df.drop(drop_basins, axis=0)
+
+    return df
+
+
+def load_camels_gb_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
+    """Load the time series data for one basin of the CAMELS GB data set.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Path to the CAMELS GB directory. This folder must contain a folder called 'timeseries' containing the forcing
+        files for each basin as .csv file. The file names have to start with 'CAMELS_GB_hydromet_timeseries'.
+    basin : str
+        Basin identifier number as string.
+
+    Returns
+    -------
+    pd.DataFrame
+        Time-indexed DataFrame, containing the time series data (forcings + discharge) data.
+    """
+    forcing_path = data_dir / 'timeseries'
+    if not forcing_path.is_dir():
+        raise OSError(f"{forcing_path} does not exist")
+
+    files = list(forcing_path.glob('**/CAMELS_GB_hydromet_timeseries*.csv'))
+    file_path = [f for f in files if f"_{basin}_" in f.name]
+    if file_path:
+        file_path = file_path[0]
+    else:
+        raise FileNotFoundError(f'No file for Basin {basin} at {file_path}')
+
+    df = pd.read_csv(file_path, sep=',', header=0, dtype={'date': str})
+    df["date"] = pd.to_datetime(df["date"], format="%Y-%m-%d")
+    df = df.set_index("date")
+
+    return df

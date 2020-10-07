@@ -16,6 +16,6 @@ nh.modelzoo
    neuralhydrology.modelzoo.fc
    neuralhydrology.modelzoo.head
    neuralhydrology.modelzoo.lstm
-   neuralhydrology.modelzoo.multifreqlstm
+   neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
    neuralhydrology.modelzoo.template
