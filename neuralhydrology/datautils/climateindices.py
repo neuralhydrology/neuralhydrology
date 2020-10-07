@@ -9,7 +9,7 @@ import pandas as pd
 from numba import njit
 from tqdm import tqdm
 
-from neuralhydrology.data import pet, utils
+from neuralhydrology.datautils import pet, utils
 
 LOGGER = logging.getLogger(__name__)
 

@@ -11,9 +11,9 @@ from torch.utils.data import DataLoader
 from tqdm import tqdm
 
 import neuralhydrology.training.loss as loss
-from neuralhydrology.data import get_dataset
-from neuralhydrology.data.basedataset import BaseDataset
-from neuralhydrology.data.utils import load_basin_file
+from neuralhydrology.datasetzoo import get_dataset
+from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.datautils.utils import load_basin_file
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.modelzoo import get_model

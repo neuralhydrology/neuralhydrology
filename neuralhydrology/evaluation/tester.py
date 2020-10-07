@@ -14,9 +14,9 @@ import xarray
 from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-from neuralhydrology.data import get_dataset
-from neuralhydrology.data.basedataset import BaseDataset
-from neuralhydrology.data.utils import load_basin_file, sort_frequencies
+from neuralhydrology.datasetzoo import get_dataset
+from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.datautils.utils import load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics
 from neuralhydrology.modelzoo import get_model

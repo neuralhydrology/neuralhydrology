@@ -10,7 +10,8 @@ neuralhydrology API
 .. toctree::
    :maxdepth: 4
 
-   neuralhydrology.data
+   neuralhydrology.datasetzoo
+   neuralhydrology.datautils
    neuralhydrology.evaluation
    neuralhydrology.modelzoo
    neuralhydrology.training

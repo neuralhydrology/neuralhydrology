@@ -1,7 +1,7 @@
 CamelsGB
 ========
 
-.. automodule:: neuralhydrology.data.camelsgb
+.. automodule:: neuralhydrology.datasetzoo.camelsgb
    :members:
    :undoc-members:
    :show-inheritance:

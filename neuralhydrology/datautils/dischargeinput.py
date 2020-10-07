@@ -7,7 +7,7 @@ from typing import Dict, List
 import pandas as pd
 from tqdm import tqdm
 
-from neuralhydrology.data import utils
+from neuralhydrology.datautils import utils
 
 LOGGER = logging.getLogger(__name__)
 

@@ -8,7 +8,7 @@ import pandas as pd
 import pytest
 from pytest import approx
 
-from neuralhydrology.data.utils import load_camels_us_forcings, load_camels_us_discharge, load_hourly_us_netcdf
+from neuralhydrology.datasetzoo import camelsus, hourlycamelsus
 from neuralhydrology.evaluation.evaluate import start_evaluation
 from neuralhydrology.training.train import start_training
 from neuralhydrology.utils.config import Config
@@ -108,7 +108,7 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
     start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
 
     results = _get_basin_results(config.run_dir, 1)[basin]
-    discharge = load_hourly_us_netcdf(config.data_dir, config.forcings[0]) \
+    discharge = hourlycamelsus.load_hourly_us_netcdf(config.data_dir, config.forcings[0]) \
         .sel(basin=basin, date=slice(test_start_date, test_end_date))['qobs_mm_per_hour']
 
     hourly_results = results['1H']['xr'].to_dataframe().reset_index()
@@ -147,7 +147,7 @@ def _get_basin_results(run_dir: Path, epoch: int) -> Dict:
 
 def _get_discharge(config: Config, basin: str) -> pd.Series:
     if config.dataset == 'camels_us':
-        _, area = load_camels_us_forcings(config.data_dir, basin, 'daymet')
-        return load_camels_us_discharge(config.data_dir, basin, area)
+        _, area = camelsus.load_camels_us_forcings(config.data_dir, basin, 'daymet')
+        return camelsus.load_camels_us_discharge(config.data_dir, basin, area)
     else:
         raise NotImplementedError
