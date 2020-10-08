@@ -435,7 +435,7 @@ class UncertaintyTester(BaseTester):
         if self.cfg.mc_dropout:
             return model.sample(data, self.cfg.n_samples)
         else:
-            raise ValueError(f"Unknown uncertainty head {self._head}")
+            raise ValueError(f"Currently, uncertainty evaluation does only support MC-Dropout")
 
     def _subset_targets(self,
                         model: BaseModel,
