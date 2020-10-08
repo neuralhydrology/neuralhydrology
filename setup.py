@@ -16,13 +16,16 @@ with open("neuralhydrology/__about__.py", "r") as fp:
 setup(name='neuralhydrology',
       version=about["__version__"],
       packages=[
-          'neuralhydrology', 'neuralhydrology.data', 'neuralhydrology.utils', 'neuralhydrology.modelzoo',
-          'neuralhydrology.training', 'neuralhydrology.evaluation'
+          'neuralhydrology', 'neuralhydrology.datasetzoo', 'neuralhydrology.datautils', 'neuralhydrology.utils',
+          'neuralhydrology.modelzoo', 'neuralhydrology.training', 'neuralhydrology.evaluation'
       ],
-      url='neuralhydrology.readthedocs.io',
-      license='',
-      author='Frederik Kratzert',
-      author_email='f.kratzert@gmail.com',
+      url='https://neuralhydrology.readthedocs.io',
+      project_urls={
+          'Documentation': 'https://neuralhydrology.readthedocs.io',
+          'Source': 'https://github.com/neuralhydrology/neuralhydrology',
+          'Research Blog': 'https://neuralhydrology.github.io/'
+      },
+      author='Frederik Kratzert <f.kratzert@gmail.com>, Daniel Klotz, Martin Gauch',
       description='Library for training deep learning models with environmental focus',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -50,5 +53,6 @@ setup(name='neuralhydrology',
           'Operating System :: OS Independent',
           'Topic :: Scientific/Engineering :: Artificial Intelligence',
           'Topic :: Scientific/Engineering :: Hydrology',
+          'License :: OSI Approved :: BSD License',
       ],
       keywords='deep learning hydrology lstm neural network streamflow discharge rainfall-runoff')
