@@ -212,6 +212,18 @@ class BaseDataset(Dataset):
             with open(file, "rb") as fp:
                 self.additional_features.append(pickle.load(fp))
 
+    def _duplicate_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        for feature, n_duplicates in self.cfg.duplicate_features.items():
+            for n in range(1, n_duplicates + 1):
+                df[f"{feature}_copy{n}"] = df[feature]
+
+        return df
+
+    def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        for feature, shift in self.cfg.lagged_features.items():
+            df[f"{feature}_shift{shift}"] = df[feature].shift(periods=shift, freq="infer")
+        return df
+
     def _load_or_create_xarray_dataset(self) -> xarray.Dataset:
         # if no netCDF file is passed, data set is created from raw basin files
         if (self.cfg.train_data_file is None) or (not self.is_train):
@@ -234,6 +246,12 @@ class BaseDataset(Dataset):
 
                 # add columns from dataframes passed as additional data files
                 df = pd.concat([df, *[d[basin] for d in self.additional_features]], axis=1)
+
+                # check if any feature should be duplicated
+                df = self._duplicate_features(df)
+
+                # check if a shifted copy of a feature should be added
+                df = self._add_lagged_features(df)
 
                 # remove unnecessary columns
                 df = df[keep_cols]
@@ -445,19 +463,51 @@ class BaseDataset(Dataset):
             self._calculate_per_basin_std(xr)
 
         if self.is_train:
-            # calculate feature means and stds for normalization
-            self.scaler["xarray_stds"] = xr.std(skipna=True)
-            self.scaler["xarray_means"] = xr.mean(skipna=True)
-
-            if not self.cfg.zero_center_target:
-                # make centering a no-op by setting the target mean to zero
-                self.scaler["xarray_means"] = self.scaler["xarray_means"].assign(
-                    {var: 0.0 for var in self.cfg.target_variables})
+            # get feature-wise center and scale values for the feature normalization
+            self._setup_normalization(xr)
 
         # performs normalization
-        xr = (xr - self.scaler["xarray_means"]) / self.scaler["xarray_stds"]
+        xr = (xr - self.scaler["xarray_feature_center"]) / self.scaler["xarray_feature_scale"]
 
         self._create_lookup_table(xr)
+
+    def _setup_normalization(self, xr: xarray.Dataset):
+        # default center and scale values are feature mean and std
+        self.scaler["xarray_feature_scale"] = xr.std(skipna=True)
+        self.scaler["xarray_feature_center"] = xr.mean(skipna=True)
+
+        # check for feature-wise custom normalization
+        for feature, feature_specs in self.cfg.custom_normalization.items():
+            for key, val in feature_specs.items():
+                # check for custom treatment of the feature center
+                if key == "centering":
+                    if (val is None) or (val.lower() == "none"):
+                        self.scaler["xarray_feature_center"][feature] = 0.0
+                    elif val.lower() == "median":
+                        self.scaler["xarray_feature_center"][feature] = xr[feature].median(skipna=True)
+                    elif val.lower() == "min":
+                        self.scaler["xarray_feature_center"][feature] = xr[feature].min(skipna=True)
+                    elif val.lower() == "mean":
+                        # Do nothing, since this is the default
+                        pass
+                    else:
+                        raise ValueError(f"Unknown centering method {val}")
+
+                # check for custom treatment of the feature scale
+                elif key == "scaling":
+                    if (val is None) or (val.lower() == "none"):
+                        self.scaler["xarray_feature_scale"][feature] = 1.0
+                    elif val == "minmax":
+                        self.scaler["xarray_feature_scale"][feature] = xr[feature].max(skipna=True) - \
+                                                                       xr[feature].m(skipna=True)
+                    elif val == "std":
+                        # Do nothing, since this is the default
+                        pass
+                    else:
+                        raise ValueError(f"Unknown scaling method {val}")
+                else:
+                    # raise ValueError to point to the correct argument names
+                    raise ValueError("Unknown dict key. Use 'centering' and/or 'scaling' for each feature.")
 
     def get_period_start(self, basin: str) -> pd.Timestamp:
         """Return the first date in the period for a given basin

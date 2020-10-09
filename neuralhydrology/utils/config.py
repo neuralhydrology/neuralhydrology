@@ -109,13 +109,23 @@ class Config(object):
         for key, val in new_config.items():
             self._cfg[key] = val
 
-    def _as_default_list(self, value: Any) -> list:
+    @staticmethod
+    def _as_default_list(value: Any) -> list:
         if value is None:
             return []
         elif isinstance(value, list):
             return value
         else:
             return [value]
+
+    @staticmethod
+    def _as_default_dict(value: Any) -> dict:
+        if value is None:
+            return {}
+        elif isinstance(value, dict):
+            return value
+        else:
+            raise RuntimeError(f"Incompatible type {type(value)}. Expected `dict` or `None`.")
 
     def _get_value_verbose(self, key: str) -> Union[float, int, str, list, dict, Path, pd.Timestamp]:
         """Use this function internally to return attributes of the config that are mandatory"""
@@ -215,6 +225,10 @@ class Config(object):
         return self._cfg.get("continue_from_epoch", None)
 
     @property
+    def custom_normalization(self) -> dict:
+        return self._as_default_dict(self._cfg.get("custom_normalization", {}))
+
+    @property
     def data_dir(self) -> Path:
         return self._get_value_verbose("data_dir")
 
@@ -232,6 +246,20 @@ class Config(object):
             self._cfg["device"] = device
         else:
             raise ValueError("'device' must be either 'cpu' or a 'cuda:X', with 'X' being the GPU ID.")
+
+    @property
+    def duplicate_features(self) -> dict:
+        duplicate_features = self._cfg.get("duplicate_features", {})
+        if duplicate_features is None:
+            return {}
+        elif isinstance(duplicate_features, dict):
+            return duplicate_features
+        elif isinstance(duplicate_features, list):
+            return {feature: 1 for feature in duplicate_features}
+        elif isinstance(duplicate_features, str):
+            return {duplicate_features: 1}
+        else:
+            raise RuntimeError(f"Unsupported type {type(duplicate_features)} for 'duplicate_features' argument.")
 
     @property
     def dynamic_inputs(self) -> Union[List[str], Dict[str, List[str]]]:
@@ -295,6 +323,10 @@ class Config(object):
     @is_continue_training.setter
     def is_continue_training(self, flag: bool):
         self._cfg["is_continue_training"] = flag
+
+    @property
+    def lagged_features(self) -> dict:
+        return self._as_default_dict(self._cfg.get("lagged_features", {}))
 
     @property
     def learning_rate(self) -> Dict[int, float]:
