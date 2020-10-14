@@ -1,4 +1,4 @@
-from typing import Dict
+from typing import Dict, List, Union
 
 import torch
 import torch.nn as nn
@@ -19,11 +19,12 @@ class BaseModel(nn.Module):
     cfg : Config
         The run configuration.
     """
+    # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+    module_parts = []
 
     def __init__(self, cfg: Config):
         super(BaseModel, self).__init__()
         self.cfg = cfg
-
         self.output_size = len(cfg.target_variables)
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:

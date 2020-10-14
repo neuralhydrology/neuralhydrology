@@ -82,6 +82,11 @@ class BaseDataset(Dataset):
         self.additional_features = additional_features
         self.id_to_int = id_to_int
         self.scaler = scaler
+        # don't compute scale when finetuning
+        if is_train and not scaler:
+            self._compute_scaler = True
+        else:
+            self._compute_scaler = False
 
         # check and extract frequency information from config
         self.frequencies = []
@@ -419,7 +424,12 @@ class BaseDataset(Dataset):
 
         # load dataset specific attributes from the subclass
         df = self._load_attributes()
+
         if df is not None:
+            # in case of training (not finetuning) check for NaNs in feature std.
+            if self._compute_scaler:
+                utils.attributes_sanity_check(df=df)
+
             dfs.append(df)
 
         # Hydroatlas attributes can be used everywhere
@@ -434,7 +444,7 @@ class BaseDataset(Dataset):
             df = df.sort_index(axis=1)
 
             # calculate statistics and normalize features
-            if self.is_train:
+            if self._compute_scaler:
                 self.scaler["attribute_means"] = df.mean()
                 self.scaler["attribute_stds"] = df.std()
 
@@ -462,7 +472,7 @@ class BaseDataset(Dataset):
             # get the std of the discharge for each basin, which is needed for the NSE loss.
             self._calculate_per_basin_std(xr)
 
-        if self.is_train:
+        if self._compute_scaler:
             # get feature-wise center and scale values for the feature normalization
             self._setup_normalization(xr)
 

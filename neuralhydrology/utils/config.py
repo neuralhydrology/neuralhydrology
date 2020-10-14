@@ -78,20 +78,28 @@ class Config(object):
         else:
             FileExistsError(cfg_path)
 
-    def log_only(self, key: str, value: Any):
-        """Log any key-value pair into config. These are not accessible as properties and are set-only.
+    def force_update(self, arguments: Dict[str, Any] = {}, key: str = None, value: Any = None):
+        """Force update config arguments.
         
-        This can be used to e.g. log git commit hash id or package version to the config, with the sole purpose to 
-        document these values in the config that is saved to disk.
+        If a dictionary is passed, all key-value pairs will be added to the config or overwrite existing config 
+        arguments. If a `key` is passed, the `value` input (by default None) will be used to add/overwrite a config 
+        argument. It is possible to pass both at the same time. Here, the order is first to update the arguments from 
+        the `arguments` dictionary and then the single `key`-`value` pair.
         
         Parameters
         ----------
-        key : str
-            The dictionary key
-        value : Any
-            The argument to store
+        arguments: Dict[str, Any], optional
+            Dictionary of key-value-pairs that will overwrite/add config arguments.
+        key : str, optional
+            A dictionary key
+        value : Any, optional
+            The corresponding value for the `key`
         """
-        self._cfg[key] = value
+        if arguments:
+            for k, v in arguments.items():
+                self._cfg[k] = v
+        if key is not None:
+            self._cfg[key] = value
 
     def update_config(self, cfg_path: Path):
         """Update config arguments.
@@ -289,6 +297,18 @@ class Config(object):
             return self._cfg["experiment_name"]
 
     @property
+    def finetune_modules(self) -> Union[List[str], Dict[str, str]]:
+        finetune_modules = self._cfg.get("finetune_modules", [])
+        if finetune_modules is None:
+            return []
+        elif isinstance(finetune_modules, str):
+            return [finetune_modules]
+        elif isinstance(finetune_modules, dict) or isinstance(finetune_modules, list):
+            return finetune_modules
+        else:
+            raise ValueError(f"Unknown data type {type(finetune_modules)} for 'finetune_modules' argument.")
+
+    @property
     def forcings(self) -> List[str]:
         return self._as_default_list(self._get_value_verbose("forcings"))
 
@@ -323,6 +343,14 @@ class Config(object):
     @is_continue_training.setter
     def is_continue_training(self, flag: bool):
         self._cfg["is_continue_training"] = flag
+
+    @property
+    def is_finetuning(self) -> bool:
+        return self._cfg.get("is_finetuning", False)
+
+    @is_finetuning.setter
+    def is_finetuning(self, flag: bool):
+        self._cfg["is_finetuning"] = flag
 
     @property
     def lagged_features(self) -> dict:

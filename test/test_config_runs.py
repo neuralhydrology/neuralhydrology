@@ -31,12 +31,14 @@ def test_daily_regression(get_config: Fixture[Callable[[str], dict]], single_tim
         Daily forcings set to use.
     """
     config = get_config('daily_regression')
-    config.log_only('model', single_timescale_model)
-    config.log_only('dataset', daily_dataset['dataset'])
-    config.log_only('data_dir', config.data_dir / daily_dataset['dataset'])
-    config.log_only('target_variables', daily_dataset['target'])
-    config.log_only('forcings', single_timescale_forcings['forcings'])
-    config.log_only('dynamic_inputs', single_timescale_forcings['variables'])
+    config.force_update({
+        'model': single_timescale_model,
+        'dataset': daily_dataset['dataset'],
+        'data_dir': config.data_dir / daily_dataset['dataset'],
+        'target_variables': daily_dataset['target'],
+        'forcings': single_timescale_forcings['forcings'],
+        'dynamic_inputs': single_timescale_forcings['variables']
+    })
 
     basin = '01022500'
     test_start_date, test_end_date = _get_test_start_end_dates(config)
@@ -99,7 +101,7 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
         Model to test.
     """
     config = get_config('multi_timescale_regression')
-    config.log_only('model', multi_timescale_model)
+    config.force_update(key='model', value=multi_timescale_model)
 
     basin = '01022500'
     test_start_date, test_end_date = _get_test_start_end_dates(config)

@@ -32,13 +32,13 @@ def create_config_files(base_config_path: Path, modify_dict: Dict[str, list], ou
     for i, options in enumerate(itertools.product(*[val for val in modify_dict.values()])):
 
         for key, val in zip(option_names, options):
-            base_config.log_only(key, val)
+            base_config.force_update(key=key, value=val)
 
         # create a unique run name
         name = experiment_name
         for key, val in zip(option_names, options):
             name += f"_{key}{val}"
-        base_config.log_only("experiment_name", name)
+        base_config.force_update(key="experiment_name", value=name)
 
         base_config.dump_config(output_dir, f"config_{i+1}.yml")
 
