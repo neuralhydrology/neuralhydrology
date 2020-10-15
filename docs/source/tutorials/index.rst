@@ -9,3 +9,4 @@ the functionality of this Python package.
    :caption: Contents:
 
    introduction
+   adding-gru
