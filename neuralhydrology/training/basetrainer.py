@@ -1,4 +1,5 @@
 import logging
+import pickle
 import random
 import sys
 from datetime import datetime
@@ -46,6 +47,7 @@ class BaseTrainer(object):
         self.noise_sampler_y = None
         self._target_mean = None
         self._target_std = None
+        self._scaler = {}
         self._allow_subsequent_nan_losses = cfg.allow_subsequent_nan_losses
 
         # load train basin list and add number of basins to the config
@@ -62,6 +64,9 @@ class BaseTrainer(object):
         if self.cfg.is_continue_training:
             LOGGER.info(f"### Continue training of run stored in {self.cfg.base_run_dir}")
 
+        if self.cfg.is_finetuning:
+            LOGGER.info(f"### Start fine-tuning with pretrained model stored in {self.cfg.base_run_dir}")
+
         LOGGER.info(f"### Run configurations for {self.cfg.experiment_name}")
         for key, val in self.cfg.as_dict().items():
             LOGGER.info(f"{key}: {val}")
@@ -70,7 +75,7 @@ class BaseTrainer(object):
         self._set_device()
 
     def _get_dataset(self) -> BaseDataset:
-        return get_dataset(cfg=self.cfg, period="train", is_train=True)
+        return get_dataset(cfg=self.cfg, period="train", is_train=True, scaler=self._scaler)
 
     def _get_model(self) -> torch.nn.Module:
         return get_model(cfg=self.cfg)
@@ -90,6 +95,37 @@ class BaseTrainer(object):
     def _get_data_loader(self, ds: BaseDataset) -> torch.utils.data.DataLoader:
         return DataLoader(ds, batch_size=self.cfg.batch_size, shuffle=True, num_workers=self.cfg.num_workers)
 
+    def _freeze_model_parts(self):
+        # freeze all model weights
+        for param in self.model.parameters():
+            param.requires_grad = False
+
+        unresolved_modules = []
+
+        # unfreeze parameters specified in config as tuneable parameters
+        if isinstance(self.cfg.finetune_modules, list):
+            for module_part in self.cfg.finetune_modules:
+                if module_part in self.model.module_parts:
+                    module = getattr(self.model, module_part)
+                    for param in module.parameters():
+                        param.requires_grad = True
+                else:
+                    unresolved_modules.append(module_part)
+        else:
+            # if it was no list, it has to be a dictionary
+            for module_group, module_parts in self.cfg.finetune_modules.items():
+                if module_group in self.model.module_parts:
+                    if isinstance(module_parts, str):
+                        module_parts = [module_parts]
+                    for module_part in module_parts:
+                        module = getattr(self.model, module_group)[module_part]
+                        for param in module.parameters():
+                            param.requires_grad = True
+                else:
+                    unresolved_modules.append(module_group)
+        if unresolved_modules:
+            LOGGER.warning(f"Could not resolve the following module parts for finetuning: {unresolved_modules}")
+
     def initialize_training(self):
         """Initialize the training class.
 
@@ -101,6 +137,18 @@ class BaseTrainer(object):
         if self.cfg.checkpoint_path is not None:
             LOGGER.info(f"Starting training from Checkpoint {self.cfg.checkpoint_path}")
             self.model.load_state_dict(torch.load(str(self.cfg.checkpoint_path), map_location=self.device))
+        elif self.cfg.checkpoint_path is None and self.cfg.is_finetuning:
+            # the default for finetuning is the last model state
+            checkpoint_path = [x for x in sorted(list(self.cfg.base_run_dir.glob('model_epoch*.pt')))][-1]
+            LOGGER.info(f"Starting training from checkpoint {checkpoint_path}")
+            self.model.load_state_dict(torch.load(str(checkpoint_path), map_location=self.device))
+
+        # freeze model parts and load scaler from pre-trained model
+        if self.cfg.is_finetuning:
+            self._freeze_model_parts()
+
+            with open(self.cfg.base_run_dir / "train_data" / "train_data_scaler.p", "rb") as fp:
+                self._scaler = pickle.load(fp)
 
         self.optimizer = self._get_optimizer()
         self.loss_obj = self._get_loss_obj()
@@ -139,9 +187,9 @@ class BaseTrainer(object):
         if self.cfg.target_noise_std is not None:
             self.noise_sampler_y = torch.distributions.Normal(loc=0, scale=self.cfg.target_noise_std)
             self._target_mean = torch.from_numpy(
-                ds.scaler["xarray_means"][self.cfg.target_variables].to_array().values).to(self.device)
+                ds.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values).to(self.device)
             self._target_std = torch.from_numpy(
-                ds.scaler["xarray_stds"][self.cfg.target_variables].to_array().values).to(self.device)
+                ds.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values).to(self.device)
 
     def train_and_validate(self):
         """Train and validate the model.

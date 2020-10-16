@@ -7,25 +7,28 @@ from neuralhydrology.utils.config import Config
 
 
 class TemplateModel(BaseModel):
+    """Initialize the model
+
+    Each model constructor receives the config instance as its only input. From this, the entire model has to be
+    created (with potential use of other modules, such as FC from fc.py). During training and inference, the forward
+    method of this class will be called with the model inputs and has to return the predictions.
+
+    Each Model inherits from the BaseModel, which implements some universal functionality. The basemodel also 
+    defines the output_size, which can be used here as a given attribute (self.output_size).
+
+    To be generally useable within this codebase, the output layer should not be implemented in this Module,
+    but rather using the get_head() function from neuralhydrology.modelzoo.head.
+
+    Parameters
+    ----------
+    cfg : Config
+        Configuration of the run, read from the config file with some additional keys (such as number of basins).
+    """
+    # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+    module_parts = []
 
     def __init__(self, cfg: Config):
-        """Initialize the model
 
-        Each model receives as only input the config dictionary. From this, the entire model has to be implemented in
-        this class (with potential use of other modules, such as FC from fc.py). So this class will get the model inputs
-        and has to return the predictions.
-        
-        Each Model inherits from the BaseModel, which implements some universal functionality. The basemodel also 
-        defines the output_size, which can be used here as a given attribute (self.output_size).
-        
-        To be generally useable within this codebase, the output layer should not be implemented in this Module,
-        but rather using the get_head() function from neuralhydrology.modelzoo.head.
-
-        Parameters
-        ----------
-        cfg : Config
-            Configuration of the run, read from the config file with some additional keys (such as number of basins).
-        """
         super(TemplateModel, self).__init__(cfg=cfg)
 
         ###########################

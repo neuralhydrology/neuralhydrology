@@ -52,7 +52,7 @@ metrics:
 
 # --- Model configuration --------------------------------------------------------------------------
 
-# base model type [lstm, ealstm, cudalstm, embcudalstm, mtslstm]
+# base model type [lstm, ealstm, cudalstm, embcudalstm, mtslstm, gru]
 # (has to match the if statement in modelzoo/__init__.py)
 model: cudalstm
 
@@ -184,7 +184,7 @@ save_validation_results: False
 
 # --- Data configurations --------------------------------------------------------------------------
 
-# which data set to use [camels_us, camels_gb, global, hourly_camels_us]
+# which data set to use [camels_us, camels_gb, global, hourly_camels_us, camels_cl]
 dataset: camels_us
 
 # Path to data set root

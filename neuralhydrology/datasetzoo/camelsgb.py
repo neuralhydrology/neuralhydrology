@@ -5,7 +5,6 @@ import pandas as pd
 import xarray
 
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
 
 
@@ -76,10 +75,6 @@ class CamelsGB(BaseDataset):
             drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
             df = df.drop(drop_cols, axis=1)
 
-            if self.is_train:
-                # sanity check attributes for NaN in per-feature standard deviation
-                utils.attributes_sanity_check(df=df)
-
             return df
 
 
@@ -99,6 +94,11 @@ def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     -------
     pd.DataFrame
         Basin-indexed DataFrame, containing the attributes as columns.
+        
+    Raises
+    ------
+    FileNotFoundError
+        If no subfolder called 'attributes' exists within the root directory of the CAMELS GB data set.
 
     References
     ----------
@@ -107,10 +107,10 @@ def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
         attributes for 671 catchments in Great Britain, Earth Syst. Sci. Data Discuss., 
         https://doi.org/10.5194/essd-2020-49,  in review, 2020. 
     """
-    attributes_path = Path(data_dir) / 'attributes'
+    attributes_path = data_dir / 'attributes'
 
     if not attributes_path.exists():
-        raise RuntimeError(f"Attribute folder not found at {attributes_path}")
+        raise FileNotFoundError(f"Attribute folder not found at {attributes_path}")
 
     txt_files = attributes_path.glob('*_attributes.csv')
 

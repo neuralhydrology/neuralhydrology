@@ -1,0 +1,207 @@
+import sys
+from pathlib import Path
+from typing import List, Dict, Union
+
+import numpy as np
+import pandas as pd
+import xarray
+from tqdm import tqdm
+
+from neuralhydrology.datasetzoo.basedataset import BaseDataset
+from neuralhydrology.utils.config import Config
+
+
+class CamelsCL(BaseDataset):
+    """Data set class for the CAMELS CL dataset by [#]_.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    is_train : bool 
+        Defines if the dataset is used for training or evaluating. If True (training), means/stds for each feature
+        are computed and stored to the run directory. If one-hot encoding is used, the mapping for the one-hot encoding 
+        is created and also stored to disk. If False, a `scaler` input is expected and similarly the `id_to_int` input
+        if one-hot encoding is used. 
+    period : {'train', 'validation', 'test'}
+        Defines the period for which the data will be loaded
+    basin : str, optional
+        If passed, the data for only this basin will be loaded. Otherwise the basin(s) are read from the appropriate
+        basin file, corresponding to the `period`.
+    additional_features : List[Dict[str, pd.DataFrame]], optional
+        List of dictionaries, mapping from a basin id to a pandas DataFrame. This DataFrame will be added to the data
+        loaded from the dataset, and all columns are available as 'dynamic_inputs', 'static_inputs' and
+        'target_variables'
+    id_to_int : Dict[str, int], optional
+        If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
+        'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
+    scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
+        If period is either 'validation' or 'test', this input is required. It contains the means and standard 
+        deviations for each feature and is stored to the run directory during training (train_data/train_data_scaler.p)
+
+    References
+    ----------
+    .. [#] Alvarez-Garreton, C., Mendoza, P. A., Boisier, J. P., Addor, N., Galleguillos, M., Zambrano-Bigiarini, M.,
+        Lara, A., Puelma, C., Cortes, G., Garreaud, R., McPhee, J., and Ayala, A.: The CAMELS-CL dataset: catchment
+        attributes and meteorology for large sample studies – Chile dataset, Hydrol. Earth Syst. Sci., 22, 5817–5846,
+        https://doi.org/10.5194/hess-22-5817-2018, 2018.
+    """
+
+    def __init__(self,
+                 cfg: Config,
+                 is_train: bool,
+                 period: str,
+                 basin: str = None,
+                 additional_features: List[Dict[str, pd.DataFrame]] = [],
+                 id_to_int: Dict[str, int] = {},
+                 scaler: Dict[str, Union[pd.Series, xarray.DataArray]] = {}):
+        super(CamelsCL, self).__init__(cfg=cfg,
+                                       is_train=is_train,
+                                       period=period,
+                                       basin=basin,
+                                       additional_features=additional_features,
+                                       id_to_int=id_to_int,
+                                       scaler=scaler)
+
+    def _load_basin_data(self, basin: str) -> pd.DataFrame:
+        """Load input and output data from text files."""
+        df = load_camels_cl_timeseries(data_dir=self.cfg.data_dir, basin=basin)
+
+        return df
+
+    def _load_attributes(self) -> pd.DataFrame:
+        if self.cfg.camels_attributes:
+            df = load_camels_cl_attributes(self.cfg.data_dir, basins=self.basins)
+
+            # remove all attributes not defined in the config
+            drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
+            df = df.drop(drop_cols, axis=1)
+
+            return df
+
+
+def load_camels_cl_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
+    """Load the time series data for one basin of the CAMELS CL data set.
+
+    Parameters
+    ----------
+    data_dir : Path
+        Path to the CAMELS CL directory. This folder must contain a folder called 'preprocessed' containing the 
+        per-basin csv files created by preprocess_camels_cl_dataset().
+    basin : str
+        Basin identifier number as string.
+
+    Returns
+    -------
+    pd.DataFrame
+        Time-indexed DataFrame, containing the time series data (forcings + discharge) data.
+        
+    Raises
+    ------
+    FileNotFoundError
+        If no sub-folder called 'preprocessed' exists within the root directory of the CAMELS CL dataset.
+    """
+    preprocessed_dir = data_dir / "preprocessed"
+    if not preprocessed_dir.is_dir():
+        msg = [
+            f"No preprocessed data directory found at {preprocessed_dir}. Use preprocessed_camels_cl_dataset in ",
+            "neuralhydrology.datasetzoo.camelscl to preprocess the CAMELS CL data set once into per-basin files."
+        ]
+        raise FileNotFoundError("".join(msg))
+    basin_file = preprocessed_dir / f"{basin}.csv"
+    df = pd.read_csv(basin_file, index_col='date', parse_dates=['date'])
+    return df
+
+
+def load_camels_cl_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+    """Load CAMELS CL attributes
+
+    Parameters
+    ----------
+    data_dir : Path
+        Path to the CAMELS CL directory. Assumes that a file called '1_CAMELScl_attributes.txt' exists.
+    basins : List[str], optional
+        If passed, return only attributes for the basins specified in this list. Otherwise, the attributes of all basins
+        are returned.
+
+    Returns
+    -------
+    pd.DataFrame
+        Basin-indexed DataFrame, containing the attributes as columns.
+    """
+    attributes_file = data_dir / '1_CAMELScl_attributes.txt'
+
+    df = pd.read_csv(attributes_file, sep="\t", index_col="gauge_id").transpose()
+
+    # convert all columns, where possible, to numeric
+    df = df.apply(pd.to_numeric, errors='ignore')
+
+    # convert the two columns specifying record period start and end to datetime format
+    df["record_period_start"] = pd.to_datetime(df["record_period_start"])
+    df["record_period_end"] = pd.to_datetime(df["record_period_end"])
+
+    if basins:
+        # drop rows of basins not contained in the passed list
+        drop_basins = [b for b in df.index if b not in basins]
+        df = df.drop(drop_basins, axis=0)
+
+    return df
+
+
+def preprocess_camels_cl_dataset(data_dir: Path):
+    """Preprocess CAMELS-CL data set and create per-basin files for more flexible and faster data loading.
+    
+    This function will read-in all time series text files and create per-basin csv files in a new subfolder called
+    "preprocessed".
+    
+    Parameters
+    ----------
+    data_dir : Path
+        Path to the CAMELS-CL data set. All txt-files from the original dataset should be present in this folder. 
+
+    Raises
+    ------
+    FileExistsError
+        If a sub-folder called 'preprocessed' already exists in `data_dir`.
+    """
+    # check if data has already been pre-processed other-wise create dst folder
+    dst_dir = data_dir / "preprocessed"
+    dst_dir.mkdir(exist_ok=False)
+
+    # list of available time series features included in CAMELS-CL
+    available_features = ['streamflow', 'precip', 'tmin', 'tmax', 'tmean', 'pet', 'swe']
+
+    # get list of text files for those features
+    files = [f for f in list(data_dir.glob('*.txt')) if any([x in f.name for x in available_features])]
+
+    # read-in all text files as pandas dataframe
+    dfs = {}
+    for file in tqdm(files, file=sys.stdout, desc="Loading txt files into memory"):
+        df = pd.read_csv(file,
+                         sep="\t",
+                         na_values=' ',
+                         index_col="gauge_id",
+                         dtype=np.float32,
+                         parse_dates=['gauge_id'])
+        feature_name = "_".join(file.stem.split('_')[2:])
+        dfs[feature_name] = df
+
+    # create one dataframe per basin with all features. Shorten record to period of valid entries
+    feature_names = list(df.columns)
+    for basin in tqdm(feature_names, file=sys.stdout, desc="Creating per-basin dataframes and saving to disk"):
+        # collect basin columns from all feature dataframes.
+        col_data, col_names = [], []
+        for feature, feature_df in dfs.items():
+            col_names.append(feature)
+            col_data.append(feature_df[basin])
+        df = pd.DataFrame({name: data for name, data in zip(col_names, col_data)})
+
+        # remove all rows with NaNs, then reindex to have continues data frames from first to last record
+        df = df.dropna(axis=0, how="all")
+        df = df.reindex(pd.date_range(start=df.index[0], end=df.index[-1]), fill_value=np.nan)
+
+        # correct index column name to 'date' and save resulting dataframe to disk.
+        df.index.name = "date"
+        df.to_csv(dst_dir / f"{basin}.csv")
+
+    print(f"Finished preprocessing the CAMELS CL data set. Resulting per-basin csv files have been stored at {dst_dir}")

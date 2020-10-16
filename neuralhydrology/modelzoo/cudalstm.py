@@ -15,12 +15,12 @@ class CudaLSTM(BaseModel):
     """LSTM model class, which relies on PyTorch's CUDA LSTM class.
 
     This class implements the standard LSTM combined with a model head, as specified in the config. All features 
-    (time series and static) are concatenated and passed to the LSTM directly. If you want to embedd the static features
+    (time series and static) are concatenated and passed to the LSTM directly. If you want to embed the static features
     prior to the concatenation, use the `EmbCudaLSTM` class.
     To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set 
     this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
     the gradient flow. 
-    The `CudaLSTM` class does only support single timescale predictions. Use `MTSLSTM` to train a model and get 
+    The `CudaLSTM` class only supports single-timescale predictions. Use `MTSLSTM` to train a model and get
     predictions on multiple temporal resolutions at the same time.
 
     Parameters
@@ -28,6 +28,8 @@ class CudaLSTM(BaseModel):
     cfg : Config
         The run configuration.
     """
+    # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+    module_parts = ['lstm', 'head']
 
     def __init__(self, cfg: Config):
         super(CudaLSTM, self).__init__(cfg=cfg)
@@ -68,8 +70,8 @@ class CudaLSTM(BaseModel):
         Dict[str, torch.Tensor]
             Model outputs and intermediate states as a dictionary. 
                 - `y_hat`: model predictions of shape [batch size, sequence length, number of target variables].
-                - `h_n`: hidden state at the last time step of the sequence of shape [1, batch size, hidden size].
-                - `c_n`: cell state at the last time step of the sequence of shape [1, batch size, hidden size].
+                - `h_n`: hidden state at the last time step of the sequence of shape [batch size, 1, hidden size].
+                - `c_n`: cell state at the last time step of the sequence of shape [batch size, 1, hidden size].
         """
         # transpose to [seq_length, batch_size, n_features]
         x_d = data['x_d'].transpose(0, 1)
@@ -90,7 +92,7 @@ class CudaLSTM(BaseModel):
 
         lstm_output, (h_n, c_n) = self.lstm(input=x_d)
 
-        # reshape to [1 , batch_size, n_hiddens]
+        # reshape to [batch_size, 1, n_hiddens]
         h_n = h_n.transpose(0, 1)
         c_n = c_n.transpose(0, 1)
 

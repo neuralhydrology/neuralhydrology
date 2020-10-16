@@ -43,7 +43,7 @@ def get_config(tmpdir: Fixture[str]) -> Fixture[Callable[[str], dict]]:
     return _get_config
 
 
-@pytest.fixture(params=['lstm', 'ealstm', 'cudalstm', 'embcudalstm'])
+@pytest.fixture(params=['lstm', 'ealstm', 'cudalstm', 'embcudalstm', 'gru'])
 def single_timescale_model(request) -> str:
     """Fixture that provides models that support predicting only a single timescale.
 

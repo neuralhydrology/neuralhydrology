@@ -3,12 +3,13 @@ import torch.nn as nn
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
+from neuralhydrology.modelzoo.gru import GRU
 from neuralhydrology.modelzoo.lstm import LSTM
 from neuralhydrology.modelzoo.odelstm import ODELSTM
 from neuralhydrology.modelzoo.mtslstm import MTSLSTM
 from neuralhydrology.utils.config import Config
 
-SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "lstm", "embcudalstm"]
+SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "lstm", "embcudalstm", "gru"]
 
 
 def get_model(cfg: Config) -> nn.Module:
@@ -33,6 +34,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = EALSTM(cfg=cfg)
     elif cfg.model == "lstm":
         model = LSTM(cfg=cfg)
+    elif cfg.model == "gru":
+        model = GRU(cfg=cfg)
     elif cfg.model == "embcudalstm":
         model = EmbCudaLSTM(cfg=cfg)
     elif cfg.model == "mtslstm":

@@ -53,6 +53,8 @@ class ODELSTM(BaseModel):
     .. [#] Lechner, M.; Hasani, R.: Learning Long-Term Dependencies in Irregularly-Sampled Time Series. arXiv, 2020,
         https://arxiv.org/abs/2006.04418.
     """
+    # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+    module_parts = ['lstm_cell', 'ode_cell', 'head']
 
     def __init__(self, cfg: Config):
         super(ODELSTM, self).__init__(cfg=cfg)
