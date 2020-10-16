@@ -226,6 +226,16 @@ Training settings
 -  ``save_weights_every``: Interval, in which the weights of the model
    are stored to disk. ``1`` means to store the weights after each
    epoch, which is the default if not otherwise specified.
+   
+Finetune settings
+-----------------
+
+Ignored if ``mode != finetune``
+
+-  ``finetune_modules``: List of model parts that will be trained
+   during fine-tuning. All parts *not* listed here will not be
+   updated. Check the documentation of each model to see a list
+   of available module parts.
 
 Logger settings
 ---------------
