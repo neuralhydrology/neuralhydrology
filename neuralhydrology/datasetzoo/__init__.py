@@ -1,6 +1,7 @@
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datasetzoo.camelsus import CamelsUS
+from neuralhydrology.datasetzoo.camelscl import CamelsCL
 from neuralhydrology.datasetzoo.camelsgb import CamelsGB
+from neuralhydrology.datasetzoo.camelsus import CamelsUS
 from neuralhydrology.datasetzoo.hourlycamelsus import HourlyCamelsUS
 from neuralhydrology.utils.config import Config
 
@@ -14,7 +15,7 @@ def get_dataset(cfg: Config,
                 scaler: dict = {}) -> BaseDataset:
     """Get data set instance, depending on the run configuration.
 
-    Currently implemented datasets are 'camels_gb', 'camels_us' and 'hourly_camels_us'
+    Currently implemented datasets are 'camels_cl', 'camels_gb', 'camels_us' and 'hourly_camels_us'
 
     Parameters
     ----------
@@ -57,6 +58,8 @@ def get_dataset(cfg: Config,
         Dataset = CamelsGB
     elif cfg.dataset == "hourly_camels_us":
         Dataset = HourlyCamelsUS
+    elif cfg.dataset == "camels_cl":
+        Dataset = CamelsCL
     else:
         raise NotImplementedError(f"No dataset class implemented for dataset {cfg.dataset}")
 

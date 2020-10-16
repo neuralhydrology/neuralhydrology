@@ -440,6 +440,12 @@ class BaseDataset(Dataset):
             # combine all attributes into a single dataframe
             df = pd.concat(dfs, axis=1)
 
+            # check if any attribute specified in the config is not available in the dataframes
+            combined_attributes = self.cfg.camels_attributes + self.cfg.hydroatlas_attributes
+            missing_columns = [attr for attr in combined_attributes if attr not in df.columns]
+            if missing_columns:
+                raise ValueError(f"The following attributes are not available in the dataset: {missing_columns}")
+
             # fix the order of the columns to be alphabetically
             df = df.sort_index(axis=1)
 

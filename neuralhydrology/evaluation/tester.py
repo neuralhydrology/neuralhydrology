@@ -312,6 +312,9 @@ class BaseTester(object):
                     xr = results[basins[i]][freq]['xr']
                     obs = xr[f"{target_var}_obs"].values
                     sim = xr[f"{target_var}_sim"].values
+                    # clip negative predictions to zero, if variable is listed in config 'clip_target_to_zero'
+                    if target_var in self.cfg.clip_targets_to_zero:
+                        sim = xarray.where(sim < 0, 0, sim)
                     figures.append(
                         self._get_plots(
                             obs, sim, title=f"{target_var} - Basin {basins[i]} - Epoch {epoch} - Frequency {freq}")[0])

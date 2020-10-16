@@ -10,3 +10,4 @@ the functionality of this Python package.
 
    introduction
    adding-gru
+   add-dataset

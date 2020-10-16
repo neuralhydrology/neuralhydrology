@@ -184,7 +184,7 @@ save_validation_results: False
 
 # --- Data configurations --------------------------------------------------------------------------
 
-# which data set to use [camels_us, camels_gb, global, hourly_camels_us]
+# which data set to use [camels_us, camels_gb, global, hourly_camels_us, camels_cl]
 dataset: camels_us
 
 # Path to data set root

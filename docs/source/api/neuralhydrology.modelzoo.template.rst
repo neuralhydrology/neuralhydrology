@@ -1,5 +1,5 @@
-Template
-========
+TemplateModel
+=============
 
 .. automodule:: neuralhydrology.modelzoo.template
    :members:

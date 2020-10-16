@@ -6,7 +6,6 @@ import pandas as pd
 import xarray
 
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
 
 
