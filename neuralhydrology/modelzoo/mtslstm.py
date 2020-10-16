@@ -38,6 +38,8 @@ class MTSLSTM(BaseModel):
     cfg : Config
         The run configuration.
     """
+    # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+    module_parts = ['lstms', 'transfer_fcs', 'heads']
 
     def __init__(self, cfg: Config):
         super(MTSLSTM, self).__init__(cfg=cfg)

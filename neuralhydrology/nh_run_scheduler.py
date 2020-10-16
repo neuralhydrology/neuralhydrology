@@ -13,7 +13,7 @@ import numpy as np
 def _get_args() -> dict:
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=["train", "evaluate"])
+    parser.add_argument('mode', choices=["train", "evaluate", "finetune"])
     parser.add_argument('--directory', type=str, required=True)
     parser.add_argument('--gpu-ids', type=int, nargs='+', required=True)
     parser.add_argument('--runs-per-gpu', type=int, required=True)
@@ -37,13 +37,13 @@ def schedule_runs(mode: str, directory: Path, gpu_ids: List[int], runs_per_gpu: 
     
     Parameters
     ----------
-    mode : {'train', 'evaluate'}
-        Use 'train' if you want to schedule training of multiple models and 'evaluate' if you want to schedule
-        evaluation of multiple trained models.
+    mode : {'train', 'evaluate', 'finetune'}
+        Use 'train' if you want to schedule training of multiple models, 'evaluate' if you want to schedule
+        evaluation of multiple trained models and 'finetune' if you want to schedule finetuning with multiple configs.
     directory : Path
-        If mode is 'train', this path should point to a folder containing the config files (.yml) to use for model
-        training. For each config file, one run is started. If mode is 'evaluate', this path should point to the folder 
-        containing the different model run directories.
+        If mode is one of {'train', 'finetune'}, this path should point to a folder containing the config files (.yml) 
+        to use for model training/finetuning. For each config file, one run is started. If mode is 'evaluate', this path 
+        should point to the folder containing the different model run directories.
     gpu_ids : List[int]
         List of GPU ids to use for training/evaluating.
     runs_per_gpu : int
@@ -51,7 +51,7 @@ def schedule_runs(mode: str, directory: Path, gpu_ids: List[int], runs_per_gpu: 
 
     """
 
-    if mode == "train":
+    if mode in ["train", "finetune"]:
         processes = list(directory.glob('**/*.yml'))
     elif mode == "evaluate":
         processes = list(directory.glob('*'))
@@ -88,8 +88,8 @@ def schedule_runs(mode: str, directory: Path, gpu_ids: List[int], runs_per_gpu: 
             process = processes[counter]
 
             # start run via subprocess call
-            if mode == "train":
-                run_command = f"python {script_path} train --config-file {process} --gpu {gpu_id}"
+            if mode in ['train', 'finetune']:
+                run_command = f"python {script_path} {mode} --config-file {process} --gpu {gpu_id}"
             else:
                 run_command = f"python {script_path} evaluate --run-dir {process} --gpu {gpu_id}"
             print(f"Starting run {counter+1}/{len(processes)}: {run_command}")

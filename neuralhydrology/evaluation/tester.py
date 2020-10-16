@@ -96,6 +96,12 @@ class BaseTester(object):
         with scaler_file.open('rb') as fp:
             self.scaler = pickle.load(fp)
 
+        # check for old scaler files, where the center/scale parameters had still old names
+        if "xarray_means" in self.scaler.keys():
+            self.scaler["xarray_feature_center"] = self.scaler.pop("xarray_means")
+        if "xarray_stds" in self.scaler.keys():
+            self.scaler["xarray_feature_scale"] = self.scaler.pop("xarray_stds")
+
         # load basin_id to integer dictionary for one-hot-encoding
         if self.cfg.use_basin_id_encoding:
             file_path = self.run_dir / "train_data" / "id_to_int.p"
@@ -215,11 +221,11 @@ class BaseTester(object):
                 results[basin][freq] = {}
 
                 # rescale predictions
-                y_hat_freq = y_hat[freq] * self.scaler["xarray_stds"][self.cfg.target_variables].to_array().values
-                y_freq = y[freq] * self.scaler["xarray_stds"][self.cfg.target_variables].to_array().values
-                if self.cfg.zero_center_target:
-                    y_hat_freq = y_hat_freq + self.scaler["xarray_means"][self.cfg.target_variables].to_array().values
-                    y_freq = y_freq + self.scaler["xarray_means"][self.cfg.target_variables].to_array().values
+                y_hat_freq = \
+                    y_hat[freq] * self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values \
+                    + self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
+                y_freq = y[freq] * self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values \
+                    + self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
 
                 # create xarray
                 data = self._create_xarray(y_hat_freq, y_freq)
@@ -306,6 +312,9 @@ class BaseTester(object):
                     xr = results[basins[i]][freq]['xr']
                     obs = xr[f"{target_var}_obs"].values
                     sim = xr[f"{target_var}_sim"].values
+                    # clip negative predictions to zero, if variable is listed in config 'clip_target_to_zero'
+                    if target_var in self.cfg.clip_targets_to_zero:
+                        sim = xarray.where(sim < 0, 0, sim)
                     figures.append(
                         self._get_plots(
                             obs, sim, title=f"{target_var} - Basin {basins[i]} - Epoch {epoch} - Frequency {freq}")[0])
@@ -435,7 +444,7 @@ class UncertaintyTester(BaseTester):
         if self.cfg.mc_dropout:
             return model.sample(data, self.cfg.n_samples)
         else:
-            raise ValueError(f"Unknown uncertainty head {self._head}")
+            raise ValueError(f"Currently, uncertainty evaluation does only support MC-Dropout")
 
     def _subset_targets(self,
                         model: BaseModel,

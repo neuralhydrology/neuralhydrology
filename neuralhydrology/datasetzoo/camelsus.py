@@ -6,7 +6,6 @@ import pandas as pd
 import xarray
 
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
 
 
@@ -97,10 +96,6 @@ class CamelsUS(BaseDataset):
             # remove all attributes not defined in the config
             drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
             df = df.drop(drop_cols, axis=1)
-
-            if self.is_train:
-                # sanity check attributes for NaN in per-feature standard deviation
-                utils.attributes_sanity_check(df=df)
 
             return df
 

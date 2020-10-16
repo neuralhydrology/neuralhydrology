@@ -12,4 +12,6 @@ nh.datasetzoo
    neuralhydrology.datasetzoo.basedataset
    neuralhydrology.datasetzoo.camelsus
    neuralhydrology.datasetzoo.hourlycamelsus
+   neuralhydrology.datasetzoo.camelscl
    neuralhydrology.datasetzoo.camelsgb
+   neuralhydrology.datasetzoo.template

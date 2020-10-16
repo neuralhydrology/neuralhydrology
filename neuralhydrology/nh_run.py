@@ -13,7 +13,7 @@ from neuralhydrology.utils.logging_utils import setup_logging
 
 def _get_args() -> dict:
     parser = argparse.ArgumentParser()
-    parser.add_argument('mode', choices=["train", "continue_training", "evaluate"])
+    parser.add_argument('mode', choices=["train", "continue_training", "finetune", "evaluate"])
     parser.add_argument('--config-file', type=str)
     parser.add_argument('--run-dir', type=str)
     parser.add_argument('--epoch', type=int, help="Epoch, of which the model should be evaluated")
@@ -21,7 +21,7 @@ def _get_args() -> dict:
     parser.add_argument('--gpu', type=int, help="GPU id to use (see nvidia-smi). Does override config argument.")
     args = vars(parser.parse_args())
 
-    if (args["mode"] == "train") and (args["config_file"] is None):
+    if (args["mode"] in ["train", "finetune"]) and (args["config_file"] is None):
         raise ValueError("Missing path to config file")
 
     if (args["mode"] == "continue_training") and (args["run_dir"] is None):
@@ -44,6 +44,8 @@ def _main():
         continue_run(run_dir=Path(args["run_dir"]),
                      config_file=Path(args["config_file"]) if args["config_file"] is not None else None,
                      gpu=args["gpu"])
+    elif args["mode"] == "finetune":
+        finetune(config_file=Path(args["config_file"]), gpu=args["gpu"])
     elif args["mode"] == "evaluate":
         eval_run(run_dir=Path(args["run_dir"]), period=args["period"], epoch=args["epoch"], gpu=args["gpu"])
     else:
@@ -97,6 +99,33 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
         base_config.device = f"cuda:{gpu}"
 
     start_training(base_config)
+
+
+def finetune(config_file: Path = None, gpu: int = None):
+    """Finetune a pre-trained model.
+
+    Parameters
+    ----------
+    config_file : Path, optional
+        Path to an additional config file. Each config argument in this file will overwrite the original run config.
+        The config file for finetuning must contain the argument `base_run_dir`, pointing to the folder of the 
+        pre-trained model.
+    gpu : int, optional
+        GPU id to use. Will override config argument 'device'.
+
+    """
+    # load finetune config, extract base run dir, load base run config and combine with the finetune arguments
+    temp_config = Config(config_file)
+    config = Config(temp_config.base_run_dir / "config.yml")
+    config.force_update({'run_dir': None, 'experiment_name': None})
+    config.update_config(config_file)
+    config.is_finetuning = True
+
+    # check if a GPU has been specified as command line argument. If yes, overwrite config
+    if gpu is not None:
+        config.device = f"cuda:{gpu}"
+
+    start_training(config)
 
 
 def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
