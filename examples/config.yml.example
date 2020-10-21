@@ -81,8 +81,8 @@ embedding_dropout: 0.0
 
 # ----> MTSLSTM settings <----
 
-# Use an individual LSTM per frequencies (True) vs. use a single shared LSTM for all frequencies (False)
-shared_mtslstm: True
+# Use an individual LSTM per frequencies (False) vs. use a single shared LSTM for all frequencies (True)
+shared_mtslstm: False
 
 # how to transfer states from lower to higher frequencies. One of [identity, linear, None].
 transfer_mtslstm_states:
