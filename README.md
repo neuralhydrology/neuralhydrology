@@ -85,7 +85,7 @@ To train a model, prepare a configuration file, then run::
 If you want to train multiple models, you can make use of the ``nh-run-scheduler`` command.
 Place all configs in a folder, then run::
 ```bash
-    nh-run-scheduler train --config-dir /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
+    nh-run-scheduler train --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
 ```
 With X, you can specify how many models should be trained on parallel on a single GPU.
 With Y, you can specify which GPUs to use for training (use the id as specified in ``nvidia-smi``).
@@ -102,7 +102,7 @@ train period ``--period train``) or validation period (``--period validation``)
 
 To evaluate all runs in a specific directory you can, similarly to training, run::
 
-    nh-run-scheduler evaluate --run-dir /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
+    nh-run-scheduler evaluate --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
 
 
 To merge the predictons of a number of runs (stored in ``$DIR1``, ...) into one averaged ensemble,
