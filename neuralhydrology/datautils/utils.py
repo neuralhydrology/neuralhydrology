@@ -44,7 +44,7 @@ def load_basin_file(basin_file: Path) -> List[str]:
     Parameters
     ----------
     basin_file : Path
-        Path to a basin txt file. File has to contain one basin id per row.
+        Path to a basin txt file. File has to contain one basin id per row, while empty rows are ignored.
 
     Returns
     -------
@@ -52,8 +52,8 @@ def load_basin_file(basin_file: Path) -> List[str]:
         List of basin ids as strings.
     """
     with basin_file.open('r') as fp:
-        basins = fp.readlines()
-    basins = sorted(basin.strip() for basin in basins)
+        basins = sorted(basin.strip() for basin in fp if basin.strip())
+
     return basins
 
 

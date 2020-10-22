@@ -135,9 +135,6 @@ class BaseDataset(Dataset):
     def __getitem__(self, item: int) -> Dict[str, torch.Tensor]:
         basin, indices = self.lookup_table[item]
 
-        # for catchment attributes and one-hot-encoding we need the raw basin_id.
-        basin_id = basin.split('.')[0]
-
         sample = {}
         for freq, seq_len, idx in zip(self.frequencies, self.seq_len, indices):
             # if there's just one frequency, don't use suffixes.
@@ -149,7 +146,7 @@ class BaseDataset(Dataset):
             # check for static inputs
             static_inputs = []
             if self.attributes:
-                static_inputs.append(self.attributes[basin_id])
+                static_inputs.append(self.attributes[basin])
             if self.x_s:
                 static_inputs.append(self.x_s[basin][freq][idx])
             if static_inputs:
@@ -159,7 +156,7 @@ class BaseDataset(Dataset):
             sample['per_basin_target_stds'] = self.per_basin_target_stds[basin]
         if self.one_hot is not None:
             x_one_hot = self.one_hot.zero_()
-            x_one_hot[self.id_to_int[basin_id]] = 1
+            x_one_hot[self.id_to_int[basin]] = 1
             sample['x_one_hot'] = x_one_hot
 
         return sample
