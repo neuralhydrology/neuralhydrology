@@ -42,6 +42,8 @@ def load_hydroatlas_attributes(data_dir: Path, basins: List[str] = []) -> pd.Dat
 def load_basin_file(basin_file: Path) -> List[str]:
     """Load list of basins from text file.
     
+    Note: Basins names are not allowed to end with '_period*'
+    
     Parameters
     ----------
     basin_file : Path
@@ -51,9 +53,23 @@ def load_basin_file(basin_file: Path) -> List[str]:
     -------
     List[str]
         List of basin ids as strings.
+        
+    Raises
+    ------
+    ValueError
+        In case of invalid basin names that would cause problems internally.
     """
     with basin_file.open('r') as fp:
         basins = sorted(basin.strip() for basin in fp if basin.strip())
+
+    # sanity check basin names
+    problematic_basins = [basin for basin in basins if basin.split('_')[-1].startswith('period')]
+    if problematic_basins:
+        msg = [
+            f"The following basin names are invalid {problematic_basins}. Check documentation of the ",
+            "'load_basin_file()' functions for details."
+        ]
+        raise ValueError(" ".join(msg))
 
     return basins
 
