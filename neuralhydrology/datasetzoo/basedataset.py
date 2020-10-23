@@ -339,6 +339,9 @@ class BaseDataset(Dataset):
         lookup = []
         if not self._disable_pbar:
             LOGGER.info("Create lookup table and convert to pytorch tensor")
+
+        # list to collect basins ids of basins without a single training sample
+        basins_without_samples = []
         for basin in tqdm(self.basins, file=sys.stdout, disable=self._disable_pbar):
 
             # store data of each frequency as numpy array of shape [time steps, features]
@@ -394,11 +397,18 @@ class BaseDataset(Dataset):
                 # store pointer to basin and the sample's index in each frequency
                 lookup.append((basin, [frequency_maps[freq][int(f)] for freq in self.frequencies]))
 
-            self.x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
-            self.y[basin] = {freq: torch.from_numpy(_y.astype(np.float32)) for freq, _y in y.items()}
-            if x_s:
-                self.x_s[basin] = {freq: torch.from_numpy(_x_s.astype(np.float32)) for freq, _x_s in x_s.items()}
+            # only store data if this basin has at least one valid sample in the given period
+            if valid_samples.size > 0:
+                self.x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
+                self.y[basin] = {freq: torch.from_numpy(_y.astype(np.float32)) for freq, _y in y.items()}
+                if x_s:
+                    self.x_s[basin] = {freq: torch.from_numpy(_x_s.astype(np.float32)) for freq, _x_s in x_s.items()}
+            else:
+                basins_without_samples.append(basin)
 
+        if basins_without_samples:
+            LOGGER.info(
+                f"These basins do not have a single valid sample in the {self.period} period: {basins_without_samples}")
         self.lookup_table = {i: elem for i, elem in enumerate(lookup)}
         self.num_samples = len(self.lookup_table)
 
