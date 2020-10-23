@@ -1,3 +1,4 @@
+from collections import defaultdict
 from pathlib import Path
 from typing import List, Union
 
@@ -44,7 +45,7 @@ def load_basin_file(basin_file: Path) -> List[str]:
     Parameters
     ----------
     basin_file : Path
-        Path to a basin txt file. File has to contain one basin id per row.
+        Path to a basin txt file. File has to contain one basin id per row, while empty rows are ignored.
 
     Returns
     -------
@@ -52,18 +53,17 @@ def load_basin_file(basin_file: Path) -> List[str]:
         List of basin ids as strings.
     """
     with basin_file.open('r') as fp:
-        basins = fp.readlines()
-    basins = sorted(basin.strip() for basin in basins)
+        basins = sorted(basin.strip() for basin in fp if basin.strip())
+
     return basins
 
 
 def attributes_sanity_check(df: pd.DataFrame):
-    """Utility function to check if the standard deviation of one (or more) attributes is zero.
+    """Utility function to check the suitability of the attributes for model training.
     
     This utility function can be used to check if any attribute has a standard deviation of zero. This would lead to 
-    NaN's, when normalizing the features and thus would lead to NaN's when training the model. The function will raise
-    a `RuntimeError` if one or more zeros have been detected and will print the list of corresponding attribute names
-    to the console.
+    NaN's when normalizing the features and thus would lead to NaN's when training the model. It also checks if any
+    attribute for any basin contains a NaN, which would also cause NaNs during model training.
     
     Parameters
     ----------
@@ -73,9 +73,9 @@ def attributes_sanity_check(df: pd.DataFrame):
     Raises
     ------
     RuntimeError
-        If one or more attributes have a standard deviation of zero.
+        If one or more attributes have a standard deviation of zero or any attribute for any basin is NaN.
     """
-    # Iterate over attributes and check for NaNs
+    # Check for NaNs in standard deviation of attributes.
     attributes = []
     if any(df.std() == 0.0) or any(df.std().isnull()):
         for k, v in df.std().iteritems():
@@ -88,6 +88,20 @@ def attributes_sanity_check(df: pd.DataFrame):
             "and restart the run. \n", f"Attributes: {attributes}"
         ]
         raise RuntimeError("".join(msg))
+
+    # Check for NaNs in any attribute of any basin
+    nan_df = df[df.isnull().any(axis=1)]
+    if len(nan_df) > 0:
+        failure_cases = defaultdict(list)
+        for basin, row in nan_df.iterrows():
+            for feature, value in row.iteritems():
+                if np.isnan(value):
+                    failure_cases[basin].append(feature)
+        # create verbose error message
+        msg = ["The following basins/attributes are NaN, which can't be used as input:"]
+        for basin, features in failure_cases.items():
+            msg.append(f"{basin}: {features}")
+        raise RuntimeError("\n".join(msg))
 
 
 def sort_frequencies(frequencies: List[str]) -> List[str]:
