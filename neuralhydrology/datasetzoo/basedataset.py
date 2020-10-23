@@ -135,6 +135,13 @@ class BaseDataset(Dataset):
     def __getitem__(self, item: int) -> Dict[str, torch.Tensor]:
         basin, indices = self.lookup_table[item]
 
+        # This check is for multiple periods per basin, where we add '_periodX' to the basin name
+        # For catchment attributes, one-hot-encoding we need the raw basin_id.
+        if basin.split('_')[-1].startswith('period'):
+            basin_id = "_".join(basin.split('_')[:-1])
+        else:
+            basin_id = basin
+
         sample = {}
         for freq, seq_len, idx in zip(self.frequencies, self.seq_len, indices):
             # if there's just one frequency, don't use suffixes.
@@ -146,7 +153,7 @@ class BaseDataset(Dataset):
             # check for static inputs
             static_inputs = []
             if self.attributes:
-                static_inputs.append(self.attributes[basin])
+                static_inputs.append(self.attributes[basin_id])
             if self.x_s:
                 static_inputs.append(self.x_s[basin][freq][idx])
             if static_inputs:
@@ -156,7 +163,7 @@ class BaseDataset(Dataset):
             sample['per_basin_target_stds'] = self.per_basin_target_stds[basin]
         if self.one_hot is not None:
             x_one_hot = self.one_hot.zero_()
-            x_one_hot[self.id_to_int[basin]] = 1
+            x_one_hot[self.id_to_int[basin_id]] = 1
             sample['x_one_hot'] = x_one_hot
 
         return sample
@@ -290,7 +297,7 @@ class BaseDataset(Dataset):
 
                     # For multiple slices per basin, a number is added to the basin string starting from the 2nd slice
                     xr = xarray.Dataset.from_dataframe(df_sub)
-                    basin_str = basin if i == 0 else f"{basin}.{i}"
+                    basin_str = basin if i == 0 else f"{basin}_period{i}"
                     xr = xr.assign_coords({'basin': basin_str})
                     data_list.append(xr.astype(np.float32))
 
@@ -325,9 +332,17 @@ class BaseDataset(Dataset):
         if not self._disable_pbar:
             LOGGER.info("Calculating target variable stds per basin")
         for basin in tqdm(self.basins, file=sys.stdout, disable=self._disable_pbar):
-            coords = [b for b in basin_coordinates if b.startswith(basin)]
+            coords = [b for b in basin_coordinates if b == basin or b.startswith(f"{basin}_period")]
             if len(coords) > 0:
-                obs = np.concatenate([xr.sel(basin=coord)[self.cfg.target_variables].to_array() for coord in coords])
+                # gather all observations from different split periods and concatenate them into one array but
+                # take care of multi targets
+                obs = []
+                for coord in coords:
+                    # add arrays of shape [targets, time steps, 1]. Note, even with split periods of different length
+                    # the xarray data arrays are of same length (filled with NaNs), so concatenation later works.
+                    obs.append(xr.sel(basin=coord)[self.cfg.target_variables].to_array().values[:, :, np.newaxis])
+                # concat to shape [targets, time steps, periods], then reshape to [targets, time steps * periods]
+                obs = np.concatenate(obs, axis=-1).reshape(len(self.cfg.target_variables), -1)
                 if np.sum(~np.isnan(obs)) > 2:
                     # calculate std for each target
                     per_basin_target_stds = torch.tensor([np.nanstd(obs, axis=1)], dtype=torch.float32)
@@ -342,7 +357,8 @@ class BaseDataset(Dataset):
 
         # list to collect basins ids of basins without a single training sample
         basins_without_samples = []
-        for basin in tqdm(self.basins, file=sys.stdout, disable=self._disable_pbar):
+        basin_coordinates = xr["basin"].values.tolist()
+        for basin in tqdm(basin_coordinates, file=sys.stdout, disable=self._disable_pbar):
 
             # store data of each frequency as numpy array of shape [time steps, features]
             x_d, x_s, y = {}, {}, {}
