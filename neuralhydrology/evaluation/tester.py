@@ -265,7 +265,7 @@ class BaseTester(object):
                         obs = xr.isel(time_step=slice(-frequency_factor, None)) \
                             .stack(datetime=['date', 'time_step'])[f"{target_variable}_obs"]
                         obs['datetime'] = obs.coords['date'] + obs.coords['time_step']
-                        # check if not empty (in case no observations exist in this period
+                        # check if there are observations for this period
                         if not all(obs.isnull()):
                             sim = xr.isel(time_step=slice(-frequency_factor, None)) \
                                 .stack(datetime=['date', 'time_step'])[f"{target_variable}_sim"]

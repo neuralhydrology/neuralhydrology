@@ -3,16 +3,34 @@ Quick Start
 
 Installation
 ------------
-For now, download or clone the repository to your local machine and install a local, editable copy.
-This is a good idea if you want to edit the ``neuralhydrology`` code (e.g., adding new models or datasets)
+There are two ways how you can install the ``neuralhydrology`` package: Editable or non-editable.
+If all you want to do is run experiments with existing datasets and existing models, you can use the non-editable
+installation:
+
+.. code-block::
+
+    pip install git+https://github.com/neuralhydrology/neuralhydrology.git
+
+
+If you want to try implementing your own models or datasets, you'll need an editable installation.
+For this, start by downloading or cloning the repository to your local machine.
+If you use git, you can run:
 
 .. code-block::
 
     git clone https://github.com/neuralhydrology/neuralhydrology.git
+
+If you don't know git, you can also download the code from `here <https://github.com/neuralhydrology/neuralhydrology/zipball/master>`__ and extract the zip-file.
+
+After you cloned or downloaded the zip-file, you'll end up with a directory called ``neuralhydrology`` (or ``neuralhydrology-master``).
+Next, we'll go to that directory and install a local, editable copy of the package:
+
+.. code-block::
+
     cd neuralhydrology
     pip install -e .
 
-Besides adding the package to your Python environment, it will also add three bash scripts:
+The installation procedure (both the editable and the non-editable version) adds the package to your Python environment and installs three bash scripts:
 `nh-run`, `nh-run-scheduler` and `nh-results-ensemble`. For details, see below.
 
 Data

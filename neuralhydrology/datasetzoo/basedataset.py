@@ -521,7 +521,7 @@ class BaseDataset(Dataset):
                 # check for custom treatment of the feature center
                 if key == "centering":
                     if (val is None) or (val.lower() == "none"):
-                        self.scaler["xarray_feature_center"][feature] = 0.0
+                        self.scaler["xarray_feature_center"][feature] = np.float32(0.0)
                     elif val.lower() == "median":
                         self.scaler["xarray_feature_center"][feature] = xr[feature].median(skipna=True)
                     elif val.lower() == "min":
@@ -535,7 +535,7 @@ class BaseDataset(Dataset):
                 # check for custom treatment of the feature scale
                 elif key == "scaling":
                     if (val is None) or (val.lower() == "none"):
-                        self.scaler["xarray_feature_scale"][feature] = 1.0
+                        self.scaler["xarray_feature_scale"][feature] = np.float32(1.0)
                     elif val == "minmax":
                         self.scaler["xarray_feature_scale"][feature] = xr[feature].max(skipna=True) - \
                                                                        xr[feature].m(skipna=True)
