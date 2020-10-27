@@ -143,7 +143,7 @@ def _get_medians(results: dict, metric='NSE') -> dict:
                                     f'{metric}_{freq}' in results[list(results.keys())[0]][freq]):
             key = f'{metric}_{freq}'
         metric_values = [v[freq][key] for v in results.values() if freq in v.keys() and key in v[freq].keys()]
-        medians[freq] = np.median(metric_values)
+        medians[freq] = np.nanmedian(metric_values)
 
     return medians
 
