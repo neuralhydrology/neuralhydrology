@@ -71,6 +71,6 @@ dynamic_inputs: # will be filled by conftest
 target_variables:
   - QObs(mm/d)
 zero_center_target: True
-camels_attributes:
+static_attributes:
   - elev_mean
   - slope_mean

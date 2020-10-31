@@ -73,8 +73,8 @@ class ODELSTM(BaseModel):
         self._init_frequency_factors_and_slice_timesteps()
 
         # start to count the number of inputs
-        self.input_size = len(cfg.dynamic_inputs + cfg.camels_attributes + cfg.hydroatlas_attributes +
-                              cfg.static_inputs)
+        self.input_size = len(cfg.dynamic_inputs + cfg.static_attributes + cfg.hydroatlas_attributes +
+                              cfg.evolving_attributes)
 
         if cfg.use_basin_id_encoding:
             self.input_size += cfg.number_of_basins

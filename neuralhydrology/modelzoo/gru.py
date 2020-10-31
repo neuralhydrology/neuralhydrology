@@ -27,7 +27,8 @@ class GRU(BaseModel):
 
         super(GRU, self).__init__(cfg=cfg)
 
-        input_size = len(cfg.dynamic_inputs + cfg.static_inputs + cfg.hydroatlas_attributes + cfg.camels_attributes)
+        input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.hydroatlas_attributes +
+                         cfg.static_attributes)
         if cfg.use_basin_id_encoding:
             input_size += cfg.number_of_basins
 

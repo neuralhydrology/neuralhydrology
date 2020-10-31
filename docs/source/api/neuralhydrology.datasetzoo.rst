@@ -10,8 +10,9 @@ nh.datasetzoo
    :maxdepth: 4
 
    neuralhydrology.datasetzoo.basedataset
-   neuralhydrology.datasetzoo.camelsus
-   neuralhydrology.datasetzoo.hourlycamelsus
    neuralhydrology.datasetzoo.camelscl
    neuralhydrology.datasetzoo.camelsgb
+   neuralhydrology.datasetzoo.camelsus
+   neuralhydrology.datasetzoo.genericdataset
+   neuralhydrology.datasetzoo.hourlycamelsus
    neuralhydrology.datasetzoo.template

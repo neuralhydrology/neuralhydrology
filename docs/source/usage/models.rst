@@ -41,8 +41,8 @@ CUDA implementation for training, and only use this class for inference with mor
 
 MTS-LSTM
 --------
-:py:class:`neuralhydrology.modelzoo.mtslstm.MTSLSTM` is a newly proposed model by Gauch et al. (pre-print
-published soon). This model allows the training on more than temporal resolution (e.g. daily and hourly inputs) and
+:py:class:`neuralhydrology.modelzoo.mtslstm.MTSLSTM` is a newly proposed model by `Gauch et al. "Rainfall--Runoff Prediction at Multiple Timescales with a Single Long Short-Term Memory Network" <https://arxiv.org/abs/2010.07921>`__.
+This model allows the training on more than temporal resolution (e.g., daily and hourly inputs) and
 returns multi-timescale model predictions accordingly. A more detailed tutorial will follow shortly.
 
 ODE-LSTM
@@ -107,7 +107,7 @@ files.
                  Dictionary with tensors
                     - x_d of shape [batch size, sequence length, features] containing the dynamic input data.
                     - x_s of shape [batch size, features] containing static input features. These are the concatenation
-                        of what is defined in the config under camels_attributes and static_inputs. In case not a single
+                        of what is defined in the config under static_attributes and evolving_attributes. In case not a single
                         camels attribute or static input feature is defined in the config, x_s will not be present.
                     - x_one_hot of shape [batch size, number of basins] containing the one hot encoding of the basins.
                         In case 'use_basin_id_encoding' is set to False in the config, x_one_hot will not be present.

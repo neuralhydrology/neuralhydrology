@@ -30,7 +30,7 @@ class EALSTM(BaseModel):
     ----------
     .. [#] Kratzert, F., Klotz, D., Shalev, G., Klambauer, G., Hochreiter, S., and Nearing, G.: Towards learning 
         universal, regional, and local hydrological behaviors via machine learning applied to large-sample datasets, 
-        Hydrol. Earth Syst. Sci., 23, 5089–5110, https://doi.org/10.5194/hess-23-5089-2019, 2019.
+        Hydrol. Earth Syst. Sci., 23, 5089-5110, https://doi.org/10.5194/hess-23-5089-2019, 2019.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
     module_parts = ['input_gate', 'dynamic_gates', 'head']
@@ -39,7 +39,7 @@ class EALSTM(BaseModel):
         super(EALSTM, self).__init__(cfg=cfg)
         self._hidden_size = cfg.hidden_size
 
-        input_size_stat = len(cfg.static_inputs + cfg.camels_attributes + cfg.hydroatlas_attributes)
+        input_size_stat = len(cfg.evolving_attributes + cfg.static_attributes + cfg.hydroatlas_attributes)
         if cfg.use_basin_id_encoding:
             input_size_stat += cfg.number_of_basins
 
@@ -55,8 +55,8 @@ class EALSTM(BaseModel):
 
         self.head = get_head(cfg=cfg, n_in=cfg.hidden_size, n_out=self.output_size)
 
-    def _cell(self, x: torch.Tensor, i: torch.Tensor,
-              states: Tuple[torch.Tensor, torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
+    def _cell(self, x: torch.Tensor, i: torch.Tensor, states: Tuple[torch.Tensor,
+                                                                    torch.Tensor]) -> Tuple[torch.Tensor, torch.Tensor]:
         """Single time step logic of EA-LSTM cell"""
         h_0, c_0 = states
 

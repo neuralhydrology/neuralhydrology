@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class MTSLSTM(BaseModel):
-    """Multi-Timescale LSTM (MTS-LSTM) from Gauch et al. (preprint to be released soon).
+    """Multi-Timescale LSTM (MTS-LSTM) from Gauch et al. [#]_.
 
     An LSTM architecture that allows simultaneous prediction at multiple timescales within one model.
     There are two flavors of this model: MTS-LTSM and sMTS-LSTM (shared MTS-LSTM). The MTS-LSTM processes inputs at
@@ -37,6 +37,12 @@ class MTSLSTM(BaseModel):
     ----------
     cfg : Config
         The run configuration.
+
+    References
+    ----------
+    .. [#] Gauch, M., Kratzert, F., Klotz, D., Grey, N., Lin, J., and Hochreiter, S.: Rainfall-Runoff Prediction at
+        Multiple Timescales with a Single Long Short-Term Memory Network, arXiv Preprint,
+        https://arxiv.org/abs/2010.07921, 2020.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
     module_parts = ['lstms', 'transfer_fcs', 'heads']
@@ -64,7 +70,7 @@ class MTSLSTM(BaseModel):
         self._frequencies = sort_frequencies(cfg.use_frequencies)
 
         # start to count the number of inputs
-        input_sizes = len(cfg.camels_attributes + cfg.hydroatlas_attributes + cfg.static_inputs)
+        input_sizes = len(cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
 
         # if is_shared_mtslstm, the LSTM gets an additional frequency flag as input.
         if self._is_shared_mtslstm:

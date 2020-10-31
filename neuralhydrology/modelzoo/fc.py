@@ -31,7 +31,7 @@ class FC(nn.Module):
 
         # If input size is not passed, will use number of all static features as input
         if input_size is None:
-            input_size = len(cfg.camels_attributes + cfg.hydroatlas_attributes + cfg.static_inputs)
+            input_size = len(cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
             if cfg.use_basin_id_encoding:
                 input_size += cfg.number_of_basins
 

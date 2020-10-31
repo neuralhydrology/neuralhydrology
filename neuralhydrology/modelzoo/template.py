@@ -52,7 +52,7 @@ class TemplateModel(BaseModel):
                      Dictionary with tensors
                         - x_d of shape [batch size, sequence length, features] containing the dynamic input data.
                         - x_s of shape [batch size, features] containing static input features. These are the
-                            concatenation of what is defined in the config under camels_attributes and static_inputs.
+                            concatenation of what is defined in the config under static_attributes and evolving_attributes.
                             In case not a single camels attribute or static input feature is defined in the config,
                             x_s will not be present.
                         - x_one_hot of shape [batch size, number of basins] containing the one hot encoding of the
