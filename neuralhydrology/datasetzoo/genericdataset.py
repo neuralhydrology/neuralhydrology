@@ -14,8 +14,9 @@ class GenericDataset(BaseDataset):
 
     To use this dataset, the data_dir must contain a folder 'time_series' and (if static attributes are used) a folder
     'attributes'. The folder 'time_series' contains one netcdf file (.nc or .nc4) per basin, named '<basin_id>.nc/nc4'.
-    The folder 'attributes' contains one or more comma-separated file (.csv) with static attributes, indexed by basin
-    id. Attributes files can be divided into groups of basins or groups of features (but not both).
+    The netcdf file has to have one coordinate called `date`, containing the datetime index. The folder 'attributes' 
+    contains one or more comma-separated file (.csv) with static attributes, indexed by basin id. Attributes files can 
+    be divided into groups of basins or groups of features (but not both).
 
     Parameters
     ----------
@@ -62,11 +63,6 @@ class GenericDataset(BaseDataset):
     def _load_basin_data(self, basin: str) -> pd.DataFrame:
         """Load input and output data. """
         df = load_timeseries(data_dir=self.cfg.data_dir, basin=basin)
-
-        # replace invalid discharge values by NaNs
-        qobs_cols = [col for col in df.columns if "qobs" in col.lower()]
-        for col in qobs_cols:
-            df.loc[df[col] < 0, col] = np.nan
 
         return df
 
