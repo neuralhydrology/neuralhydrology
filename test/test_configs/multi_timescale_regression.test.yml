@@ -80,6 +80,6 @@ dynamic_inputs:
 target_variables:
   - qobs_mm_per_hour
 zero_center_target: True
-camels_attributes:
+static_attributes:
   - elev_mean
   - slope_mean

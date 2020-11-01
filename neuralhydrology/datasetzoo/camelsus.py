@@ -28,7 +28,7 @@ class CamelsUS(BaseDataset):
         basin file, corresponding to the `period`.
     additional_features : List[Dict[str, pd.DataFrame]], optional
         List of dictionaries, mapping from a basin id to a pandas DataFrame. This DataFrame will be added to the data
-        loaded from the dataset and all columns are available as 'dynamic_inputs', 'static_inputs' and 
+        loaded from the dataset and all columns are available as 'dynamic_inputs', 'evolving_attributes' and
         'target_variables'
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
@@ -89,15 +89,7 @@ class CamelsUS(BaseDataset):
         return df
 
     def _load_attributes(self) -> pd.DataFrame:
-        if self.cfg.camels_attributes:
-
-            df = load_camels_us_attributes(self.cfg.data_dir, basins=self.basins)
-
-            # remove all attributes not defined in the config
-            drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
-            df = df.drop(drop_cols, axis=1)
-
-            return df
+        return load_camels_us_attributes(self.cfg.data_dir, basins=self.basins)
 
 
 def load_camels_us_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
@@ -144,9 +136,9 @@ def load_camels_us_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     df = df.drop('huc_02', axis=1)
 
     if basins:
-        # drop rows of basins not contained in the passed list
-        drop_basins = [b for b in df.index if b not in basins]
-        df = df.drop(drop_basins, axis=0)
+        if any(b not in df.index for b in basins):
+            raise ValueError('Some basins are missing static attributes.')
+        df = df.loc[basins]
 
     return df
 
@@ -229,7 +221,7 @@ def load_camels_us_discharge(data_dir: Path, basin: str, area: int) -> pd.Series
     df["date"] = pd.to_datetime(df.Year.map(str) + "/" + df.Mnth.map(str) + "/" + df.Day.map(str), format="%Y/%m/%d")
     df = df.set_index("date")
 
-    # normalize discharge from cubic feed per second to mm per day
+    # normalize discharge from cubic feet per second to mm per day
     df.QObs = 28316846.592 * df.QObs * 86400 / (area * 10**6)
 
     return df.QObs

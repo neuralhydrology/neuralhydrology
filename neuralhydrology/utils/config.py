@@ -213,10 +213,6 @@ class Config(object):
         return self._cfg.get("cache_validation_data", True)
 
     @property
-    def camels_attributes(self) -> List[str]:
-        return self._as_default_list(self._cfg.get("camels_attributes", []))
-
-    @property
     def checkpoint_path(self) -> Path:
         return self._cfg.get("checkpoint_path", None)
 
@@ -288,6 +284,16 @@ class Config(object):
     @property
     def epochs(self) -> int:
         return self._get_value_verbose("epochs")
+
+    @property
+    def evolving_attributes(self) -> List[str]:
+        if "evolving_attributes" in self._cfg.keys():
+            return self._as_default_list(self._cfg["evolving_attributes"])
+        elif "static_inputs" in self._cfg.keys():
+            warnings.warn("'static_inputs' will be deprecated. Use 'evolving_attributes' in the future", FutureWarning)
+            return self._as_default_list(self._cfg["static_inputs"])
+        else:
+            return []
 
     @property
     def experiment_name(self) -> str:
@@ -531,8 +537,15 @@ class Config(object):
         return self._cfg.get("shared_mtslstm", False)
 
     @property
-    def static_inputs(self) -> List[str]:
-        return self._as_default_list(self._cfg.get("static_inputs", []))
+    def static_attributes(self) -> List[str]:
+        if "static_attributes" in self._cfg.keys():
+            return self._as_default_list(self._cfg["static_attributes"])
+        elif "camels_attributes" in self._cfg.keys():
+            warnings.warn("'camels_attributes' will be deprecated. Use 'static_attributes' in the future",
+                          FutureWarning)
+            return self._as_default_list(self._cfg["camels_attributes"])
+        else:
+            return []
 
     @property
     def target_loss_weights(self) -> List[float]:

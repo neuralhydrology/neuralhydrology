@@ -184,7 +184,7 @@ save_validation_results: False
 
 # --- Data configurations --------------------------------------------------------------------------
 
-# which data set to use [camels_us, camels_gb, global, hourly_camels_us, camels_cl]
+# which data set to use [camels_us, camels_gb, global, hourly_camels_us, camels_cl, generic]
 dataset: camels_us
 
 # Path to data set root
@@ -227,7 +227,7 @@ clip_target_to_zero:
 zero_center_target: True
 
 # Which CAMELS attributes to use. Leave empty if none should be used
-camels_attributes:
+static_attributes:
 - elev_mean
 - slope_mean
 - area_gages2
@@ -262,9 +262,10 @@ camels_attributes:
 # same row (datetime) as the target discharge value.
 additional_feature_files:
 
-# columns of the data frame to use as (additional) static inputs for each sample. Must be present in
-# the above linked additional feature files. Leave empty to not use any
-static_inputs:
+# columns of the data frame to use as (additional) "static" inputs for each sample. Must be present in
+# the above linked additional feature files. These values will be used as static inputs, but they can evolve over time.
+# Leave empty to not use any.
+evolving_attributes:
 
 # whether to use basin id one hot encoding as (additional) static input
 use_basin_id_encoding: False
