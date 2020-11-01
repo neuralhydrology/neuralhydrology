@@ -27,7 +27,7 @@ class CamelsGB(BaseDataset):
         basin file, corresponding to the `period`.
     additional_features : List[Dict[str, pd.DataFrame]], optional
         List of dictionaries, mapping from a basin id to a pandas DataFrame. This DataFrame will be added to the data
-        loaded from the dataset, and all columns are available as 'dynamic_inputs', 'static_inputs' and
+        loaded from the dataset, and all columns are available as 'dynamic_inputs', 'evolving_attributes' and
         'target_variables'
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
@@ -67,15 +67,7 @@ class CamelsGB(BaseDataset):
         return df
 
     def _load_attributes(self) -> pd.DataFrame:
-        if self.cfg.camels_attributes:
-
-            df = load_camels_gb_attributes(self.cfg.data_dir, basins=self.basins)
-
-            # remove all attributes not defined in the config
-            drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
-            df = df.drop(drop_cols, axis=1)
-
-            return df
+        return load_camels_gb_attributes(self.cfg.data_dir, basins=self.basins)
 
 
 def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
@@ -125,9 +117,9 @@ def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     df = pd.concat(dfs, axis=1)
 
     if basins:
-        # drop rows of basins not contained in the passed list
-        drop_basins = [b for b in df.index if b not in basins]
-        df = df.drop(drop_basins, axis=0)
+        if any(b not in df.index for b in basins):
+            raise ValueError('Some basins are missing static attributes.')
+        df = df.loc[basins]
 
     return df
 

@@ -335,14 +335,21 @@ Data settings
    is used as static input, the value to use for specific sample should
    be in same row (datetime) as the target discharge value.
 
--  ``static_inputs``: Columns of the DataFrame loaded with the
-   ``additional_feature_files`` that should be used as static feature.
+-  ``evolving_attributes``: Columns of the DataFrame loaded with the
+   ``additional_feature_files`` that should be used as "static" features.
+   These values will be used as static inputs, but they can evolve over time.
+   Convention: The value to use for a specific input sequence should be in the
+   same row (datetime) as the last time step of that sequence.
    Names must match the column names in the DataFrame. Leave empty to
    not use any additional static feature.
 
 -  ``use_basin_id_encoding``: True/False. If True, creates a
    basin-one-hot encoding as a(n) (additional) static feature vector for
    each sample.
+
+-  ``static_attributes``: Which static attributes to use (e.g., from the static camels attributes for the CAMELS
+   dataset). Leave empty if none should be used. For hydroatlas attributes, use ``hydroatlas_attributes`` instead.
+   Names must match the exact names as defined in the data set.
 
 -  ``hydroatlas_attributes``: Which HydroATLAS attributes to use. Leave
    empty if none should be used. Names must match the exact names as
@@ -357,7 +364,3 @@ Can be ignored if ``dataset not in ['camels_us', 'hourly_camels_us']``
    correspond to forcing products in the camels data set. Also supports
    ``maurer_extended``, ``nldas_extended``, and (for
    ``hourly_camels_us``) ``nldas_hourly``.
-
--  ``camels_attributes``: Which CAMELS attributes to use. Leave empty if
-   none should be used. Names must match the exact names as defined in
-   the data set.

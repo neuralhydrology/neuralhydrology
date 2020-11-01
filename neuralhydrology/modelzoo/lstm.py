@@ -38,7 +38,8 @@ class LSTM(BaseModel):
     def __init__(self, cfg: Config):
         super(LSTM, self).__init__(cfg=cfg)
 
-        input_size = len(cfg.dynamic_inputs + cfg.static_inputs + cfg.camels_attributes + cfg.hydroatlas_attributes)
+        input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.static_attributes +
+                         cfg.hydroatlas_attributes)
         if cfg.use_basin_id_encoding:
             input_size += cfg.number_of_basins
 
@@ -52,7 +53,9 @@ class LSTM(BaseModel):
 
         self.head = get_head(cfg=cfg, n_in=self._hidden_size, n_out=self.output_size)
 
-    def forward(self, data: Dict[str, torch.Tensor], h_0: torch.Tensor = None,
+    def forward(self,
+                data: Dict[str, torch.Tensor],
+                h_0: torch.Tensor = None,
                 c_0: torch.Tensor = None) -> Dict[str, torch.Tensor]:
         """Perform a forward pass on the LSTM model.
         

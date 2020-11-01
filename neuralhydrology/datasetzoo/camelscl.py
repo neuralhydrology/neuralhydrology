@@ -30,7 +30,7 @@ class CamelsCL(BaseDataset):
         basin file, corresponding to the `period`.
     additional_features : List[Dict[str, pd.DataFrame]], optional
         List of dictionaries, mapping from a basin id to a pandas DataFrame. This DataFrame will be added to the data
-        loaded from the dataset, and all columns are available as 'dynamic_inputs', 'static_inputs' and
+        loaded from the dataset, and all columns are available as 'dynamic_inputs', 'evolving_attributes' and
         'target_variables'
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
@@ -43,7 +43,7 @@ class CamelsCL(BaseDataset):
     ----------
     .. [#] Alvarez-Garreton, C., Mendoza, P. A., Boisier, J. P., Addor, N., Galleguillos, M., Zambrano-Bigiarini, M.,
         Lara, A., Puelma, C., Cortes, G., Garreaud, R., McPhee, J., and Ayala, A.: The CAMELS-CL dataset: catchment
-        attributes and meteorology for large sample studies – Chile dataset, Hydrol. Earth Syst. Sci., 22, 5817–5846,
+        attributes and meteorology for large sample studies - Chile dataset, Hydrol. Earth Syst. Sci., 22, 5817-5846,
         https://doi.org/10.5194/hess-22-5817-2018, 2018.
     """
 
@@ -65,19 +65,10 @@ class CamelsCL(BaseDataset):
 
     def _load_basin_data(self, basin: str) -> pd.DataFrame:
         """Load input and output data from text files."""
-        df = load_camels_cl_timeseries(data_dir=self.cfg.data_dir, basin=basin)
-
-        return df
+        return load_camels_cl_timeseries(data_dir=self.cfg.data_dir, basin=basin)
 
     def _load_attributes(self) -> pd.DataFrame:
-        if self.cfg.camels_attributes:
-            df = load_camels_cl_attributes(self.cfg.data_dir, basins=self.basins)
-
-            # remove all attributes not defined in the config
-            drop_cols = [c for c in df.columns if c not in self.cfg.camels_attributes]
-            df = df.drop(drop_cols, axis=1)
-
-            return df
+        return load_camels_cl_attributes(self.cfg.data_dir, basins=self.basins)
 
 
 def load_camels_cl_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
@@ -141,9 +132,9 @@ def load_camels_cl_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     df["record_period_end"] = pd.to_datetime(df["record_period_end"])
 
     if basins:
-        # drop rows of basins not contained in the passed list
-        drop_basins = [b for b in df.index if b not in basins]
-        df = df.drop(drop_basins, axis=0)
+        if any(b not in df.index for b in basins):
+            raise ValueError('Some basins are missing static attributes.')
+        df = df.loc[basins]
 
     return df
 

@@ -41,7 +41,7 @@ class BaseDataset(Dataset):
         appropriate basin file, corresponding to the `period`.
     additional_features : List[Dict[str, pd.DataFrame]], optional
         List of dictionaries, mapping from a basin id to a pandas DataFrame. This DataFrame will be added to the data
-        loaded from the dataset and all columns are available as 'dynamic_inputs', 'static_inputs' and 
+        loaded from the dataset and all columns are available as 'dynamic_inputs', 'evolving_attributes' and
         'target_variables'
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
@@ -239,7 +239,7 @@ class BaseDataset(Dataset):
             data_list = []
 
             # list of columns to keep, everything else will be removed to reduce memory footprint
-            keep_cols = self.cfg.target_variables + self.cfg.static_inputs
+            keep_cols = self.cfg.target_variables + self.cfg.evolving_attributes
             if isinstance(self.cfg.dynamic_inputs, list):
                 keep_cols += self.cfg.dynamic_inputs
             else:
@@ -377,11 +377,11 @@ class BaseDataset(Dataset):
                     dynamic_cols = self.cfg.dynamic_inputs[freq]
 
                 df_resampled = df_native[dynamic_cols + self.cfg.target_variables +
-                                         self.cfg.static_inputs].resample(freq).mean()
+                                         self.cfg.evolving_attributes].resample(freq).mean()
                 x_d[freq] = df_resampled[dynamic_cols].values
                 y[freq] = df_resampled[self.cfg.target_variables].values
-                if self.cfg.static_inputs:
-                    x_s[freq] = df_resampled[self.cfg.static_inputs].values
+                if self.cfg.evolving_attributes:
+                    x_s[freq] = df_resampled[self.cfg.evolving_attributes].values
 
                 # number of frequency steps in one lowest-frequency step
                 frequency_factor = pd.to_timedelta(lowest_freq) // pd.to_timedelta(freq)
@@ -446,9 +446,15 @@ class BaseDataset(Dataset):
         dfs = []
 
         # load dataset specific attributes from the subclass
-        df = self._load_attributes()
+        if self.cfg.static_attributes:
+            df = self._load_attributes()
 
-        if df is not None:
+            # remove all attributes not defined in the config
+            missing_attrs = [attr for attr in self.cfg.static_attributes if attr not in df.columns]
+            if len(missing_attrs) > 0:
+                raise ValueError(f'Static attributes {missing_attrs} are missing.')
+            df = df[self.cfg.static_attributes]
+
             # in case of training (not finetuning) check for NaNs in feature std.
             if self._compute_scaler:
                 utils.attributes_sanity_check(df=df)
@@ -464,7 +470,7 @@ class BaseDataset(Dataset):
             df = pd.concat(dfs, axis=1)
 
             # check if any attribute specified in the config is not available in the dataframes
-            combined_attributes = self.cfg.camels_attributes + self.cfg.hydroatlas_attributes
+            combined_attributes = self.cfg.static_attributes + self.cfg.hydroatlas_attributes
             missing_columns = [attr for attr in combined_attributes if attr not in df.columns]
             if missing_columns:
                 raise ValueError(f"The following attributes are not available in the dataset: {missing_columns}")
