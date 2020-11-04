@@ -9,7 +9,7 @@ import torch.nn as nn
 from neuralhydrology.datautils.utils import sort_frequencies
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.modelzoo.head import get_head
-from neuralhydrology.modelzoo.lstm import _LSTMCell
+from neuralhydrology.modelzoo.customlstm import _LSTMCell
 from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)

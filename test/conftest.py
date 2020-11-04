@@ -43,7 +43,7 @@ def get_config(tmpdir: Fixture[str]) -> Fixture[Callable[[str], dict]]:
     return _get_config
 
 
-@pytest.fixture(params=['lstm', 'ealstm', 'cudalstm', 'embcudalstm', 'gru'])
+@pytest.fixture(params=['customlstm', 'ealstm', 'cudalstm', 'embcudalstm', 'gru'])
 def single_timescale_model(request) -> str:
     """Fixture that provides models that support predicting only a single timescale.
 
@@ -99,3 +99,15 @@ def daily_dataset(request) -> Dict[str, List[str]]:
     if request.config.getoption('--smoke-test') and request.param[0] != 'camels_us':
         pytest.skip('--smoke-test skips this test.')
     return {'dataset': request.param[0], 'target': request.param[1]}
+
+
+@pytest.fixture(params=["cudalstm", "embcudalstm"])
+def custom_lstm_supported_models(request) -> str:
+    """Fixture that provides the models that are supported to be copied into the `CustomLSTM`.
+
+    Returns
+    -------
+    str
+        Name of the model.
+    """
+    return request.param
