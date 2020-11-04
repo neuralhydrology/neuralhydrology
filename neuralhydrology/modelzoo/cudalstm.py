@@ -93,11 +93,12 @@ class CudaLSTM(BaseModel):
 
         lstm_output, (h_n, c_n) = self.lstm(input=x_d)
 
-        # reshape to [batch_size, 1, n_hiddens]
+        # reshape to [batch_size, seq, n_hiddens]
+        lstm_output = lstm_output.transpose(0, 1)
         h_n = h_n.transpose(0, 1)
         c_n = c_n.transpose(0, 1)
 
-        pred = {'h_n': h_n, 'c_n': c_n}
-        pred.update(self.head(self.dropout(lstm_output.transpose(0, 1))))
+        pred = {'lstm_output': lstm_output, 'h_n': h_n, 'c_n': c_n}
+        pred.update(self.head(self.dropout(lstm_output)))
 
         return pred

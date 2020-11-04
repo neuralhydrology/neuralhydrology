@@ -1,15 +1,17 @@
+import warnings
+
 import torch.nn as nn
 
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
+from neuralhydrology.modelzoo.customlstm import CustomLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
 from neuralhydrology.modelzoo.gru import GRU
-from neuralhydrology.modelzoo.lstm import LSTM
 from neuralhydrology.modelzoo.odelstm import ODELSTM
 from neuralhydrology.modelzoo.mtslstm import MTSLSTM
 from neuralhydrology.utils.config import Config
 
-SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "lstm", "embcudalstm", "gru"]
+SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru"]
 
 
 def get_model(cfg: Config) -> nn.Module:
@@ -32,8 +34,13 @@ def get_model(cfg: Config) -> nn.Module:
         model = CudaLSTM(cfg=cfg)
     elif cfg.model == "ealstm":
         model = EALSTM(cfg=cfg)
+    elif cfg.model == "customlstm":
+        model = CustomLSTM(cfg=cfg)
     elif cfg.model == "lstm":
-        model = LSTM(cfg=cfg)
+        warnings.warn(
+            "The `LSTM` class has been renamed to `CustomLSTM`. Support for `LSTM` will we dropped in the future.",
+            FutureWarning)
+        model = CustomLSTM(cfg=cfg)
     elif cfg.model == "gru":
         model = GRU(cfg=cfg)
     elif cfg.model == "embcudalstm":

@@ -11,12 +11,12 @@ nh.modelzoo
 
    neuralhydrology.modelzoo.basemodel
    neuralhydrology.modelzoo.cudalstm
+   neuralhydrology.modelzoo.customlstm
    neuralhydrology.modelzoo.ealstm
    neuralhydrology.modelzoo.embcudalstm
    neuralhydrology.modelzoo.fc
    neuralhydrology.modelzoo.gru
    neuralhydrology.modelzoo.head
-   neuralhydrology.modelzoo.lstm
    neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
    neuralhydrology.modelzoo.template

@@ -15,6 +15,16 @@ All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to th
 The initial forget gate bias can be defined in config.yml (``initial_forget_bias``) and will be set accordingly during
 model initialization.
 
+CustomLSTM
+----------
+:py:class:`neuralhydrology.modelzoo.customlstm.CustomLSTM` is a variant of the ``CudaLSTM`` and ``EmbCudaLSTM``
+that returns all gate and state activations for all time steps. This class is mainly implemented for exploratory
+reasons. You can use the method ``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` or ``EmbCudaLSTM`` model
+into a ``CustomLSTM`` model. This allows to use the fast CUDA implementations for training, and only use this class for
+inference with more detailed outputs. You can however also use this model during training (``model: customlstm`` in the
+config.yml) or as a starter for your own modifications to the LSTM cell. Note, however, that the runtime of this model
+is considerably slower than its optimized counterparts.
+
 EA-LSTM
 -------
 :py:class:`neuralhydrology.modelzoo.ealstm.EALSTM` is an implementation of the Entity-Aware LSTM, as introduced in
@@ -30,14 +40,6 @@ EmbCudaLSTM
 with the only difference that static inputs (``x_s`` and/or ``x_one_hot``) are passed through an embedding network
 (defined, for instance, by ``embedding_hiddens``) before being concatenated to the dynamic inputs ``x_d``
 at each time step.
-
-
-LSTM
-----
-:py:class:`neuralhydrology.modelzoo.lstm.LSTM` is a PyTorch port of the CudaLSTM that returns all gate and state
-activations for all time steps. This class is implemented for exploratory reasons. You can use the method
-``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` model into an ``LSTM`` model. This allows to use the fast
-CUDA implementation for training, and only use this class for inference with more detailed outputs.
 
 MTS-LSTM
 --------
