@@ -149,7 +149,7 @@ def calculate_dyn_climate_indices(precip: pd.Series,
             'low_prec_freq_dyn': new_features[:, 7],
             'low_prec_dur_dyn': new_features[:, 8]
         },
-        index=precip.iloc[window_length - 1:].index)
+        index=precip.iloc[min(window_length, len(precip)) - 1:].index)
 
     if raise_nan and np.any(df.isna()):
         raise ValueError(f"NaN in climate indices {[col for col in df.columns[df.isna().any()]]}")
