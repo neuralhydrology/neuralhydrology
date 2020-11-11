@@ -52,7 +52,7 @@ class HourlyCamelsUS(CamelsUS):
                  additional_features: list = [],
                  id_to_int: dict = {},
                  scaler: dict = {}):
-        self._netcdf_dataset = None  # if available, we remember the dataset to load faster
+        self._netcdf_datasets = {}  # if available, we remember the dataset to load faster
         self._warn_slow_loading = True
         super(HourlyCamelsUS, self).__init__(cfg=cfg,
                                              is_train=is_train,
@@ -80,6 +80,9 @@ class HourlyCamelsUS(CamelsUS):
                 df = df.rename(columns={col: f"{col}_{forcing}" for col in df.columns if 'qobs' not in col.lower()})
             dfs.append(df)
         df = pd.concat(dfs, axis=1)
+
+        # only warn for missing netcdf files once for each forcing product
+        self._warn_slow_loading = False
 
         # replace invalid discharge values by NaNs
         qobs_cols = [col for col in df.columns if 'qobs' in col.lower()]
@@ -120,17 +123,18 @@ class HourlyCamelsUS(CamelsUS):
         """
         fallback_csv = False
         try:
-            if self._netcdf_dataset is None:
-                self._netcdf_dataset = load_hourly_us_netcdf(self.cfg.data_dir, forcings)
-            df = self._netcdf_dataset.sel(basin=basin).to_dataframe()
+            if forcings not in self._netcdf_datasets.keys():
+                self._netcdf_datasets[forcings] = load_hourly_us_netcdf(self.cfg.data_dir, forcings)
+            df = self._netcdf_datasets[forcings].sel(basin=basin).to_dataframe()
         except FileNotFoundError:
             fallback_csv = True
             if self._warn_slow_loading:
-                LOGGER.warning('## Warning: Hourly NetCDF file not found. Falling back to slower csv files.')
-                self._warn_slow_loading = False  # only warn once
+                LOGGER.warning(
+                    f'## Warning: Hourly {forcings} NetCDF file not found. Falling back to slower csv files.')
         except KeyError:
             fallback_csv = True
-            LOGGER.warning(f'## Warning: NetCDF file does not contain data for {basin}. Trying slower csv files.')
+            LOGGER.warning(
+                f'## Warning: NetCDF file of {forcings} does not contain data for {basin}. Trying slower csv files.')
         if fallback_csv:
             df = load_hourly_us_forcings(self.cfg.data_dir, basin, forcings)
 
