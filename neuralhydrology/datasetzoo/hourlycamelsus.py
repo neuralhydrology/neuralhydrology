@@ -6,13 +6,13 @@ import numpy as np
 import pandas as pd
 import xarray
 
-from neuralhydrology.datasetzoo.camelsus import CamelsUS, load_camels_us_forcings, load_camels_us_attributes
+from neuralhydrology.datasetzoo import camelsus
 from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
 
 
-class HourlyCamelsUS(CamelsUS):
+class HourlyCamelsUS(camelsus.CamelsUS):
     """Data set class providing hourly data for CAMELS US basins.
     
     This class extends the `CamelsUS` dataset class by hourly in- and output data. Currently, only NLDAS forcings are
@@ -73,13 +73,29 @@ class HourlyCamelsUS(CamelsUS):
                 df = self.load_hourly_data(basin, forcing)
             else:
                 # load daily CAMELS forcings and upsample to hourly
-                df, _ = load_camels_us_forcings(self.cfg.data_dir, basin, forcing)
+                df, _ = camelsus.load_camels_us_forcings(self.cfg.data_dir, basin, forcing)
                 df = df.resample('1H').ffill()
             if len(self.cfg.forcings) > 1:
                 # rename columns
                 df = df.rename(columns={col: f"{col}_{forcing}" for col in df.columns if 'qobs' not in col.lower()})
             dfs.append(df)
         df = pd.concat(dfs, axis=1)
+
+        # collapse all input features to a single list, to check for 'QObs(mm/d)'.
+        all_features = self.cfg.target_variables
+        if isinstance(self.cfg.dynamic_inputs, dict):
+            for val in self.cfg.dynamic_inputs.values():
+                all_features = all_features + val
+        elif isinstance(self.cfg.dynamic_inputs, list):
+            all_features = all_features + self.cfg.dynamic_inputs
+
+        # catch also QObs(mm/d)_shiftX or _copyX features
+        if any([x.startswith("QObs(mm/d)") for x in all_features]):
+            # add daily discharge from CAMELS, using daymet to get basin area
+            _, area = camelsus.load_camels_us_forcings(self.cfg.data_dir, basin, "daymet")
+            discharge = camelsus.load_camels_us_discharge(self.cfg.data_dir, basin, area)
+            discharge = discharge.resample('1H').ffill()
+            df["QObs(mm/d)"] = discharge
 
         # only warn for missing netcdf files once for each forcing product
         self._warn_slow_loading = False
@@ -96,7 +112,7 @@ class HourlyCamelsUS(CamelsUS):
 
         # convert discharge to 'synthetic' stage, if requested
         if 'synthetic_qobs_stage_meters' in self.cfg.target_variables:
-            attributes = load_camels_us_attributes(data_dir=self.cfg.data_dir, basins=[basin])
+            attributes = camelsus.load_camels_us_attributes(data_dir=self.cfg.data_dir, basins=[basin])
             with open(self.cfg.rating_curve_file, 'rb') as f:
                 rating_curves = pickle.load(f)
             df['synthetic_qobs_stage_meters'] = np.nan
