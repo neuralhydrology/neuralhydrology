@@ -8,19 +8,42 @@ from ruamel.yaml import YAML
 
 
 class Config(object):
+    """Read run configuration from the specified path or dictionary and parse it into a configuration object.
 
-    def __init__(self, cfg_path: Path):
-        """Read run configuration from the specified path and parse it into a dict.
+    During parsing, config keys that contain 'dir', 'file', or 'path' will be converted to pathlib.Path instances.
+    Configuration keys ending with '_date' will be parsed to pd.Timestamps. The expected format is DD/MM/YYYY.
 
-        During parsing, config keys that contain 'dir', 'file', or 'path' will be converted to pathlib.Path instances.
-        Configuration keys ending with '_date' will be parsed to pd.Timestamps. The expected format is DD/MM/YYYY.
+    Parameters
+    ----------
+    yml_path_or_dict : Union[Path, dict]
+        Either a path to the config file or a dictionary of configuration values.
+    dev_mode : bool, optional
+        If dev_mode is off, the config creation will fail if there are unrecognized keys in the passed config
+        specification. dev_mode can be activated either through this parameter or by setting ``dev_mode: True``
+        in `yml_path_or_dict`.
 
-        Parameters
-        ----------
-        cfg_path : Path
-            Path to the config file.
-        """
-        self._cfg = self._read_config(cfg_path=cfg_path)
+    Raises
+    ------
+    ValueError
+        If the passed configuration specification is neither a Path nor a dict or if `dev_mode` is off (default) and
+        the config file or dict contain unrecognized keys.
+    """
+
+    # Lists of deprecated config keys and purely informational metadata keys, needed when checking for unrecognized
+    # config keys since these keys are not properties of the Config class.
+    _deprecated_keys = ['static_inputs', 'camels_attributes', 'target_variable']
+    _metadata_keys = ['package_version', 'commit_hash']
+
+    def __init__(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
+        if isinstance(yml_path_or_dict, Path):
+            self._cfg = Config._read_and_parse_config(yml_path=yml_path_or_dict)
+        elif isinstance(yml_path_or_dict, dict):
+            self._cfg = Config._parse_config(yml_path_or_dict)
+        else:
+            raise ValueError(f'Cannot create a config from input of type {type(yml_path_or_dict)}.')
+
+        if not (self._cfg.get('dev_mode', False) or dev_mode):
+            Config._check_cfg_keys(self._cfg)
 
     def as_dict(self) -> dict:
         """Return run configuration as dictionary.
@@ -47,9 +70,9 @@ class Config(object):
         FileExistsError
             If the specified folder already contains a file named `filename`.
         """
-        cfg_path = folder / filename
-        if not cfg_path.exists():
-            with cfg_path.open('w') as fp:
+        yml_path = folder / filename
+        if not yml_path.exists():
+            with yml_path.open('w') as fp:
                 temp_cfg = {}
                 for key, val in self._cfg.items():
                     if any([key.endswith(x) for x in ['_dir', '_path', '_file', '_files']]):
@@ -76,32 +99,9 @@ class Config(object):
                 yaml = YAML()
                 yaml.dump(dict(OrderedDict(sorted(temp_cfg.items()))), fp)
         else:
-            FileExistsError(cfg_path)
+            FileExistsError(yml_path)
 
-    def force_update(self, arguments: Dict[str, Any] = {}, key: str = None, value: Any = None):
-        """Force update config arguments.
-        
-        If a dictionary is passed, all key-value pairs will be added to the config or overwrite existing config 
-        arguments. If a `key` is passed, the `value` input (by default None) will be used to add/overwrite a config 
-        argument. It is possible to pass both at the same time. Here, the order is first to update the arguments from 
-        the `arguments` dictionary and then the single `key`-`value` pair.
-        
-        Parameters
-        ----------
-        arguments: Dict[str, Any], optional
-            Dictionary of key-value-pairs that will overwrite/add config arguments.
-        key : str, optional
-            A dictionary key
-        value : Any, optional
-            The corresponding value for the `key`
-        """
-        if arguments:
-            for k, v in arguments.items():
-                self._cfg[k] = v
-        if key is not None:
-            self._cfg[key] = value
-
-    def update_config(self, cfg_path: Path):
+    def update_config(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
         """Update config arguments.
         
         Useful e.g. in the context of fine-tuning or when continuing to train from a checkpoint to adapt for example the
@@ -109,13 +109,32 @@ class Config(object):
         
         Parameters
         ----------
-        cfg_path : Path
-            Path to the new config file. Each argument specified in this file will overwrite the existing config
-            argument.
+        yml_path_or_dict : Union[Path, dict]
+            Either a path to the new config file or a dictionary of configuration values. Each argument specified in
+            this file will overwrite the existing config argument.
+        dev_mode : bool, optional
+            If dev_mode is off, the config creation will fail if there are unrecognized keys in the passed config
+            specification. dev_mode can be activated either through this parameter or by setting ``dev_mode: True``
+            in `yml_path_or_dict`.
+
+        Raises
+        ------
+        ValueError
+            If the passed configuration specification is neither a Path nor a dict, or if `dev_mode` is off (default)
+            and the config file or dict contain unrecognized keys.
         """
-        new_config = self._read_config(cfg_path=cfg_path)
-        for key, val in new_config.items():
-            self._cfg[key] = val
+        new_config = Config(yml_path_or_dict, dev_mode=dev_mode)
+
+        self._cfg.update(new_config.as_dict())
+
+    def _get_value_verbose(self, key: str) -> Union[float, int, str, list, dict, Path, pd.Timestamp]:
+        """Use this function internally to return attributes of the config that are mandatory"""
+        if key not in self._cfg.keys():
+            raise ValueError(f"{key} is not specified in the config (.yml).")
+        elif self._cfg[key] is None:
+            raise ValueError(f"{key} is mandatory but 'None' in the config.")
+        else:
+            return self._cfg[key]
 
     @staticmethod
     def _as_default_list(value: Any) -> list:
@@ -135,14 +154,17 @@ class Config(object):
         else:
             raise RuntimeError(f"Incompatible type {type(value)}. Expected `dict` or `None`.")
 
-    def _get_value_verbose(self, key: str) -> Union[float, int, str, list, dict, Path, pd.Timestamp]:
-        """Use this function internally to return attributes of the config that are mandatory"""
-        if key not in self._cfg.keys():
-            raise ValueError(f"{key} is not specified in the config (.yml).")
-        elif self._cfg[key] is None:
-            raise ValueError(f"{key} is mandatory but 'None' in the config.")
-        else:
-            return self._cfg[key]
+    @staticmethod
+    def _check_cfg_keys(cfg: dict):
+        """Checks the config for unknown keys. """
+        property_names = [p for p in dir(Config) if isinstance(getattr(Config, p), property)]
+
+        unknown_keys = [
+            k for k in cfg.keys()
+            if k not in property_names and k not in Config._deprecated_keys and k not in Config._metadata_keys
+        ]
+        if unknown_keys:
+            raise ValueError(f'{unknown_keys} are no recognized config keys.')
 
     @staticmethod
     def _parse_config(cfg: dict) -> dict:
@@ -176,15 +198,16 @@ class Config(object):
         # Add more config parsing if necessary
         return cfg
 
-    def _read_config(self, cfg_path: Path):
-        if cfg_path.exists():
-            with cfg_path.open('r') as fp:
+    @staticmethod
+    def _read_and_parse_config(yml_path: Path):
+        if yml_path.exists():
+            with yml_path.open('r') as fp:
                 yaml = YAML(typ="safe")
                 cfg = yaml.load(fp)
         else:
-            raise FileNotFoundError(cfg_path)
+            raise FileNotFoundError(yml_path)
 
-        cfg = self._parse_config(cfg)
+        cfg = Config._parse_config(cfg)
 
         return cfg
 
@@ -671,7 +694,3 @@ class Config(object):
             Level of verbosity.
         """
         return self._cfg.get("verbose", 1)
-
-    @property
-    def zero_center_target(self) -> bool:
-        return self._cfg.get("zero_center_target", True)

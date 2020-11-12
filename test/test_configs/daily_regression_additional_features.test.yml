@@ -68,7 +68,6 @@ dynamic_inputs:
 additional_feature_files: ./test/test_data/additional_features.p
 target_variables:
   - QObs(mm/d)
-zero_center_target: True
 static_attributes:
   - elev_mean
   - slope_mean
