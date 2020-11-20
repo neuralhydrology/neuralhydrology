@@ -179,7 +179,5 @@ target_variables:
 - qobs_mm_per_hour
 
 # clip negative predictions to zero for all variables listed below. Should be a list, even for single variables.
-clip_target_to_zero:
+clip_targets_to_zero:
 - qobs_mm_per_hour
-
-zero_center_target: True

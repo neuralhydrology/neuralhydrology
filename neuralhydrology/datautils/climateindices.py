@@ -149,7 +149,7 @@ def calculate_dyn_climate_indices(precip: pd.Series,
             'low_prec_freq_dyn': new_features[:, 7],
             'low_prec_dur_dyn': new_features[:, 8]
         },
-        index=precip.iloc[window_length - 1:].index)
+        index=precip.iloc[min(window_length, len(precip)) - 1:].index)
 
     if raise_nan and np.any(df.isna()):
         raise ValueError(f"NaN in climate indices {[col for col in df.columns[df.isna().any()]]}")
@@ -161,6 +161,7 @@ def calculate_dyn_climate_indices(precip: pd.Series,
 def _numba_climate_indexes(features: np.ndarray, window_length: int) -> np.ndarray:
     # features shape is (#timesteps, 4), where 4 breaks down into: (prcp, tmax, tmin, pet)
     n_samples = features.shape[0]
+    window_length = min(n_samples, window_length)
     new_features = np.zeros((n_samples - window_length + 1, 9))
 
     for i in range(new_features.shape[0]):
@@ -168,7 +169,7 @@ def _numba_climate_indexes(features: np.ndarray, window_length: int) -> np.ndarr
 
         p_mean = np.mean(x[:, 0])
         pet_mean = np.mean(x[:, -1])
-        aridity = pet_mean / p_mean
+        aridity = pet_mean / p_mean if p_mean > 0 else np.nan
         t_mean = (np.mean(x[:, 1]) + np.mean(x[:, 2])) / 2
 
         # fraction of precipitation falling as snow
