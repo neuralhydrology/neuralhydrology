@@ -31,10 +31,10 @@ class Logger(object):
         if subprocess.call(["git", "-C", current_dir, "branch"], stderr=subprocess.DEVNULL,
                            stdout=subprocess.DEVNULL) == 0:
             git_output = subprocess.check_output(["git", "-C", current_dir, "describe", "--always"])
-            cfg.force_update(key='commit_hash', value=git_output.strip().decode('ascii'))
+            cfg.update_config({'commit_hash': git_output.strip().decode('ascii')})
 
         # Additionally, the package version is stored in the config
-        cfg.force_update(key="package_version", value=__version__)
+        cfg.update_config({"package_version": __version__})
 
         # store a copy of the config into the run folder
         cfg.dump_config(folder=self.log_dir)

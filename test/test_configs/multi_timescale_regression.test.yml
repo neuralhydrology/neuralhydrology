@@ -79,7 +79,6 @@ dynamic_inputs:
   - temperature
 target_variables:
   - qobs_mm_per_hour
-zero_center_target: True
 static_attributes:
   - elev_mean
   - slope_mean

@@ -12,7 +12,7 @@ def test_model_equality(get_config: Fixture[Callable[[str], dict]], custom_lstm_
     config = get_config('daily_regression')
 
     # we only need to test for a single data set, input/output setting and model specifications
-    config.force_update({
+    config.update_config({
         'dataset': 'camels_us',
         'data_dir': config.data_dir / 'camels_us',
         'target_variables': 'QObs(mm/d)',

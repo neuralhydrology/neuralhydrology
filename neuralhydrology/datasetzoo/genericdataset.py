@@ -1,3 +1,4 @@
+from functools import reduce
 from pathlib import Path
 from typing import Dict, List, Union
 
@@ -16,7 +17,8 @@ class GenericDataset(BaseDataset):
     'attributes'. The folder 'time_series' contains one netcdf file (.nc or .nc4) per basin, named '<basin_id>.nc/nc4'.
     The netcdf file has to have one coordinate called `date`, containing the datetime index. The folder 'attributes' 
     contains one or more comma-separated file (.csv) with static attributes, indexed by basin id. Attributes files can 
-    be divided into groups of basins or groups of features (but not both).
+    be divided into groups of basins or groups of features (but not both, see `genericdataset.load_attributes` for
+    more details).
 
     Parameters
     ----------
@@ -85,48 +87,55 @@ def load_attributes(data_dir: Path, basins: List[str] = None) -> pd.DataFrame:
     -------
     pandas.DataFrame
         Basin-indexed DataFrame, containing the attributes as columns. If the attributes folder contains multiple
-        files, they will be concatenated along the mismatching axis. I.e., attribute files may be split by basin
-        groups XOR split by attributes (but not both).
+        files, they will be concatenated as follows:
+        (a) if the intersection of basins is non-empty, the files' attributes are concatenated for the intersection of
+            basins. The intersection of attributes must be empty in this case.
+        (b) if the intersection of basins is empty but the intersection of attributes is not, the files' basins are
+            concatenated for the intersection of attributes.
+        In all other cases, a ValueError is raised.
+
+    Raises
+    ------
+    FileNotFoundError
+        If the attributes folder is not found or does not contain any csv files.
+    ValueError
+        If an attributes file contains duplicate basin or attribute names, multiple files are found that have no
+        overlap, or there are no attributes for a basin specified in `basins`.
     """
     attributes_path = data_dir / 'attributes'
     if not attributes_path.exists():
-        raise RuntimeError(f"Attributes folder not found at {attributes_path}")
+        raise FileNotFoundError(f"Attributes folder not found at {attributes_path}")
 
     files = list(attributes_path.glob('*.csv'))
-    if len(files) == 0:
-        raise ValueError('No attributes files found')
+    if not files:
+        raise FileNotFoundError('No attributes files found')
 
     # Read-in attributes into one big dataframe. Sort by both axes so we can check for identical axes.
     dfs = []
     for f in files:
         df = pd.read_csv(f, dtype={0: str})  # make sure we read the basin id as str
         df = df.set_index(df.columns[0]).sort_index(axis=0).sort_index(axis=1)
-        if df.index.has_duplicates or df.index.has_duplicates:
+        if df.index.has_duplicates or df.columns.has_duplicates:
             raise ValueError(f'Attributes file {f} contains duplicate basin ids or features.')
         dfs.append(df)
 
     if len(dfs) == 1:
         df = dfs[0]
     else:
-        if np.all([len(dfs[i]) == len(dfs[i + 1]) and dfs[i].index == dfs[i + 1].index for i in range(len(dfs) - 1)]):
-            # same basins -> concatenate attributes
+        if len(reduce(lambda idx, other_idx: idx.intersection(other_idx), (df.index for df in dfs))) > 0:
+            # basin intersection is non-empty -> concatenate attributes, keep intersection of basins
             if np.any(np.unique(np.concatenate([df.columns for df in dfs]), return_counts=True)[1] > 1):
                 raise ValueError('If attributes dataframes refer to the same basins, no attribute name may occur '
                                  'multiple times across the different attributes files.')
             concat_axis = 1
-        elif np.all([
-                dfs[i].shape[1] == dfs[i + 1].shape[1] and dfs[i].columns == dfs[i + 1].columns
-                for i in range(len(dfs) - 1)
-        ]):
-            # same attributes -> concatenate basins
-            if np.any(np.unique(np.concatenate([df.index for df in dfs]), return_counts=True)[1] > 1):
-                raise ValueError('If attributes dataframes refer to different basins, no basin id name may occur '
-                                 'multiple times across the different attributes files.')
+        elif len(reduce(lambda cols, other_cols: cols.intersection(other_cols), (df.columns for df in dfs))) > 0:
+            # attributes intersection is non-empty -> concatenate basins, keep intersection of attributes
+            # no need to check for basin duplicates, since then we'd have had a non-empty basin intersection.
             concat_axis = 0
         else:
-            raise ValueError('Attribute files must have either same index or same columns.')
+            raise ValueError('Attribute files must overlap on either the index or the columns.')
 
-        df = pd.concat(dfs, axis=concat_axis)
+        df = pd.concat(dfs, axis=concat_axis, join='inner')
 
     if basins:
         if any(b not in df.index for b in basins):
@@ -151,6 +160,13 @@ def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
     -------
     pd.DataFrame
         Time-indexed DataFrame containing the time series data as stored in the netCDF file.
+
+    Raises
+    ------
+    FileNotFoundError
+        If no netCDF file exists for the specified basin.
+    ValueError
+        If more than one netCDF file is found for the specified basin.
     """
     files_dir = data_dir / "time_series"
     netcdf_files = list(files_dir.glob("*.nc4"))

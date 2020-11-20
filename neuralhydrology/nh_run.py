@@ -117,7 +117,7 @@ def finetune(config_file: Path = None, gpu: int = None):
     # load finetune config, extract base run dir, load base run config and combine with the finetune arguments
     temp_config = Config(config_file)
     config = Config(temp_config.base_run_dir / "config.yml")
-    config.force_update({'run_dir': None, 'experiment_name': None})
+    config.update_config({'run_dir': None, 'experiment_name': None})
     config.update_config(config_file)
     config.is_finetuning = True
 

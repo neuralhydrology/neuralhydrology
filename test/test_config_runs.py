@@ -31,7 +31,7 @@ def test_daily_regression(get_config: Fixture[Callable[[str], dict]], single_tim
         Daily forcings set to use.
     """
     config = get_config('daily_regression')
-    config.force_update({
+    config.update_config({
         'model': single_timescale_model,
         'dataset': daily_dataset['dataset'],
         'data_dir': config.data_dir / daily_dataset['dataset'],
@@ -101,7 +101,7 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
         Model to test.
     """
     config = get_config('multi_timescale_regression')
-    config.force_update(key='model', value=multi_timescale_model)
+    config.update_config({'model': multi_timescale_model})
 
     basin = '01022500'
     test_start_date, test_end_date = _get_test_start_end_dates(config)
