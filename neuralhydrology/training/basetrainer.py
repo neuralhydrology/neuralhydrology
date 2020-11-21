@@ -2,6 +2,7 @@ import logging
 import pickle
 import random
 import sys
+import math
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -198,11 +199,19 @@ class BaseTrainer(object):
         ``validate_every`` epochs. Model and optimizer state are saved after every ``save_weights_every`` epochs.
         """
         for epoch in range(self._epoch + 1, self._epoch + self.cfg.epochs + 1):
-            # set new learning rate
-            if epoch in self.cfg.learning_rate.keys():
-                LOGGER.info(f"Setting learning rate to {self.cfg.learning_rate[epoch]}")
-                for param_group in self.optimizer.param_groups:
-                    param_group["lr"] = self.cfg.learning_rate[epoch]
+            # Set new learning rate.
+            if self.cfg.learning_rate_drop_factor:
+                old_learning_rate = self._step_decay(epoch-1)
+                new_learning_rate = self._step_decay(epoch)
+                if old_learning_rate != new_learning_rate:
+                    LOGGER.info(f"Setting learning rate to {learning_rate}")
+                    for param_group in self.optimizer.param_groups:
+                        param_group["lr"] = self.learning_rate
+            else:
+                if epoch in self.cfg.learning_rate.keys():
+                    LOGGER.info(f"Setting learning rate to {self.cfg.learning_rate[epoch]}")
+                    for param_group in self.optimizer.param_groups:
+                        param_group["lr"] = self.cfg.learning_rate[epoch]
 
             self._train_epoch(epoch=epoch)
             avg_loss = self.experiment_logger.summarise()
@@ -375,3 +384,9 @@ class BaseTrainer(object):
 
     def _pre_model_hook(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         return data
+
+    def _step_decay(self, epoch):
+      lrate = self.cfg.learning_rate[0] * math.pow(self.cfg.learning_rate_drop_factor,
+          math.floor((1 + epoch) / self.cfg.learning_rate_epochs_drop))
+      return lrate
+

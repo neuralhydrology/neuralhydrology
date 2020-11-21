@@ -67,8 +67,10 @@ def start_run(config_file: Path, gpu: int = None):
     config = Config(config_file)
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
-    if gpu is not None:
+    if gpu is not None and gpu >= 0:
         config.device = f"cuda:{gpu}"
+    if gpu is not None and gpu < 0:
+        config.device = "cpu"
 
     start_training(config)
 
@@ -95,8 +97,10 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
     base_config.is_continue_training = True
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
-    if gpu is not None:
-        base_config.device = f"cuda:{gpu}"
+    if gpu is not None and gpu >= 0:
+        config.device = f"cuda:{gpu}"
+    if gpu is not None and gpu < 0:
+        config.device = "cpu"
 
     start_training(base_config)
 
@@ -122,8 +126,10 @@ def finetune(config_file: Path = None, gpu: int = None):
     config.is_finetuning = True
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
-    if gpu is not None:
+    if gpu is not None and gpu >= 0:
         config.device = f"cuda:{gpu}"
+    if gpu is not None and gpu < 0:
+        config.device = "cpu"
 
     start_training(config)
 
@@ -146,8 +152,10 @@ def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
     config = Config(run_dir / "config.yml")
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
-    if gpu is not None:
+    if gpu is not None and gpu >= 0:
         config.device = f"cuda:{gpu}"
+    if gpu is not None and gpu < 0:
+        config.device = "cpu"
 
     start_evaluation(cfg=config, run_dir=run_dir, epoch=epoch, period=period)
 
