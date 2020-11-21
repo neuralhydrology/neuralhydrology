@@ -12,6 +12,26 @@ from neuralhydrology.modelzoo.basemodel import BaseModel
 LOGGER = logging.getLogger(__name__)
 
 class Transformer(BaseModel):
+    """Transformer model class, which relies on PyTorch's TransformerEncoder class.
+
+    This class implements the encoder of a transformer network with a regression or probabilistic head. 
+
+    The model configuration is specified in the config file using the following options:
+    -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
+                                         This must be dividible by the number of self-attention heads (transformer_nheads).
+    -- transformer_positional_encoding_type : choices to "add" or "concatenate" positional encoding to other model inputs.
+    -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
+    -- seq_length : integer number of timesteps to treat in the input sequence.
+    -- transformer_nheads : number of self-attention heads.
+    -- transformer_dim_feedforward : dimension of the feed-fowrard networks between self-attention heads.
+    -- transformer_dropout: dropout in the feedforward networks between self-attention heads.
+    -- transformer_nlayers: number of stacked self-attention + feedforward layers.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    """
 
     def __init__(self, cfg: Dict):
         super(Transformer, self).__init__(cfg=cfg)
@@ -36,13 +56,10 @@ class Transformer(BaseModel):
         self.posistional_encoding_type = cfg.transformer_positional_encoding_type
         if self.posistional_encoding_type.lower() in ['concat', 'cat', 'concatenate']:
             self.encoder_dim = self.embedding_dim*2
-#            self.encoder_dim = input_size*2
         elif self.posistional_encoding_type.lower() in ['sum', 'add', 'addition']:
             self.encoder_dim = self.embedding_dim
-#            self.encoder_dim = input_size 
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {self.posistional_encoding_type}")
-#        self.pos_encoder = PositionalEncoding(d_model=input_size, 
         self.pos_encoder = PositionalEncoding(d_model=self.embedding_dim, 
                                               dropout=cfg.transformer_positional_dropout, 
                                               max_len=cfg.seq_length)
@@ -57,16 +74,16 @@ class Transformer(BaseModel):
                                                     dropout=cfg.transformer_dropout)
         self.encoder = nn.TransformerEncoder(encoder_layer=encoder_layers, 
                                              num_layers=cfg.transformer_nlayers,
-                                             norm=None) # why does normalization matter?
+                                             norm=None) 
 
-        # head (right now, this is our decoder)
+        # head (instead of a decoder)
         self.dropout = nn.Dropout(p=cfg.output_dropout)
         self.head = get_head(cfg=cfg, n_in=self.encoder_dim, n_out=self.output_size)
 
         # init weights and biases 
-        self.reset_parameters()
+        self._reset_parameters()
 
-    def reset_parameters(self): # why are we not resedding the encoder layer weights and biases?
+    def _reset_parameters(self): 
         initrange = 0.1
         for layer in self.encoder.layers:
             layer.linear1.weight.data.uniform_(-initrange, initrange)
@@ -77,6 +94,19 @@ class Transformer(BaseModel):
         self.embedding.bias.data.zero_()
 
     def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Dict[str, torch.Tensor]:
+        """Perform a forward pass on a transformer model without decoder.
+
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Dictionary, containing input features as key-value pairs.
+
+        Returns
+        -------
+        Dict[str, torch.Tensor]
+            Model outputs and intermediate states as a dictionary. 
+                - `y_hat`: model predictions of shape [batch size, sequence length, number of target variables].
+        """
         # transpose to [seq_length, batch_size, n_features]
         x_d = data['x_d'].transpose(0, 1)
 
@@ -125,8 +155,6 @@ class Transformer(BaseModel):
 
         # head
         pred = self.head(self.dropout(output.transpose(0, 1)))
-#        import matplotlib.pyplot as plt
-#        import pdb; pdb.set_trace()
 
         return pred
 
