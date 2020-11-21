@@ -124,22 +124,6 @@ class Transformer(BaseModel):
         else:
             pass
 
-#        import matplotlib.pyplot as plt
-#        import pickle as pkl
-#        with open('snow_basin_attention_weights.pkl', 'rb') as f:
-#            aow = pkl.load(f)
-#        fig, axes = plt.subplots(1+self.cfg['transformer_nheads'], 1)
-#        axes[0].plot(x_d[-1,:,[0,2,5,7]])
-#        for head in range(self.cfg['transformer_nheads']):
-#            axes[head+1].imshow(aow[:,:,head])
-#            axes[head+1].set_ylabel('Forcing History Time Step')
-#            axes[head+1].set_xlabel('Simulation Time Step')
-#            axes[head+1].set_title(f'Attention Head #{head}')
-#        fig.show()
-#        plt.tight_layout()
-#        import pdb; pdb.set_trace()
-
-
         # embedding
         x_d = self.embedding(x_d) * math.sqrt(self.embedding_dim)        
         x_d = self.pos_encoder(x_d, self.posistional_encoding_type)
