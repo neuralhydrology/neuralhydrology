@@ -398,6 +398,14 @@ class Config(object):
             raise ValueError("No learning rate specified in the config (.yml).")
 
     @property
+    def learning_rate_drop_factor(self) -> float:
+        return self._cfg.get("learning_rate_drop_factor", None)
+
+    @property
+    def learning_rate_epochs_drop(self) -> int:
+        return self._cfg.get("learning_rate_epochs_drop", None)
+
+    @property
     def log_interval(self) -> int:
         return self._cfg.get("log_interval", 10)
 
