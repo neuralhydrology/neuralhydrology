@@ -9,6 +9,7 @@ from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
 from neuralhydrology.modelzoo.gru import GRU
 from neuralhydrology.modelzoo.odelstm import ODELSTM
 from neuralhydrology.modelzoo.mtslstm import MTSLSTM
+from neuralhydrology.modelzoo.transformer import Transformer
 from neuralhydrology.utils.config import Config
 
 SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru"]
@@ -49,6 +50,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = MTSLSTM(cfg=cfg)
     elif cfg.model == "odelstm":
         model = ODELSTM(cfg=cfg)
+    elif cfg.model == "transformer":
+        model = Transformer(cfg=cfg)
     else:
         raise NotImplementedError(f"{cfg.model} not implemented or not linked in `get_model()`")
 

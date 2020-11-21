@@ -164,7 +164,7 @@ class Config(object):
             if k not in property_names and k not in Config._deprecated_keys and k not in Config._metadata_keys
         ]
         if unknown_keys:
-            raise ValueError(f'{unknown_keys} are no recognized config keys.')
+            raise ValueError(f'{unknown_keys} are not recognized config keys.')
 
     @staticmethod
     def _parse_config(cfg: dict) -> dict:
@@ -543,6 +543,38 @@ class Config(object):
     @property
     def seed(self) -> int:
         return self._cfg.get("seed", None)
+
+    @property
+    def transformer_nlayers(self) -> int:
+        return self._cfg.get("transformer_nlayers", None)
+
+    @property
+    def transformer_positional_encoding_type(self) -> str:
+        return self._cfg.get("transformer_positional_encoding_type", None)
+
+    @property
+    def transformer_embedding_dimension(self) -> int:
+        return self._cfg.get("transformer_embedding_dimension", None)
+
+    @property
+    def transformer_activation(self) -> str:
+        return self._cfg.get("transformer_activation", None)
+
+    @property
+    def transformer_dim_feedforward(self) -> int:
+        return self._cfg.get("transformer_dim_feedforward", None)
+
+    @property
+    def transformer_positional_dropout(self) -> int:
+        return self._cfg.get("transformer_positional_dropout", None)
+
+    @property
+    def transformer_dropout(self) -> float:
+        return self._cfg.get("transformer_dropout", None)
+
+    @property
+    def transformer_nheads(self) -> float:
+        return self._cfg.get("transformer_nheads", None)
 
     @seed.setter
     def seed(self, seed: int):

@@ -52,7 +52,7 @@ metrics:
 
 # --- Model configuration --------------------------------------------------------------------------
 
-# base model type [cudalstm, customlstm, ealstm, embcudalstm, mtslstm, gru]
+# base model type [cudalstm, customlstm, ealstm, embcudalstm, mtslstm, gru, transformer]
 # (has to match the if statement in modelzoo/__init__.py)
 model: cudalstm
 
@@ -99,6 +99,32 @@ ode_num_unfolds: 4
 # lowest frequency that will be used to randomly aggregate the first slice of the input sequence.
 # See ODELSTM for more details on the frequency randomization.
 ode_random_freq_lower_bound: 6D
+
+# ----> Transformer settings <----
+
+# number of layers in transformer encoding:
+transformer_nlayers: 4
+
+# type of positional encoding (sum or concatenate)
+transformer_positional_encoding_type: add
+
+# dimension of output from the embedding layer
+transformer_embedding_dimension: 16
+
+# activation function in each encoding layer
+transformer_activation: tanh
+
+# dimension of feedfoarward in each encoding layer
+transformer_dim_feedforward: 32
+
+# dropout applied only to the positional encoding
+transformer_positional_dropout: 0.0
+
+# dropout used in the encoding layers
+transformer_dropout: 0
+
+# number of transformer heads
+transformer_nheads: 4
 
 # ----> General settings <----
 
