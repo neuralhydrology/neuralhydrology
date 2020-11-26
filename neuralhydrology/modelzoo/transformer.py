@@ -45,13 +45,13 @@ class Transformer(BaseModel):
                                    out_features=self.embedding_dim)
 
         # positional encoder
-        self.posistional_encoding_type = cfg.transformer_positional_encoding_type
-        if self.posistional_encoding_type.lower() in ['concat', 'cat', 'concatenate']:
+        self.positional_encoding_type = cfg.transformer_positional_encoding_type
+	if self.positional_encoding_type.lower() == 'concatenate':
             self.encoder_dim = self.embedding_dim*2
-        elif self.posistional_encoding_type.lower() in ['sum', 'add', 'addition']:
+        elif self.positional_encoding_type.lower() == 'add':
             self.encoder_dim = self.embedding_dim
         else:
-            raise RuntimeError(f"Unrecognized positional encoding type: {self.posistional_encoding_type}")
+            raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
         self.pos_encoder = PositionalEncoding(d_model=self.embedding_dim, 
                                               dropout=cfg.transformer_positional_dropout, 
                                               max_len=cfg.seq_length)
@@ -118,11 +118,11 @@ class Transformer(BaseModel):
 
         # embedding
         x_d = self.embedding(x_d) * math.sqrt(self.embedding_dim)        
-        x_d = self.pos_encoder(x_d, self.posistional_encoding_type)
+        x_d = self.pos_encoder(x_d, self.positional_encoding_type)
 
         # mask past values
         if self.mask is None or self.mask.size(0) != len(x_d):
-            mask = (torch.triu(torch.ones(len(x_d), len(x_d))) == 1).transpose(0, 1)
+            mask = (torch.tril(torch.ones(len(x_d), len(x_d))) == 1)
             mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
             self.mask = mask.to(x_d.device)
 
@@ -149,9 +149,9 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x, pos_type):
-        if pos_type.lower() in ['concat', 'cat', 'concatenate']:
+        if pos_type.lower() == 'concatenate':
             x = torch.cat((x, self.pe[:x.size(0), :].repeat(1, x.size(1), 1)), 2) 
-        elif pos_type.lower() in ['sum', 'add', 'addition']:
+        elif pos_type.lower() == 'add':
             x = x + self.pe[:x.size(0), :]
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
