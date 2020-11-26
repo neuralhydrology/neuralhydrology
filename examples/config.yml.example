@@ -114,7 +114,7 @@ transformer_embedding_dimension: 16
 # activation function in each encoding layer
 transformer_activation: tanh
 
-# dimension of feedfoarward in each encoding layer
+# dimension of feed-forward in each encoding layer
 transformer_dim_feedforward: 32
 
 # dropout applied only to the positional encoding
@@ -293,7 +293,6 @@ evolving_attributes:
 
 # whether to use basin id one hot encoding as (additional) static input
 use_basin_id_encoding: False
-
 
 
 
