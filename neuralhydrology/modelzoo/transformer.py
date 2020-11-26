@@ -16,7 +16,7 @@ class Transformer(BaseModel):
     This class implements the encoder of a transformer network with a regression or probabilistic head. 
     The model configuration is specified in the config file using the following options:
     -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
-                                         This must be dividible by the number of self-attention heads (transformer_nheads).
+                                         This must be divisible by the number of self-attention heads (transformer_nheads).
     -- transformer_positional_encoding_type : choices to "add" or "concatenate" positional encoding to other model inputs.
     -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
     -- seq_length : integer number of timesteps to treat in the input sequence.
@@ -156,4 +156,3 @@ class PositionalEncoding(nn.Module):
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
         return self.dropout(x)
-
