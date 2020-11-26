@@ -21,7 +21,7 @@ class Transformer(BaseModel):
     -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
     -- seq_length : integer number of timesteps to treat in the input sequence.
     -- transformer_nheads : number of self-attention heads.
-    -- transformer_dim_feedforward : dimension of the feed-fowrard networks between self-attention heads.
+    -- transformer_dim_feedforward : dimension of the feed-forward networks between self-attention heads.
     -- transformer_dropout: dropout in the feedforward networks between self-attention heads.
     -- transformer_nlayers: number of stacked self-attention + feedforward layers.
 
