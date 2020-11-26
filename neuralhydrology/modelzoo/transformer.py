@@ -85,7 +85,7 @@ class Transformer(BaseModel):
         self.embedding.weight.data.uniform_(-initrange, initrange)
         self.embedding.bias.data.zero_()
 
-    def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Dict[str, torch.Tensor]:
+    def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Perform a forward pass on a transformer model without decoder.
 
         Parameters
