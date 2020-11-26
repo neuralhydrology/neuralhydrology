@@ -106,13 +106,10 @@ ode_random_freq_lower_bound: 6D
 transformer_nlayers: 4
 
 # type of positional encoding (sum or concatenate)
-transformer_positional_encoding_type: add
+transformer_positional_encoding_type: sum
 
 # dimension of output from the embedding layer
 transformer_embedding_dimension: 16
-
-# activation function in each encoding layer
-transformer_activation: tanh
 
 # dimension of feedfoarward in each encoding layer
 transformer_dim_feedforward: 32

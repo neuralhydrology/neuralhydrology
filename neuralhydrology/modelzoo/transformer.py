@@ -17,7 +17,7 @@ class Transformer(BaseModel):
     The model configuration is specified in the config file using the following options:
     -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
                                          This must be dividible by the number of self-attention heads (transformer_nheads).
-    -- transformer_positional_encoding_type : choices to "add" or "concatenate" positional encoding to other model inputs.
+    -- transformer_positional_encoding_type : choices to "sum" or "concatenate" positional encoding to other model inputs.
     -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
     -- seq_length : integer number of timesteps to treat in the input sequence.
     -- transformer_nheads : number of self-attention heads.
@@ -48,7 +48,7 @@ class Transformer(BaseModel):
         self.positional_encoding_type = cfg.transformer_positional_encoding_type
 	if self.positional_encoding_type.lower() == 'concatenate':
             self.encoder_dim = self.embedding_dim*2
-        elif self.positional_encoding_type.lower() == 'add':
+        elif self.positional_encoding_type.lower() == 'sum':
             self.encoder_dim = self.embedding_dim
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
@@ -151,7 +151,7 @@ class PositionalEncoding(nn.Module):
     def forward(self, x, pos_type):
         if pos_type.lower() == 'concatenate':
             x = torch.cat((x, self.pe[:x.size(0), :].repeat(1, x.size(1), 1)), 2) 
-        elif pos_type.lower() == 'add':
+        elif pos_type.lower() == 'sum':
             x = x + self.pe[:x.size(0), :]
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")

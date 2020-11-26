@@ -18,7 +18,7 @@ def _get_args() -> dict:
     parser.add_argument('--run-dir', type=str)
     parser.add_argument('--epoch', type=int, help="Epoch, of which the model should be evaluated")
     parser.add_argument('--period', type=str, choices=["train", "validation", "test"], default="test")
-    parser.add_argument('--gpu', type=int, help="GPU id to use (see nvidia-smi). Does override config argument.")
+    parser.add_argument('--gpu', type=int, help="GPU id to use (see nvidia-smi). Will override config argument 'device'. A value <0 indicates CPU.")
     args = vars(parser.parse_args())
 
     if (args["mode"] in ["train", "finetune"]) and (args["config_file"] is None):
@@ -60,7 +60,7 @@ def start_run(config_file: Path, gpu: int = None):
     config_file : Path
         Path to a configuration file (.yml), defining the settings for the specific run.
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'.
+        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
 
     """
 
@@ -85,7 +85,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
     config_file : Path, optional
         Path to an additional config file. Each config argument in this file will overwrite the original run config.
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'.
+        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
 
     """
     # load config from base run and overwrite all elements with an optional new config
@@ -115,7 +115,7 @@ def finetune(config_file: Path = None, gpu: int = None):
         The config file for finetuning must contain the argument `base_run_dir`, pointing to the folder of the 
         pre-trained model.
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'.
+        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
 
     """
     # load finetune config, extract base run dir, load base run config and combine with the finetune arguments
@@ -146,7 +146,7 @@ def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
     epoch : int, optional
         Define a specific epoch to use. By default, the weights of the last epoch are used.  
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'.
+        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
 
     """
     config = Config(run_dir / "config.yml")

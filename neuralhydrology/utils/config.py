@@ -554,35 +554,31 @@ class Config(object):
 
     @property
     def transformer_nlayers(self) -> int:
-        return self._cfg.get("transformer_nlayers", None)
+        return self._get_value_verbose("transformer_nlayers")
 
     @property
     def transformer_positional_encoding_type(self) -> str:
-        return self._cfg.get("transformer_positional_encoding_type", None)
+        return self._get_value_verbose("transformer_positional_encoding_type")
 
     @property
     def transformer_embedding_dimension(self) -> int:
-        return self._cfg.get("transformer_embedding_dimension", None)
-
-    @property
-    def transformer_activation(self) -> str:
-        return self._cfg.get("transformer_activation", None)
+        return self._get_value_verbose("transformer_embedding_dimension")
 
     @property
     def transformer_dim_feedforward(self) -> int:
-        return self._cfg.get("transformer_dim_feedforward", None)
+        return self._get_value_verbose("transformer_dim_feedforward")
 
     @property
     def transformer_positional_dropout(self) -> int:
-        return self._cfg.get("transformer_positional_dropout", None)
+        return self._get_value_verbose("transformer_positional_dropout")
 
     @property
     def transformer_dropout(self) -> float:
-        return self._cfg.get("transformer_dropout", None)
+        return self._get_value_verbose("transformer_dropout")
 
     @property
     def transformer_nheads(self) -> float:
-        return self._cfg.get("transformer_nheads", None)
+        return self._get_value_verbose("transformer_nheads")
 
     @seed.setter
     def seed(self, seed: int):
