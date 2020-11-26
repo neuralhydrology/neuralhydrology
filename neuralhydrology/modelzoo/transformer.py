@@ -13,7 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 class Transformer(BaseModel):
     """Transformer model class, which relies on PyTorch's TransformerEncoder class.
-    This class implements the encoder of a transformer network with a regression or probabilistic head. 
+    This class implements the encoder of a transformer network which can be used for regression.
     The model configuration is specified in the config file using the following options:
     -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
                                          This must be divisible by the number of self-attention heads (transformer_nheads).
