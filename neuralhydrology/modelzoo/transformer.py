@@ -13,9 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 class Transformer(BaseModel):
     """Transformer model class, which relies on PyTorch's TransformerEncoder class.
-
     This class implements the encoder of a transformer network with a regression or probabilistic head. 
-
     The model configuration is specified in the config file using the following options:
     -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
                                          This must be dividible by the number of self-attention heads (transformer_nheads).
@@ -36,16 +34,10 @@ class Transformer(BaseModel):
     def __init__(self, cfg: Dict):
         super(Transformer, self).__init__(cfg=cfg)
 
-        if cfg.embedding_hiddens:
-            LOGGER.warning("## Warning: Embedding settings are ignored. Use EmbCudaLSTM for embeddings")
-
         input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.hydroatlas_attributes +
                          cfg.static_attributes)
         if cfg.use_basin_id_encoding:
             input_size += cfg.number_of_basins
-
-        if cfg.head.lower() == "umal":
-            input_size += 1
 
         # embedding 
         self.embedding_dim = cfg.transformer_embedding_dimension
