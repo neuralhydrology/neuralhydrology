@@ -43,6 +43,36 @@ General experiment configurations
 -  ``test_end_date``: End date of the validation period (last day of
    discharge) in the format ``DD/MM/YYYY``. Can also be 
    a list of dates (similar to train period specifications).
+-  ``per_basin_train_periods_file``: Alternatively to specifying a global
+   train period for all basins (using ``train_start_date`` and ``train_end_date``)
+   it is also possible to use individual periods for each basin. For that to work
+   you have to create a dictionary with one key per basin id. For each basin id,
+   the dictionary contains two keys ``start_dates`` and ``end_dates``, which
+   contain a list of pandas TimeStamps that indicate the start and end dates
+   of the train periods. ``start_dates`` and ``end_dates`` have to be a list,
+   even in case of a single period per basin (see example below). Then use the
+   pickle library, to store this dictionary to disk and use the path to this
+   pickle file as the value for this config argument.
+
+.. code-block::
+
+   import pandas as pd
+
+   dates = {
+        'basin_a': {
+            'start_dates': [pd.to_datetime('01/01/1980')],
+            'end_dates': [pd.to_datetime('31/12/1999')]
+        },
+        'basin_b': {
+            'start_dates': [pd.to_datetime('01/01/1980'), pd.to_datetime('01/01/2000')],
+            'end_dates': [pd.to_datetime('31/12/1990'), pd.to_datetime('01/01/2005')]
+        }
+    }
+
+-  ``per_basin_validation_periods_file``: Same as ``per_basin_train_periods_file``
+   but indicating individual periods that are used as validation periods.
+-  ``per_basin_test_periods_file``: Same as ``per_basin_train_periods_file``
+   but indicating individual periods that are used as test periods.
 
 -  ``seed``: Fixed random seed. If empty, a random seed is generated for
    this run.
