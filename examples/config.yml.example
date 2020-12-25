@@ -108,7 +108,7 @@ transformer_nlayers: 4
 # type of positional encoding (sum or concatenate)
 transformer_positional_encoding_type: sum
 
-# dimension of feedfoarward in each encoding layer
+# dimension of feedforward in each encoding layer
 transformer_dim_feedforward: 32
 
 # dropout applied only to the positional encoding
