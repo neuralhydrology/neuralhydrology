@@ -118,7 +118,7 @@ These are used if ``model == mtslstm``.
    can be used to configure hidden and cell state transfer.
 
 Transformer settings
-~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~
 
 These are used if ``model == transformer``.
 
