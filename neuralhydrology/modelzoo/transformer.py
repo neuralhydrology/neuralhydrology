@@ -13,7 +13,7 @@ LOGGER = logging.getLogger(__name__)
 
 class Transformer(BaseModel):
     """Transformer model class, which relies on PyTorch's TransformerEncoder class.
-    This class implements the encoder of a transformer network with a regression or probabilistic head. 
+    This class implements the encoder of a transformer network which can be used for regression.
     The model configuration is specified in the config file using the following options:
     -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
                                          This must be dividible by the number of self-attention heads (transformer_nheads).
@@ -21,7 +21,7 @@ class Transformer(BaseModel):
     -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
     -- seq_length : integer number of timesteps to treat in the input sequence.
     -- transformer_nheads : number of self-attention heads.
-    -- transformer_dim_feedforward : dimension of the feed-fowrard networks between self-attention heads.
+    -- transformer_dim_feedforward : dimension of the feed-forward networks between self-attention heads.
     -- transformer_dropout: dropout in the feedforward networks between self-attention heads.
     -- transformer_nlayers: number of stacked self-attention + feedforward layers.
 
@@ -85,7 +85,7 @@ class Transformer(BaseModel):
         self.embedding.weight.data.uniform_(-initrange, initrange)
         self.embedding.bias.data.zero_()
 
-    def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Dict[str, torch.Tensor]:
+    def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Perform a forward pass on a transformer model without decoder.
 
         Parameters
@@ -177,4 +177,3 @@ class PositionalEncoding(nn.Module):
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
         return self.dropout(x)
-
