@@ -1,5 +1,5 @@
-CudaLSTM
-========
+Transformer
+===========
 
 .. automodule:: neuralhydrology.modelzoo.transformer
    :members:
