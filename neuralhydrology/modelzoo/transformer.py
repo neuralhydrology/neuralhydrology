@@ -6,6 +6,7 @@ import math
 import torch
 import torch.nn as nn
 
+from neuralhydrology.modelzoo.fc import FC
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
 
@@ -44,7 +45,7 @@ class Transformer(BaseModel):
         input_size = len(cfg.dynamic_inputs + cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
         if cfg.use_basin_id_encoding:
             input_size += cfg.number_of_basins
-        self.embedding_net = fc.FC(cfg=cfg, input_size=input_size)
+        self.embedding_net = FC(cfg=cfg, input_size=input_size)
         self._embedding_dim = cfg.embedding_hiddens[-1]
 
         # positional encoder
