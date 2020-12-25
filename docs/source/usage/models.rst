@@ -54,7 +54,7 @@ ODE-LSTM
 be queried to return predictions for any arbitrary time step.
 
 Transformer
---------
+-----------
 :py:class:`neuralhydrology.modelzoo.transformer.Transformer` is the encoding portion of a standard transformer network with self-attention. 
 This uses the standard PyTorch TransformerEncoder implementation. All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed 
 to the network at each time step. Instead of a decoder, this model uses a standard head (e.g., linear). 
