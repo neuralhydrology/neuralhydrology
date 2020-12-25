@@ -40,27 +40,27 @@ class Transformer(BaseModel):
             input_size += cfg.number_of_basins
 
         # embedding 
-        self.embedding_dim = cfg.transformer_embedding_dimension
+        self._embedding_dim = cfg.transformer_embedding_dimension
         self.embedding = nn.Linear(in_features=input_size, 
-                                   out_features=self.embedding_dim)
+                                   out_features=self._embedding_dim)
 
         # positional encoder
         self.positional_encoding_type = cfg.transformer_positional_encoding_type
         if self.positional_encoding_type.lower() == 'concatenate':
-          self.encoder_dim = self.embedding_dim*2
+          self._encoder_dim = self._embedding_dim*2
         elif self.positional_encoding_type.lower() == 'sum':
-          self.encoder_dim = self.embedding_dim
+          self._encoder_dim = self._embedding_dim
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
-        self.pos_encoder = PositionalEncoding(embedding_dim=self.embedding_dim, 
+        self.pos_encoder = PositionalEncoding(embedding_dim=self._embedding_dim, 
                                               dropout=cfg.transformer_positional_dropout, 
                                               max_len=cfg.seq_length)
 
         # positional mask
-        self.mask = None
+        self._mask = None
 
         # encoder
-        encoder_layers = nn.TransformerEncoderLayer(d_model=self.encoder_dim, 
+        encoder_layers = nn.TransformerEncoderLayer(d_model=self._encoder_dim, 
                                                     nhead=cfg.transformer_nheads, 
                                                     dim_feedforward=cfg.transformer_dim_feedforward, 
                                                     dropout=cfg.transformer_dropout)
@@ -70,7 +70,7 @@ class Transformer(BaseModel):
 
         # head (instead of a decoder)
         self.dropout = nn.Dropout(p=cfg.output_dropout)
-        self.head = get_head(cfg=cfg, n_in=self.encoder_dim, n_out=self.output_size)
+        self.head = get_head(cfg=cfg, n_in=self._encoder_dim, n_out=self.output_size)
 
         # init weights and biases 
         self._reset_parameters()
@@ -117,17 +117,17 @@ class Transformer(BaseModel):
             pass
 
         # embedding
-        x_d = self.embedding(x_d) * math.sqrt(self.embedding_dim)        
+        x_d = self.embedding(x_d) * math.sqrt(self._embedding_dim)        
         x_d = self.pos_encoder(x_d, self.positional_encoding_type)
 
         # mask past values
-        if self.mask is None or self.mask.size(0) != len(x_d):
+        if self._mask is None or self._mask.size(0) != len(x_d):
             mask = (torch.tril(torch.ones(len(x_d), len(x_d))) == 1)
             mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
-            self.mask = mask.to(x_d.device)
+            self._mask = mask.to(x_d.device)
 
         # encoding
-        output = self.encoder(x_d, self.mask)
+        output = self.encoder(x_d, self._mask)
 
         # head
         pred = self.head(self.dropout(output.transpose(0, 1)))
