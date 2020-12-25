@@ -46,13 +46,13 @@ class Transformer(BaseModel):
 
         # positional encoder
         self.positional_encoding_type = cfg.transformer_positional_encoding_type
-	if self.positional_encoding_type.lower() == 'concatenate':
-            self.encoder_dim = self.embedding_dim*2
+        if self.positional_encoding_type.lower() == 'concatenate':
+          self.encoder_dim = self.embedding_dim*2
         elif self.positional_encoding_type.lower() == 'sum':
-            self.encoder_dim = self.embedding_dim
+          self.encoder_dim = self.embedding_dim
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
-        self.pos_encoder = PositionalEncoding(d_model=self.embedding_dim, 
+        self.pos_encoder = PositionalEncoding(embedding_dim=self.embedding_dim, 
                                               dropout=cfg.transformer_positional_dropout, 
                                               max_len=cfg.seq_length)
 
@@ -135,20 +135,41 @@ class Transformer(BaseModel):
         return pred
 
 class PositionalEncoding(nn.Module):
+    """Class to create a positional encoding vector for time series inputs to a model without an explicit time dimension.
+    This class implements a sin/cos type embedding vector with a specified maximum length. Adapted from the PyTorch 
+    example here: https://pytorch.org/tutorials/beginner/transformer_tutorial.html 
+    
+    Parameters
+    ----------
+    embedding_dim : int
+        Dimension of the model input, which is typically output of an embedding layer.
 
-    def __init__(self, d_model, dropout=0.1, max_len=5000):
+    dropout : float
+        Dropout rate [0, 1) applied to the embedding vector.
+
+    max_len : int
+        Maximum length of positional encoding. Talk about restrctions on max length.
+    """
+
+    def __init__(self, embedding_dim, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
-        pe = torch.zeros(max_len, int(np.ceil(d_model/2)*2))
+        pe = torch.zeros(max_len, int(np.ceil(embedding_dim/2)*2))
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * (-math.log(max_len*2) / d_model))
+        div_term = torch.exp(torch.arange(0, embedding_dim, 2).float() * (-math.log(max_len*2) / embedding_dim))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe[:,:d_model].unsqueeze(0).transpose(0, 1)
+        pe = pe[:,:embedding_dim].unsqueeze(0).transpose(0, 1)
         self.register_buffer('pe', pe)
 
     def forward(self, x, pos_type):
+        """
+
+        Returns
+        -------
+        Finish this. 
+        """
         if pos_type.lower() == 'concatenate':
             x = torch.cat((x, self.pe[:x.size(0), :].repeat(1, x.size(1), 1)), 2) 
         elif pos_type.lower() == 'sum':
