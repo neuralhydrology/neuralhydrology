@@ -14,9 +14,9 @@ LOGGER = logging.getLogger(__name__)
 class Transformer(BaseModel):
     """Transformer model class, which relies on PyTorch's TransformerEncoder class.
     This class implements the encoder of a transformer network which can be used for regression.
+    It is necessary to use an embedding network on all inputs, and the final embedding dimension (embedding_hiddens) 
+    must be divisible by the number of transformer heads (transformer_nheads).
     The model configuration is specified in the config file using the following options:
-    -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
-                                         This must be dividible by the number of self-attention heads (transformer_nheads).
     -- transformer_positional_encoding_type : choices to "sum" or "concatenate" positional encoding to other model inputs.
     -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
     -- seq_length : integer number of timesteps to treat in the input sequence.
@@ -34,15 +34,18 @@ class Transformer(BaseModel):
     def __init__(self, cfg: Dict):
         super(Transformer, self).__init__(cfg=cfg)
 
-        input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.hydroatlas_attributes +
-                         cfg.static_attributes)
+        # embedding net before transformer
+        # this is necessary to ensure that the number of inputs into the self-attention layer
+        # is divisible by the number of heads  
+        if not cfg.embedding_hiddens:
+            raise ValueError('Transformer requires config argument embedding_hiddens.')
+        if cfg.embedding_hiddens[-1] % cfg.transformer_nheads != 0:
+            raise ValueError("Embedding dimension must be divisible by number of transformer heads.")
+        input_size = len(cfg.dynamic_inputs + cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
         if cfg.use_basin_id_encoding:
             input_size += cfg.number_of_basins
-
-        # embedding 
-        self._embedding_dim = cfg.transformer_embedding_dimension
-        self.embedding = nn.Linear(in_features=input_size, 
-                                   out_features=self._embedding_dim)
+        self.embedding_net = fc.FC(cfg=cfg, input_size=input_size)
+        self._embedding_dim = cfg.embedding_hiddens[-1]
 
         # positional encoder
         self.positional_encoding_type = cfg.transformer_positional_encoding_type
@@ -82,8 +85,7 @@ class Transformer(BaseModel):
             layer.linear1.bias.data.zero_()
             layer.linear2.weight.data.uniform_(-initrange, initrange)
             layer.linear2.bias.data.zero_()
-        self.embedding.weight.data.uniform_(-initrange, initrange)
-        self.embedding.bias.data.zero_()
+        self.embedding_net._reset_parameters()
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Perform a forward pass on a transformer model without decoder.
@@ -117,7 +119,7 @@ class Transformer(BaseModel):
             pass
 
         # embedding
-        x_d = self.embedding(x_d) * math.sqrt(self._embedding_dim)        
+        x_d = self.embedding_net(x_d) * math.sqrt(self._embedding_dim)        
         x_d = self.pos_encoder(x_d, self.positional_encoding_type)
 
         # mask past values
@@ -151,7 +153,7 @@ class PositionalEncoding(nn.Module):
         Maximum length of positional encoding. Talk about restrctions on max length.
     """
 
-    def __init__(self, embedding_dim, dropout=0.1, max_len=5000):
+    def __init__(self, embedding_dim, dropout, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 

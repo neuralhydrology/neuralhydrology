@@ -81,7 +81,7 @@ embedding_dropout: 0.0
 
 # ----> MTSLSTM settings <----
 
-# Use an individual LSTM per frequencies (False) vs. use a single shared LSTM for all frequencies (True)
+# use an individual LSTM per frequencies (False) vs. use a single shared LSTM for all frequencies (True)
 shared_mtslstm: False
 
 # how to transfer states from lower to higher frequencies. One of [identity, linear, None].
@@ -107,9 +107,6 @@ transformer_nlayers: 4
 
 # type of positional encoding (sum or concatenate)
 transformer_positional_encoding_type: sum
-
-# dimension of output from the embedding layer
-transformer_embedding_dimension: 16
 
 # dimension of feedfoarward in each encoding layer
 transformer_dim_feedforward: 32

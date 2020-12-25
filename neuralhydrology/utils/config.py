@@ -398,14 +398,6 @@ class Config(object):
             raise ValueError("No learning rate specified in the config (.yml).")
 
     @property
-    def learning_rate_drop_factor(self) -> float:
-        return self._cfg.get("learning_rate_drop_factor", None)
-
-    @property
-    def learning_rate_epochs_drop(self) -> int:
-        return self._cfg.get("learning_rate_epochs_drop", None)
-
-    @property
     def log_interval(self) -> int:
         return self._cfg.get("log_interval", 10)
 
@@ -559,10 +551,6 @@ class Config(object):
     @property
     def transformer_positional_encoding_type(self) -> str:
         return self._get_value_verbose("transformer_positional_encoding_type")
-
-    @property
-    def transformer_embedding_dimension(self) -> int:
-        return self._get_value_verbose("transformer_embedding_dimension")
 
     @property
     def transformer_dim_feedforward(self) -> int:

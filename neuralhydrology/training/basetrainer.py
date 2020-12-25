@@ -199,19 +199,10 @@ class BaseTrainer(object):
         ``validate_every`` epochs. Model and optimizer state are saved after every ``save_weights_every`` epochs.
         """
         for epoch in range(self._epoch + 1, self._epoch + self.cfg.epochs + 1):
-            # Set new learning rate.
-            if self.cfg.learning_rate_drop_factor:
-                old_learning_rate = self._step_decay(epoch-1)
-                new_learning_rate = self._step_decay(epoch)
-                if old_learning_rate != new_learning_rate:
-                    LOGGER.info(f"Setting learning rate to {learning_rate}")
-                    for param_group in self.optimizer.param_groups:
-                        param_group["lr"] = self.learning_rate
-            else:
-                if epoch in self.cfg.learning_rate.keys():
-                    LOGGER.info(f"Setting learning rate to {self.cfg.learning_rate[epoch]}")
-                    for param_group in self.optimizer.param_groups:
-                        param_group["lr"] = self.cfg.learning_rate[epoch]
+            if epoch in self.cfg.learning_rate.keys():
+                LOGGER.info(f"Setting learning rate to {self.cfg.learning_rate[epoch]}")
+                for param_group in self.optimizer.param_groups:
+                    param_group["lr"] = self.cfg.learning_rate[epoch]
 
             self._train_epoch(epoch=epoch)
             avg_loss = self.experiment_logger.summarise()
