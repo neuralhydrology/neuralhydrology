@@ -14,17 +14,20 @@ LOGGER = logging.getLogger(__name__)
 
 class Transformer(BaseModel):
     """Transformer model class, which relies on PyTorch's TransformerEncoder class.
+
     This class implements the encoder of a transformer network which can be used for regression.
-    It is necessary to use an embedding network on all inputs, and the final embedding dimension (embedding_hiddens) 
-    must be divisible by the number of transformer heads (transformer_nheads).
+    It is necessary to use an embedding network on all inputs, and the final embedding dimension (``embedding_hiddens``) 
+    must be divisible by the number of transformer heads (``transformer_nheads``).
     The model configuration is specified in the config file using the following options:
-    -- transformer_positional_encoding_type : choices to "sum" or "concatenate" positional encoding to other model inputs.
-    -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
-    -- seq_length : integer number of timesteps to treat in the input sequence.
-    -- transformer_nheads : number of self-attention heads.
-    -- transformer_dim_feedforward : dimension of the feed-forward networks between self-attention heads.
-    -- transformer_dropout: dropout in the feedforward networks between self-attention heads.
-    -- transformer_nlayers: number of stacked self-attention + feedforward layers.
+
+    * ``transformer_positional_encoding_type``: choices to "sum" or "concatenate" positional encoding to other model
+      inputs.
+    * ``transformer_positional_dropout``: fraction of dropout applied to the positional encoding.
+    * ``seq_length``: integer number of timesteps to treat in the input sequence.
+    * ``transformer_nheads``: number of self-attention heads.
+    * ``transformer_dim_feedforward``: dimension of the feed-forward networks between self-attention heads.
+    * ``transformer_dropout``: dropout in the feedforward networks between self-attention heads.
+    * ``transformer_nlayers``: number of stacked self-attention + feedforward layers.
 
     Parameters
     ----------

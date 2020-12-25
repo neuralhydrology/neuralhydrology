@@ -58,15 +58,15 @@ Transformer
 :py:class:`neuralhydrology.modelzoo.transformer.Transformer` is the encoding portion of a standard transformer network with self-attention. 
 This uses the standard PyTorch TransformerEncoder implementation. All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed 
 to the network at each time step. Instead of a decoder, this model uses a standard head (e.g., linear). 
-The model requires the following hyperparamters specified in the config file: 
-``transformer_embedding_dimension`` : int representing the dimension of the input embedding space. 
-This must be dividible by the number of self-attention heads (transformer_nheads).
-``transformer_positional_encoding_type``: choices to "add" or "concatenate" positional encoding to other model inputs.
-``transformer_positional_dropout``: fraction of dropout applied to the positional encoding.
-``transformer_nheads``: number of self-attention heads.
-``transformer_dim_feedforward``: dimension of the feed-fowrard networks between self-attention heads.
-``transformer_dropout``: dropout in the feedforward networks between self-attention heads.
-``transformer_nlayers``: number of stacked self-attention + feedforward layers.
+The model requires the following hyperparameters specified in the config file: 
+
+* ``transformer_embedding_dimension``: int representing the dimension of the input embedding space. This must be divisible by the number of self-attention heads (transformer_nheads).
+* ``transformer_positional_encoding_type``: choices to "add" or "concatenate" positional encoding to other model inputs.
+* ``transformer_positional_dropout``: fraction of dropout applied to the positional encoding.
+* ``transformer_nheads``: number of self-attention heads.
+* ``transformer_dim_feedforward``: dimension of the feedforward networks between self-attention heads.
+* ``transformer_dropout``: dropout in the feedforward networks between self-attention heads.
+* ``transformer_nlayers``: number of stacked self-attention + feedforward layers.
 
 
 Implementing a new model
