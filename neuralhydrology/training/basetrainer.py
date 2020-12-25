@@ -2,7 +2,6 @@ import logging
 import pickle
 import random
 import sys
-import math
 from datetime import datetime
 from pathlib import Path
 from typing import Dict
@@ -375,9 +374,4 @@ class BaseTrainer(object):
 
     def _pre_model_hook(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         return data
-
-    def _step_decay(self, epoch):
-      lrate = self.cfg.learning_rate[0] * math.pow(self.cfg.learning_rate_drop_factor,
-          math.floor((1 + epoch) / self.cfg.learning_rate_epochs_drop))
-      return lrate
 
