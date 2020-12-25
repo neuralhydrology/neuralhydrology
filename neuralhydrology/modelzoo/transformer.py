@@ -146,11 +146,9 @@ class PositionalEncoding(nn.Module):
     ----------
     embedding_dim : int
         Dimension of the model input, which is typically output of an embedding layer.
-
     dropout : float
         Dropout rate [0, 1) applied to the embedding vector.
-
-    max_len : int
+    max_len : int, optional
         Maximum length of positional encoding. Talk about restrctions on max length.
     """
 
