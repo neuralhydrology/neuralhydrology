@@ -124,7 +124,7 @@ These are used if ``model == transformer``.
 
 -  ``transformer_nlayers``: Number of multi-head self-attention layers in the 
    transformer encoder.
--  ``transformer_positional_encoding_type``: Choices are ["add". "concat"]
+-  ``transformer_positional_encoding_type``: Choices are ``[add, concat]``.
    Used to change the way that the positional encoding is used in transformer
    embedding layer.
 -  ``transformer_dim_feedforward``: Dimension of dense layers used between
