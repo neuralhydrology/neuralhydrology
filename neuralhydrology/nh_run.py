@@ -121,6 +121,9 @@ def finetune(config_file: Path = None, gpu: int = None):
     config.update_config(config_file)
     config.is_finetuning = True
 
+    # if the base run was a continue_training run, we need to override the continue_training flag from its config.
+    config.is_continue_training = False
+
     # check if a GPU has been specified as command line argument. If yes, overwrite config
     if gpu is not None:
         config.device = f"cuda:{gpu}"
