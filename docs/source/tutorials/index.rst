@@ -13,6 +13,11 @@ Tutorials
 | **Multi-Timescale Prediction**
 | In one of our `papers <https://arxiv.org/abs/2010.07921>`__, we introduced Multi-Timescale LSTMs that can predict at multiple timescales simultaneously. If you need predictions at sub-daily granularity or you want to generate daily and hourly predictions (or any other timescale), `this tutorial <https://neuralhydrology.readthedocs.io/tutorials/multi-timescale.html>`__ explains how to get there.
 
+| **Inspecting the internals of LSTMs**
+| Model interpretability is an ongoing research topic. We showed in previous publications (e.g. `this one <https://arxiv.org/abs/1903.07903>`__) that LSTM internals can be linked to physical processes. In `this tutorial <https://neuralhydrology.readthedocs.io/tutorials/inspect-lstm.html>`__, we show how to extract those model internals with our library.
+
+| **Finetuning models**
+| A common way to increase model performance with deep learning models is called finetuning. Here, first a model is trained on a large and diverse dataset, before second, the model is finetuned to the actual problem of interest. In `this tutorial <https://neuralhydrology.readthedocs.io/tutorials/finetuning.html>`__, we show how you can perform finetuning with our library.
 
 .. toctree::
    :maxdepth: 1
@@ -22,3 +27,5 @@ Tutorials
    adding-gru
    add-dataset
    multi-timescale
+   inspect-lstm
+   finetuning

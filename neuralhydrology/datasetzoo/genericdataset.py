@@ -88,10 +88,12 @@ def load_attributes(data_dir: Path, basins: List[str] = None) -> pd.DataFrame:
     pandas.DataFrame
         Basin-indexed DataFrame, containing the attributes as columns. If the attributes folder contains multiple
         files, they will be concatenated as follows:
+        
         (a) if the intersection of basins is non-empty, the files' attributes are concatenated for the intersection of
             basins. The intersection of attributes must be empty in this case.
         (b) if the intersection of basins is empty but the intersection of attributes is not, the files' basins are
             concatenated for the intersection of attributes.
+            
         In all other cases, a ValueError is raised.
 
     Raises

@@ -1,0 +1,129 @@
+# --- Experiment configurations --------------------------------------------------------------------
+
+# experiment name, used as folder name
+experiment_name: test_run
+
+# files to specify training, validation and test basins (relative to code root or absolute path)
+train_basin_file: 1_basin.txt
+validation_basin_file: 1_basin.txt
+test_basin_file: 1_basin.txt
+
+# training, validation and test time periods (format = 'dd/mm/yyyy')
+train_start_date: '01/10/1999'
+train_end_date: '30/09/2008'
+validation_start_date: '01/10/1980'
+validation_end_date: '30/09/1989'
+test_start_date: '01/10/1989'
+test_end_date: '30/09/1999'
+
+# which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu or None]
+device: cpu
+
+# --- Validation configuration ---------------------------------------------------------------------
+
+# specify after how many epochs to perform validation
+validate_every: 5
+
+# specify how many random basins to use for validation
+validate_n_random_basins: 1
+
+# specify which metrics to calculate during validation (see neuralhydrology.evaluation.metrics)
+# this can either be a list or a dictionary. If a dictionary is used, the inner keys must match the name of the
+# target_variable specified below. Using dicts allows for different metrics per target variable.
+metrics:
+- NSE
+
+# --- Model configuration --------------------------------------------------------------------------
+
+# base model type [lstm, ealstm, cudalstm, embcudalstm, mtslstm]
+# (has to match the if statement in modelzoo/__init__.py)
+model: cudalstm
+
+# prediction head [regression]. Define the head specific parameters below
+head: regression
+
+# ----> Regression settings <----
+output_activation: linear
+
+# ----> General settings <----
+
+# Number of cell states of the LSTM
+hidden_size: 20
+
+# Initial bias value of the forget gate
+initial_forget_bias: 3
+
+# Dropout applied to the output of the LSTM
+output_dropout: 0.4
+
+# --- Training configuration -----------------------------------------------------------------------
+
+# specify optimizer [Adam]
+optimizer: Adam
+
+# specify loss [MSE, NSE, RMSE]
+loss: MSE
+
+# specify learning rates to use starting at specific epochs (0 is the initial learning rate)
+learning_rate:
+    0: 1e-2
+    15: 5e-3
+
+# Mini-batch size
+batch_size: 256
+
+# Number of training epochs
+epochs: 30
+
+# If a value, clips the gradients during training to that norm.
+clip_gradient_norm: 1
+
+# Defines which time steps are used to calculate the loss. Can't be larger than seq_length.
+# If use_frequencies is used, this needs to be a dict mapping each frequency to a predict_last_n-value, else an int.
+predict_last_n: 1
+
+# Length of the input sequence
+# If use_frequencies is used, this needs to be a dict mapping each frequency to a seq_length, else an int.
+seq_length: 365
+
+# Number of parallel workers used in the data pipeline
+num_workers: 8
+
+# Log the training loss every n steps
+log_interval: 5
+
+# If true, writes logging results into tensorboard file
+log_tensorboard: True
+
+# If a value and greater than 0, logs n random basins as figures during validation
+log_n_figures: 1
+
+# Save model weights every n epochs
+save_weights_every: 1
+
+# --- Data configurations --------------------------------------------------------------------------
+
+# which data set to use [camels_us, camels_gb, global, hourly_camels_us]
+dataset: camels_us
+
+# Path to data set root
+data_dir: ../../data/CAMELS_US
+
+# Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
+# can be either a list of forcings or a single forcing product
+forcings: nldas_extended
+
+dynamic_inputs:
+- PRCP(mm/day)
+- SRAD(W/m2)
+- Tmax(C)
+- Tmin(C)
+- Vp(Pa)
+
+# which columns to use as target
+target_variables:
+- QObs(mm/d)
+
+# clip negative predictions to zero for all variables listed below. Should be a list, even for single variables.
+clip_targets_to_zero:
+- QObs(mm/d)

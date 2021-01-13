@@ -109,17 +109,25 @@ def finetune(config_file: Path = None, gpu: int = None):
     config_file : Path, optional
         Path to an additional config file. Each config argument in this file will overwrite the original run config.
         The config file for finetuning must contain the argument `base_run_dir`, pointing to the folder of the 
-        pre-trained model.
+        pre-trained model, as well as 'finetune_modules' to indicate which model parts will be trained during
+        fine-tuning.
     gpu : int, optional
         GPU id to use. Will override config argument 'device'.
 
     """
-    # load finetune config, extract base run dir, load base run config and combine with the finetune arguments
+    # load finetune config and check for a non-empty list of finetune_modules
     temp_config = Config(config_file)
+    if not temp_config.finetune_modules:
+        raise ValueError("For finetuning, at least one model part has to be specified by 'finetune_modules'.")
+
+    # extract base run dir, load base run config and combine with the finetune arguments
     config = Config(temp_config.base_run_dir / "config.yml")
     config.update_config({'run_dir': None, 'experiment_name': None})
     config.update_config(config_file)
     config.is_finetuning = True
+
+    # if the base run was a continue_training run, we need to override the continue_training flag from its config.
+    config.is_continue_training = False
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
     if gpu is not None:
