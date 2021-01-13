@@ -1,0 +1,157 @@
+# --- Experiment configurations --------------------------------------------------------------------
+
+# experiment name, used as folder name
+experiment_name: cudalstm_maurer_531_basins
+
+# place to store run directory (if empty runs are stored in $cwd$/runs/)
+run_dir:
+
+# files to specify training, validation and test basins (relative to code root or absolute path)
+train_basin_file: 531_basin_list.txt
+validation_basin_file: 531_basin_list.txt
+test_basin_file: 531_basin_list.txt
+
+# training, validation and test time periods (format = 'dd/mm/yyyy')
+train_start_date: '01/10/1999'
+train_end_date: '30/09/2008'
+validation_start_date: '01/10/1980'
+validation_end_date: '30/09/1989'
+test_start_date: '01/10/1989'
+test_end_date: '30/09/1999'
+
+# fixed seed, leave empty to use a random seed
+seed: 123
+
+# which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu or None]
+device: cuda:0
+
+# --- Validation configuration ---------------------------------------------------------------------
+
+# specify after how many epochs to perform validation
+validate_every: 1
+
+# specify how many random basins to use for validation
+validate_n_random_basins: 531
+
+# specify which metrics to calculate during validation (see codebase.evaluation.metrics)
+metrics:
+- NSE
+
+# --- Model configuration --------------------------------------------------------------------------
+
+# base model type [lstm, ealstm, cudalstm, embcudalstm, shortcutlstm, dropoutlstm, cudalstminitialh]
+# (has to match the if statement in modelzoo/__init__.py)
+model: cudalstm
+
+# prediction head [regression, mdn, umal]. Define the head specific parameters below
+head: regression
+
+# ----> General settings <----
+
+# Number of cell states of the LSTM
+hidden_size: 128
+
+# Initial bias value of the forget gate
+initial_forget_bias: 3
+
+# Dropout applied to the output of the LSTM
+output_dropout: 0.4
+
+output_activation: linear
+
+# --- Training configuration -----------------------------------------------------------------------
+
+# specify optimizer [Adam, Adadelta]
+optimizer: Adam
+
+# specify loss [MSE, NSE, RMSE, UMALLoss, MDNLoss]
+loss: NSE
+
+# specify learning rates to use starting at specific epochs (0 is the initial learning rate)
+learning_rate:
+    0: 1e-3
+    1: 5e-4
+
+# Mini-batch size
+batch_size: 256
+
+# Number of training epochs
+epochs: 3
+
+# If True, clips norm of gradients
+clip_gradient_norm: 1
+
+# Defines which time steps are used to calculate the loss. Can't be larger than seq_length
+predict_last_n: 1
+
+# Length of the input sequence
+seq_length: 365
+
+# Number of parallel workers used in the data pipeline
+num_workers: 8
+
+# Log the training loss every n steps
+log_interval: 5
+
+# If true, writes logging results into tensorboard file
+log_tensorboard: True
+
+# Save model weights every n epochs
+save_weights_every: 1
+
+# Store the results of the validation to disk
+save_validation_results: True
+
+# --- Data configurations --------------------------------------------------------------------------
+
+dataset: camels_us
+
+# Path to CAMELS data set
+data_dir: /data/Hydrology/CAMELS_US
+
+# Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended]
+# can be either a list of forcings or a single forcing product
+forcings:
+- maurer_extended
+
+# variables to use as time series input (names match the data file column headers)
+# Note: In case of multiple input forcing products, you have to append the forcing product behind
+# each variable. E.g. 'prcp(mm/day)' of the daymet product is 'prcp(mm/day)_daymet'
+dynamic_inputs:
+- prcp(mm/day)
+- srad(W/m2)
+- tmax(C)
+- tmin(C)
+- vp(Pa)
+
+# which columns to use as target
+target_variables:
+- QObs(mm/d)
+
+static_attributes:
+- elev_mean
+- slope_mean
+- area_gages2
+- frac_forest
+- lai_max
+- lai_diff
+- gvf_max
+- gvf_diff
+- soil_depth_pelletier
+- soil_depth_statsgo
+- soil_porosity
+- soil_conductivity
+- max_water_content
+- sand_frac
+- silt_frac
+- clay_frac
+- carbonate_rocks_frac
+- geol_permeability
+- p_mean
+- pet_mean
+- aridity
+- frac_snow
+- high_prec_freq
+- high_prec_dur
+- low_prec_freq
+- low_prec_dur
