@@ -29,3 +29,4 @@ dependencies:
     - sphinx-rtd-theme
     - nbsphinx
     - nbsphinx-link
+    - parso==0.8.0
