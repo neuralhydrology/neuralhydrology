@@ -6,7 +6,6 @@ import math
 import torch
 import torch.nn as nn
 
-from neuralhydrology.modelzoo.fc import FC
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
 
@@ -14,20 +13,17 @@ LOGGER = logging.getLogger(__name__)
 
 class Transformer(BaseModel):
     """Transformer model class, which relies on PyTorch's TransformerEncoder class.
-
-    This class implements the encoder of a transformer network which can be used for regression.
-    It is necessary to use an embedding network on all inputs, and the final embedding dimension (``embedding_hiddens``) 
-    must be divisible by the number of transformer heads (``transformer_nheads``).
+    This class implements the encoder of a transformer network with a regression or probabilistic head. 
     The model configuration is specified in the config file using the following options:
-
-    * ``transformer_positional_encoding_type``: choices to "sum" or "concatenate" positional encoding to other model
-      inputs.
-    * ``transformer_positional_dropout``: fraction of dropout applied to the positional encoding.
-    * ``seq_length``: integer number of timesteps to treat in the input sequence.
-    * ``transformer_nheads``: number of self-attention heads.
-    * ``transformer_dim_feedforward``: dimension of the feed-forward networks between self-attention heads.
-    * ``transformer_dropout``: dropout in the feedforward networks between self-attention heads.
-    * ``transformer_nlayers``: number of stacked self-attention + feedforward layers.
+    -- transformer_embedding_dimension : int representing the dimension of the input embedding space. 
+                                         This must be dividible by the number of self-attention heads (transformer_nheads).
+    -- transformer_positional_encoding_type : choices to "sum" or "concatenate" positional encoding to other model inputs.
+    -- transformer_positional_dropout: fraction of dropout applied to the positional encoding.
+    -- seq_length : integer number of timesteps to treat in the input sequence.
+    -- transformer_nheads : number of self-attention heads.
+    -- transformer_dim_feedforward : dimension of the feed-fowrard networks between self-attention heads.
+    -- transformer_dropout: dropout in the feedforward networks between self-attention heads.
+    -- transformer_nlayers: number of stacked self-attention + feedforward layers.
 
     Parameters
     ----------
@@ -38,37 +34,33 @@ class Transformer(BaseModel):
     def __init__(self, cfg: Dict):
         super(Transformer, self).__init__(cfg=cfg)
 
-        # embedding net before transformer
-        # this is necessary to ensure that the number of inputs into the self-attention layer
-        # is divisible by the number of heads  
-        if not cfg.embedding_hiddens:
-            raise ValueError('Transformer requires config argument embedding_hiddens.')
-        if cfg.embedding_hiddens[-1] % cfg.transformer_nheads != 0:
-            raise ValueError("Embedding dimension must be divisible by number of transformer heads.")
-        input_size = len(cfg.dynamic_inputs + cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
+        input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.hydroatlas_attributes +
+                         cfg.static_attributes)
         if cfg.use_basin_id_encoding:
             input_size += cfg.number_of_basins
-        self.embedding_net = FC(cfg=cfg, input_size=input_size)
-        embedding_dim = cfg.embedding_hiddens[-1]
-        self._sqrt_embedding_dim = math.sqrt(embedding_dim) 
+
+        # embedding 
+        self.embedding_dim = cfg.transformer_embedding_dimension
+        self.embedding = nn.Linear(in_features=input_size, 
+                                   out_features=self.embedding_dim)
 
         # positional encoder
         self.positional_encoding_type = cfg.transformer_positional_encoding_type
         if self.positional_encoding_type.lower() == 'concatenate':
-          encoder_dim = embedding_dim*2
+          self.encoder_dim = self.embedding_dim*2
         elif self.positional_encoding_type.lower() == 'sum':
-          encoder_dim = embedding_dim
+          self.encoder_dim = self.embedding_dim
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
-        self.pos_encoder = PositionalEncoding(embedding_dim=embedding_dim, 
+        self.pos_encoder = PositionalEncoding(embedding_dim=self.embedding_dim, 
                                               dropout=cfg.transformer_positional_dropout, 
                                               max_len=cfg.seq_length)
 
         # positional mask
-        self._mask = None
+        self.mask = None
 
         # encoder
-        encoder_layers = nn.TransformerEncoderLayer(d_model=encoder_dim, 
+        encoder_layers = nn.TransformerEncoderLayer(d_model=self.encoder_dim, 
                                                     nhead=cfg.transformer_nheads, 
                                                     dim_feedforward=cfg.transformer_dim_feedforward, 
                                                     dropout=cfg.transformer_dropout)
@@ -78,7 +70,7 @@ class Transformer(BaseModel):
 
         # head (instead of a decoder)
         self.dropout = nn.Dropout(p=cfg.output_dropout)
-        self.head = get_head(cfg=cfg, n_in=encoder_dim, n_out=self.output_size)
+        self.head = get_head(cfg=cfg, n_in=self.encoder_dim, n_out=self.output_size)
 
         # init weights and biases 
         self._reset_parameters()
@@ -90,9 +82,10 @@ class Transformer(BaseModel):
             layer.linear1.bias.data.zero_()
             layer.linear2.weight.data.uniform_(-initrange, initrange)
             layer.linear2.bias.data.zero_()
-        self.embedding_net._reset_parameters()
+        self.embedding.weight.data.uniform_(-initrange, initrange)
+        self.embedding.bias.data.zero_()
 
-    def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
+    def forward(self, data: Dict[str, torch.Tensor], **kwargs) -> Dict[str, torch.Tensor]:
         """Perform a forward pass on a transformer model without decoder.
 
         Parameters
@@ -124,22 +117,20 @@ class Transformer(BaseModel):
             pass
 
         # embedding
-        embedding = self.embedding_net(x_d) * self._sqrt_embedding_dim 
-        positional_encoding = self.pos_encoder(embedding, self.positional_encoding_type)
+        x_d = self.embedding(x_d) * math.sqrt(self.embedding_dim)        
+        x_d = self.pos_encoder(x_d, self.positional_encoding_type)
 
-        # mask out future values
-        if self._mask is None or self._mask.size(0) != len(x_d):
-            self._mask = torch.triu(x_d.new_full((len(x_d), len(x_d)), fill_value=float('-inf')), diagonal=1)
+        # mask past values
+        if self.mask is None or self.mask.size(0) != len(x_d):
+            mask = (torch.tril(torch.ones(len(x_d), len(x_d))) == 1)
+            mask = mask.float().masked_fill(mask == 0, float('-inf')).masked_fill(mask == 1, float(0.0))
+            self.mask = mask.to(x_d.device)
 
         # encoding
-        output = self.encoder(positional_encoding, self._mask)
+        output = self.encoder(x_d, self.mask)
 
         # head
         pred = self.head(self.dropout(output.transpose(0, 1)))
-
-        # add embedding and positional encoding to output
-        pred['embedding'] = embedding
-        pred['positional_encoding'] = positional_encoding
 
         return pred
 
@@ -152,13 +143,15 @@ class PositionalEncoding(nn.Module):
     ----------
     embedding_dim : int
         Dimension of the model input, which is typically output of an embedding layer.
+
     dropout : float
         Dropout rate [0, 1) applied to the embedding vector.
-    max_len : int, optional
-        Maximum length of positional encoding. This must be larger than the largest sequence length in the sample. 
+
+    max_len : int
+        Maximum length of positional encoding. Talk about restrctions on max length.
     """
 
-    def __init__(self, embedding_dim, dropout, max_len=5000):
+    def __init__(self, embedding_dim, dropout=0.1, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
@@ -170,32 +163,18 @@ class PositionalEncoding(nn.Module):
         pe = pe[:,:embedding_dim].unsqueeze(0).transpose(0, 1)
         self.register_buffer('pe', pe)
 
-        if pos_type.lower() == 'concatenate':
-            self.concatenate = True
-        elif pos_type.lower() == 'sum':
-            self.concatenate = False
-        else:
-            raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
-
     def forward(self, x, pos_type):
-        """Forward pass for positional encoding. Either concatenates or adds the positional encoding to encoder input data.
-
-        Parameters
-        ----------
-        x : torch.Tensor
-            Dimension is sequence length x embedding output dimension. 
-            Data that is to be the input to a transformer encoder after including positional encoding. 
-            Typically this will be output from an embedding layer.
+        """
 
         Returns
         -------
-	torch.Tensor  
-            Dimension is sequence length x encoder input dimension. 
-            Encoder input augmented with positional encoding. 
-
+        Finish this. 
         """
-        if self.concatenate:
+        if pos_type.lower() == 'concatenate':
             x = torch.cat((x, self.pe[:x.size(0), :].repeat(1, x.size(1), 1)), 2) 
-        else:
+        elif pos_type.lower() == 'sum':
             x = x + self.pe[:x.size(0), :]
+        else:
+            raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
         return self.dropout(x)
+
