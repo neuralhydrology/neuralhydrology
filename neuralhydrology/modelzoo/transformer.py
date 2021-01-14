@@ -34,7 +34,7 @@ class Transformer(BaseModel):
     cfg : Config
         The run configuration.
     """
-
+module_parts = ['embedding', 'encoder', 'head']
     def __init__(self, cfg: Dict):
         super(Transformer, self).__init__(cfg=cfg)
 
