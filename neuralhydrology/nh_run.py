@@ -147,7 +147,7 @@ def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
     epoch : int, optional
         Define a specific epoch to use. By default, the weights of the last epoch are used.  
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
+        GPU id to use. Will override config argument 'device'. A value smaller than indicates CPU.
 
     """
     config = Config(run_dir / "config.yml")
