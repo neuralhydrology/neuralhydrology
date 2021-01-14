@@ -17,9 +17,12 @@ jobs:
       run: |
         sudo apt-get update -y && sudo apt-get install -y pandoc
     - name: Install dependencies
+      working-directory: environments
       run: |
-        pip install sphinx sphinx-rtd-theme nbsphinx nbsphinx-link
+        pip install -r rtd_requirements.txt
     - name: Build Sphinx docs
       working-directory: docs/
+      env:
+        SPHINXOPTS: "-W"  # treat warnings as errors
       run: |
         make html

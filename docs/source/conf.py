@@ -67,3 +67,14 @@ napoleon_numpy_docstring = True
 
 # Path to logo image file
 html_logo = '_static/img/neural-hyd-logo-white.png'
+
+# Allows to build the docs with a minimal environment without warnings about missing packages
+autodoc_mock_imports = [
+    'matplotlib',
+    'numba',
+    'pandas',
+    'ruamel',
+    'scipy',
+    'tqdm',
+    'xarray',
+]

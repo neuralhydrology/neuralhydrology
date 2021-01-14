@@ -93,7 +93,7 @@ Validation settings
 
 -  ``metrics``: List of metrics to calculate during validation/testing.
    See
-   `codebase.evaluation.metrics <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.evaluation.metrics.html>`__
+   :py:mod:`neuralhydrology.evaluation.metrics`
    for a list of available metrics.
 
 -  ``save_validation_results``: True/False, if True, stores the
@@ -190,11 +190,11 @@ Training settings
 
 -  ``optimizer``: Specify which optimizer to use. Currently supported
    is Adam (standard). New optimizers can be added
-   `here <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.training.html#neuralhydrology.training.get_optimizer>`__.
+   :py:func:`here <neuralhydrology.training.get_optimizer>`.
 
 -  ``loss``: Which loss to use. Currently supported are ``MSE``,
    ``NSE``, ``WeightedNSE``, ``RMSE``. New losses can be added
-   `here <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.training.loss.html>`__.
+   :py:mod:`here <neuralhydrology.training.loss>`.
    The ``WeightedNSE`` is especially for multi-target 
    settings. Use ``target_loss_weights`` to specify per-target
    weights.
@@ -206,7 +206,7 @@ Training settings
 -  ``regularization``: List of optional regularization terms. Currently
    supported is ``tie_frequencies``, which couples the predictions of
    all frequencies via an MSE term. New regularizations can be added
-   `here <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.training.regularization.html>`__.
+   :py:mod:`here <neuralhydrology.training.regularization>`.
 
 -  ``learning_rate``: Learning rate. Can be either a single number (for
    a constant learning rate) or a dictionary. If it is a dictionary, the

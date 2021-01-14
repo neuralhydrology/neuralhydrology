@@ -11,7 +11,7 @@ class BaseModel(nn.Module):
 
     Use subclasses of this class for training/evaluating different models, e.g. use `CudaLSTM` for training a standard
     LSTM model or `EA-LSTM` for training an Entity-Aware-LSTM. Refer to
-    `Documentation/Modelzoo <https://neuralhydrology.readthedocs.io/en/latest/usage/models.html>`_ for a full list of
+    :doc:`Documentation/Modelzoo </usage/models>` for a full list of
     available models and how to integrate a new model. 
 
     Parameters
