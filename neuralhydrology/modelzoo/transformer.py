@@ -34,9 +34,11 @@ class Transformer(BaseModel):
     cfg : Config
         The run configuration.
     """
-module_parts = ['embedding', 'encoder', 'head']
     def __init__(self, cfg: Dict):
         super(Transformer, self).__init__(cfg=cfg)
+
+        # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+        self.module_parts = ['embedding', 'encoder', 'head']
 
         # embedding net before transformer
         # this is necessary to ensure that the number of inputs into the self-attention layer
@@ -62,6 +64,7 @@ module_parts = ['embedding', 'encoder', 'head']
             raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
         self.pos_encoder = PositionalEncoding(embedding_dim=embedding_dim, 
                                               dropout=cfg.transformer_positional_dropout, 
+                                              position_type=cfg.transformer_positional_encoding_type,
                                               max_len=cfg.seq_length)
 
         # positional mask
@@ -125,7 +128,7 @@ module_parts = ['embedding', 'encoder', 'head']
 
         # embedding
         embedding = self.embedding_net(x_d) * self._sqrt_embedding_dim 
-        positional_encoding = self.pos_encoder(embedding, self.positional_encoding_type)
+        positional_encoding = self.pos_encoder(embedding)
 
         # mask out future values
         if self._mask is None or self._mask.size(0) != len(x_d):
@@ -158,7 +161,7 @@ class PositionalEncoding(nn.Module):
         Maximum length of positional encoding. This must be larger than the largest sequence length in the sample. 
     """
 
-    def __init__(self, embedding_dim, dropout, max_len=5000):
+    def __init__(self, embedding_dim, position_type, dropout, max_len=5000):
         super(PositionalEncoding, self).__init__()
         self.dropout = nn.Dropout(p=dropout)
 
@@ -170,14 +173,14 @@ class PositionalEncoding(nn.Module):
         pe = pe[:,:embedding_dim].unsqueeze(0).transpose(0, 1)
         self.register_buffer('pe', pe)
 
-        if pos_type.lower() == 'concatenate':
+        if position_type.lower() == 'concatenate':
             self.concatenate = True
-        elif pos_type.lower() == 'sum':
+        elif position_type.lower() == 'sum':
             self.concatenate = False
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
 
-    def forward(self, x, pos_type):
+    def forward(self, x):
         """Forward pass for positional encoding. Either concatenates or adds the positional encoding to encoder input data.
 
         Parameters
