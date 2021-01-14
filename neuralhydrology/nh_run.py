@@ -115,7 +115,7 @@ def finetune(config_file: Path = None, gpu: int = None):
         The config file for finetuning must contain the argument `base_run_dir`, pointing to the folder of the 
         pre-trained model.
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
+        GPU id to use. Will override config argument 'device'. A value smaller than zero indicates CPU.
 
     """
     # load finetune config, extract base run dir, load base run config and combine with the finetune arguments
