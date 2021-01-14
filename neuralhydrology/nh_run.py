@@ -60,7 +60,7 @@ def start_run(config_file: Path, gpu: int = None):
     config_file : Path
         Path to a configuration file (.yml), defining the settings for the specific run.
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
+        GPU id to use. Will override config argument 'device'. A value smaller than zero indicates CPU.
 
     """
 
