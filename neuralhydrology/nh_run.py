@@ -85,7 +85,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
     config_file : Path, optional
         Path to an additional config file. Each config argument in this file will overwrite the original run config.
     gpu : int, optional
-        GPU id to use. Will override config argument 'device'. A value <0 indicates CPU.
+        GPU id to use. Will override config argument 'device'. A value smaller than zero indicates CPU.
 
     """
     # load config from base run and overwrite all elements with an optional new config
