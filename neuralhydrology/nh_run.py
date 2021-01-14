@@ -18,7 +18,8 @@ def _get_args() -> dict:
     parser.add_argument('--run-dir', type=str)
     parser.add_argument('--epoch', type=int, help="Epoch, of which the model should be evaluated")
     parser.add_argument('--period', type=str, choices=["train", "validation", "test"], default="test")
-    parser.add_argument('--gpu', type=int, help="GPU id to use (see nvidia-smi). Will override config argument 'device'. A value <0 indicates CPU.")
+    parser.add_argument('--gpu', type=int,
+                        help="GPU id to use. Overrides config argument 'device'. Use a value < 0 for CPU.")
     args = vars(parser.parse_args())
 
     if (args["mode"] in ["train", "finetune"]) and (args["config_file"] is None):
