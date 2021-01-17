@@ -180,7 +180,7 @@ class PositionalEncoding(nn.Module):
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for positional encoding. Either concatenates or adds the positional encoding to encoder input data.
 
         Parameters
