@@ -192,7 +192,7 @@ class PositionalEncoding(nn.Module):
 
         Returns
         -------
-	torch.Tensor  
+        torch.Tensor  
             Dimension is sequence length x encoder input dimension. 
             Encoder input augmented with positional encoding. 
 
