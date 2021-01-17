@@ -38,7 +38,7 @@ class Transformer(BaseModel):
         super(Transformer, self).__init__(cfg=cfg)
 
         # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-        self.module_parts = ['embedding', 'encoder', 'head']
+        self.module_parts = ['embedding_net', 'encoder', 'head']
 
         # embedding net before transformer
         # this is necessary to ensure that the number of inputs into the self-attention layer
