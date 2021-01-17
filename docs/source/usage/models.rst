@@ -61,7 +61,7 @@ to the network at each time step. Instead of a decoder, this model uses a standa
 The model requires the following hyperparameters specified in the config file: 
 
 * ``transformer_embedding_dimension``: the dimension of the input embedding space. This must be divisible by the number of self-attention heads (transformer_nheads).
-* ``transformer_positional_encoding_type``: choices to "add" or "concatenate" positional encoding to other model inputs.
+* ``transformer_positional_encoding_type``: choices to "sum" or "concatenate" positional encoding to other model inputs.
 * ``transformer_positional_dropout``: fraction of dropout applied to the positional encoding.
 * ``transformer_nheads``: number of self-attention heads.
 * ``transformer_dim_feedforward``: dimension of the feedforward networks between self-attention heads.

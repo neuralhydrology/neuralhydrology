@@ -124,10 +124,10 @@ These are used if ``model == transformer``.
 
 -  ``transformer_nlayers``: Number of multi-head self-attention layers in the 
    transformer encoder.
--  ``transformer_positional_encoding_type``: Choices are ``[add, concat]``.
+-  ``transformer_positional_encoding_type``: Choices are ``[sum, concatenate]``.
    Used to change the way that the positional encoding is used in transformer
-   embedding layer. `add` means that the positional encoding is added to the values
-   of the inputs for that layer, while `concat` means that the embedding is concatenated
+   embedding layer. `sum` means that the positional encoding is added to the values
+   of the inputs for that layer, while `concatenate` means that the embedding is concatenated
    as additional input features.
 -  ``transformer_dim_feedforward``: Dimension of dense layers used between
    self-attention layers in transformer encoder.

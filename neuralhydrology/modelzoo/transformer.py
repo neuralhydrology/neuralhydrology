@@ -38,7 +38,7 @@ class Transformer(BaseModel):
         super(Transformer, self).__init__(cfg=cfg)
 
         # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-        self.module_parts = ['embedding', 'encoder', 'head']
+        self.module_parts = ['embedding_net', 'encoder', 'head']
 
         # embedding net before transformer
         # this is necessary to ensure that the number of inputs into the self-attention layer
@@ -180,20 +180,22 @@ class PositionalEncoding(nn.Module):
         else:
             raise RuntimeError(f"Unrecognized positional encoding type: {pos_type}")
 
-    def forward(self, x):
+    def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass for positional encoding. Either concatenates or adds the positional encoding to encoder input data.
 
         Parameters
         ----------
         x : torch.Tensor
-            Dimension is sequence length x embedding output dimension. 
+            Dimension is ``[sequence length, batch size, embedding output dimension]``.
             Data that is to be the input to a transformer encoder after including positional encoding. 
             Typically this will be output from an embedding layer.
 
         Returns
         -------
-	torch.Tensor  
-            Dimension is sequence length x encoder input dimension. 
+        torch.Tensor  
+            Dimension is ``[sequence length, batch size, encoder input dimension]``.
+            The encoder input dimension is either equal to the embedding output dimension (if ``position_type == sum``)
+            or twice the embedding output dimension (if ``position_type == concatenate``).
             Encoder input augmented with positional encoding. 
 
         """
