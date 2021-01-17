@@ -193,7 +193,9 @@ class PositionalEncoding(nn.Module):
         Returns
         -------
         torch.Tensor  
-            Dimension is sequence length x encoder input dimension. 
+            Dimension is ``[sequence length, batch size, encoder input dimension]``.
+            The encoder input dimension is either equal to the embedding output dimension (if ``position_type == sum``)
+            or twice the embedding output dimension (if ``position_type == concatenate``).
             Encoder input augmented with positional encoding. 
 
         """
