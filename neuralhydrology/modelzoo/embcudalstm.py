@@ -19,7 +19,7 @@ class EmbCudaLSTM(BaseModel):
     To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set 
     this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
     the gradient flow. 
-    The `EmbCudaLSTM` class does only support single timescale predictions. Use `MTSLSTM` to train a model and get 
+    The `EmbCudaLSTM` class only supports single timescale predictions. Use `MTSLSTM` to train a model and get 
     predictions on multiple temporal resolutions at the same time.
 
     Parameters

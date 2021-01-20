@@ -70,6 +70,8 @@ class FC(nn.Module):
             activation = nn.Tanh()
         elif name.lower() == "sigmoid":
             activation = nn.Sigmoid()
+        elif name.lower() == "linear":
+            activation = nn.Identity()
         else:
             raise NotImplementedError(f"{name} currently not supported as activation in this class")
         return activation
