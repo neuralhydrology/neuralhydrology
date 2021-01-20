@@ -65,7 +65,7 @@ class BaseTrainer(object):
             LOGGER.info(f"### Continue training of run stored in {self.cfg.base_run_dir}")
 
         if self.cfg.is_finetuning:
-            LOGGER.info(f"### Start fine-tuning with pretrained model stored in {self.cfg.base_run_dir}")
+            LOGGER.info(f"### Start finetuning with pretrained model stored in {self.cfg.base_run_dir}")
 
         LOGGER.info(f"### Run configurations for {self.cfg.experiment_name}")
         for key, val in self.cfg.as_dict().items():

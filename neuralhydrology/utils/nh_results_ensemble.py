@@ -97,29 +97,26 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
     ensemble = defaultdict(lambda: defaultdict(dict))
     for basin in tqdm(ensemble_sum.keys()):
         for freq in frequencies:
-            ensemble[basin][freq]['xr'] = ensemble_sum[basin][freq]
+            ensemble_xr = ensemble_sum[basin][freq]
 
             # combine date and time to a single index to calculate metrics
             frequency_factor = pd.to_timedelta(lowest_freq) // pd.to_timedelta(freq)
-            ensemble[basin][freq]['xr'] = ensemble[basin][freq]['xr'].isel(
-                time_step=slice(-frequency_factor, None)).stack(datetime=['date', 'time_step'])
-            ensemble[basin][freq]['xr']['datetime'] = [
-                c[0] + c[1] for c in ensemble[basin][freq]['xr'].coords['datetime'].values
-            ]
+            ensemble_xr = ensemble_xr.isel(time_step=slice(-frequency_factor, None)).stack(
+                datetime=['date', 'time_step'])
+            ensemble_xr['datetime'] = ensemble_xr['date'] + ensemble_xr['time_step']
 
             for target_var in target_vars:
                 # average predictions
-                ensemble[basin][freq]['xr'][
-                    f'{target_var}_sim'] = ensemble[basin][freq]['xr'][f'{target_var}_sim'] / len(results_files)
+                ensemble_xr[f'{target_var}_sim'] = ensemble_xr[f'{target_var}_sim'] / len(results_files)
 
                 # clip predictions to zero
-                sim = ensemble[basin][freq]['xr'][f'{target_var}_sim']
+                sim = ensemble_xr[f'{target_var}_sim']
                 if target_var in config.clip_targets_to_zero:
                     sim = xr.where(sim < 0, 0, sim)
 
                 # calculate metrics
                 ensemble_metrics = calculate_metrics(
-                    ensemble[basin][freq]['xr'][f'{target_var}_obs'],
+                    ensemble_xr[f'{target_var}_obs'],
                     sim,
                     metrics=config.metrics if isinstance(config.metrics, list) else config.metrics[target_var],
                     resolution=freq)
@@ -128,6 +125,8 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
                     ensemble_metrics = {f'{target_var}_{key}': val for key, val in ensemble_metrics.items()}
                 for metric, val in ensemble_metrics.items():
                     ensemble[basin][freq][f'{metric}_{freq}'] = val
+
+            ensemble[basin][freq]['xr'] = ensemble_xr
 
     return dict(ensemble)
 
