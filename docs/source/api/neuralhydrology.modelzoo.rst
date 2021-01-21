@@ -20,3 +20,4 @@ nh.modelzoo
    neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
    neuralhydrology.modelzoo.template
+   neuralhydrology.modelzoo.transformer

@@ -52,7 +52,7 @@ metrics:
 
 # --- Model configuration --------------------------------------------------------------------------
 
-# base model type [cudalstm, customlstm, ealstm, embcudalstm, mtslstm, gru]
+# base model type [cudalstm, customlstm, ealstm, embcudalstm, mtslstm, gru, transformer]
 # (has to match the if statement in modelzoo/__init__.py)
 model: cudalstm
 
@@ -81,7 +81,7 @@ embedding_dropout: 0.0
 
 # ----> MTSLSTM settings <----
 
-# Use an individual LSTM per frequencies (False) vs. use a single shared LSTM for all frequencies (True)
+# use an individual LSTM per frequencies (False) vs. use a single shared LSTM for all frequencies (True)
 shared_mtslstm: False
 
 # how to transfer states from lower to higher frequencies. One of [identity, linear, None].
@@ -99,6 +99,26 @@ ode_num_unfolds: 4
 # lowest frequency that will be used to randomly aggregate the first slice of the input sequence.
 # See ODELSTM for more details on the frequency randomization.
 ode_random_freq_lower_bound: 6D
+
+# ----> Transformer settings <----
+
+# number of layers in transformer encoding:
+transformer_nlayers: 4
+
+# type of positional encoding (sum or concatenate)
+transformer_positional_encoding_type: sum
+
+# dimension of feedforward in each encoding layer
+transformer_dim_feedforward: 32
+
+# dropout applied only to the positional encoding
+transformer_positional_dropout: 0.0
+
+# dropout used in the encoding layers
+transformer_dropout: 0
+
+# number of transformer heads
+transformer_nheads: 4
 
 # ----> General settings <----
 
@@ -267,8 +287,3 @@ evolving_attributes:
 
 # whether to use basin id one hot encoding as (additional) static input
 use_basin_id_encoding: False
-
-
-
-
-

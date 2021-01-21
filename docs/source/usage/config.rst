@@ -147,6 +147,25 @@ These are used if ``model == mtslstm``.
    current input timescale. In both cases, ``transfer_mtslstm_states``
    can be used to configure hidden and cell state transfer.
 
+Transformer settings
+~~~~~~~~~~~~~~~~~~~~
+
+These are used if ``model == transformer``.
+
+-  ``transformer_nlayers``: Number of multi-head self-attention layers in the 
+   transformer encoder.
+-  ``transformer_positional_encoding_type``: Choices are ``[sum, concatenate]``.
+   Used to change the way that the positional encoding is used in transformer
+   embedding layer. `sum` means that the positional encoding is added to the values
+   of the inputs for that layer, while `concatenate` means that the embedding is concatenated
+   as additional input features.
+-  ``transformer_dim_feedforward``: Dimension of dense layers used between
+   self-attention layers in transformer encoder.
+-  ``transformer_positional_dropout``: Dropout applied only to the positional
+   encoding before using in transformer encoder.
+-  ``transformer_dropout``: Dropout used in transformer encoder layers.
+-  ``transformer_nhead``: Number of parallel transformer heads.
+
 ODE-LSTM settings
 ~~~~~~~~~~~~~~~~~
 
