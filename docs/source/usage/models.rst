@@ -40,7 +40,7 @@ layer.
 
 EmbCudaLSTM
 -----------
-.. deprecated:: 0.9.9-beta
+.. deprecated:: 0.9.11-beta
    Use `CudaLSTM`_ with ``embedding_hiddens`` and ``statics_embedding: True``.
 
 :py:class:`neuralhydrology.modelzoo.embcudalstm.EmbCudaLSTM` is similar to `CudaLSTM`_,

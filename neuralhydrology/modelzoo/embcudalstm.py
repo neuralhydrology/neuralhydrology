@@ -12,7 +12,7 @@ from neuralhydrology.utils.config import Config
 class EmbCudaLSTM(BaseModel):
     """EmbCudaLSTM model class, which adds embedding networks for static inputs to the standard LSTM.
 
-    .. deprecated:: 0.9.9-beta
+    .. deprecated:: 0.9.11-beta
        Use :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` with ``embedding_hiddens`` and
        ``statics_embedding: True``).
 
