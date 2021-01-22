@@ -71,10 +71,13 @@ Transformer
 -----------
 :py:class:`neuralhydrology.modelzoo.transformer.Transformer` is the encoding portion of a standard transformer network with self-attention. 
 This uses the standard PyTorch TransformerEncoder implementation. All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed 
-to the network at each time step. Instead of a decoder, this model uses a standard head (e.g., linear). 
+to the network at each time step. Unless the number of inputs is divisible by the number of transformer heads (``transformer_nheads``), it is
+necessary to use an embedding network that guarantees this. To achieve this, set ``statics/dynamics_embedding`` to true, so the static/dynamic
+inputs will be passed through embedding networks before being concatenated. The embedding network will then map the static and dynamic features
+each to size ``embedding_hiddens[-1]`` (i.e., the total input size will be twice this value if both static and dynamic inputs are embedded).
+Instead of a decoder, this model uses a standard head (e.g., linear). 
 The model requires the following hyperparameters specified in the config file: 
 
-* ``transformer_embedding_dimension``: the dimension of the input embedding space. This must be divisible by the number of self-attention heads (transformer_nheads).
 * ``transformer_positional_encoding_type``: choices to "sum" or "concatenate" positional encoding to other model inputs.
 * ``transformer_positional_dropout``: fraction of dropout applied to the positional encoding.
 * ``transformer_nheads``: number of self-attention heads.
