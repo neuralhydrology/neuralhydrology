@@ -43,7 +43,7 @@ def get_config(tmpdir: Fixture[str]) -> Fixture[Callable[[str], dict]]:
     return _get_config
 
 
-@pytest.fixture(params=['customlstm', 'ealstm', 'cudalstm', 'embcudalstm', 'gru'])
+@pytest.fixture(params=['customlstm', 'ealstm', 'cudalstm', 'gru'])
 def single_timescale_model(request) -> str:
     """Fixture that provides models that support predicting only a single timescale.
 
@@ -101,7 +101,7 @@ def daily_dataset(request) -> Dict[str, List[str]]:
     return {'dataset': request.param[0], 'target': request.param[1]}
 
 
-@pytest.fixture(params=["cudalstm", "embcudalstm"])
+@pytest.fixture(params=["cudalstm"])
 def custom_lstm_supported_models(request) -> str:
     """Fixture that provides the models that are supported to be copied into the `CustomLSTM`.
 

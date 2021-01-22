@@ -12,14 +12,16 @@ CudaLSTM
 --------
 :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` is a network using the standard PyTorch LSTM implementation.
 All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
+If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will be passed through embedding networks before
+being concatenated.
 The initial forget gate bias can be defined in config.yml (``initial_forget_bias``) and will be set accordingly during
 model initialization.
 
 CustomLSTM
 ----------
-:py:class:`neuralhydrology.modelzoo.customlstm.CustomLSTM` is a variant of the ``CudaLSTM`` and ``EmbCudaLSTM``
+:py:class:`neuralhydrology.modelzoo.customlstm.CustomLSTM` is a variant of the ``CudaLSTM``
 that returns all gate and state activations for all time steps. This class is mainly implemented for exploratory
-reasons. You can use the method ``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` or ``EmbCudaLSTM`` model
+reasons. You can use the method ``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` model
 into a ``CustomLSTM`` model. This allows to use the fast CUDA implementations for training, and only use this class for
 inference with more detailed outputs. You can however also use this model during training (``model: customlstm`` in the
 config.yml) or as a starter for your own modifications to the LSTM cell. Note, however, that the runtime of this model
@@ -31,15 +33,27 @@ EA-LSTM
 `Kratzert et al. "Towards learning universal, regional, and local hydrological behaviors via machine learning applied to large-sample datasets" <https://hess.copernicus.org/articles/23/5089/2019/hess-23-5089-2019.html>`__.
 The static features (``x_s`` and/or ``x_one_hot``) are used to compute the input gate activations, while the dynamic
 inputs ``x_d`` are used in all other gates of the network.
-The initial forget gate bias can be defined in config.yml (``initial_forget_bias``). If ``embedding_hiddens`` is passed, the input gate consists of the so-defined
-FC network and not a single linear layer.
+The initial forget gate bias can be defined in config.yml (``initial_forget_bias``).
+If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will first be passed through embedding networks.
+The output of the static embedding network will then be passed through the input gate, which consists of a single linear
+layer.
 
 EmbCudaLSTM
 -----------
+.. deprecated:: 0.9.9-beta
+   Use `CudaLSTM`_ with ``embedding_hiddens`` and ``statics_embedding: True``.
+
 :py:class:`neuralhydrology.modelzoo.embcudalstm.EmbCudaLSTM` is similar to `CudaLSTM`_,
 with the only difference that static inputs (``x_s`` and/or ``x_one_hot``) are passed through an embedding network
 (defined, for instance, by ``embedding_hiddens``) before being concatenated to the dynamic inputs ``x_d``
 at each time step.
+
+GRU
+---
+:py:class:`neuralhydrology.modelzoo.gru.GRU` is a network using the standard PyTorch GRU implementation.
+All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
+If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will be passed through embedding networks before
+being concatenated.
 
 MTS-LSTM
 --------

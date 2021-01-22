@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from neuralhydrology.modelzoo.basemodel import BaseModel
-from neuralhydrology.modelzoo.fc import FC
+from neuralhydrology.modelzoo.inputlayer import InputLayer
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.utils.config import Config
 
@@ -33,24 +33,18 @@ class EALSTM(BaseModel):
         Hydrol. Earth Syst. Sci., 23, 5089-5110, https://doi.org/10.5194/hess-23-5089-2019, 2019.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-    module_parts = ['input_gate', 'dynamic_gates', 'head']
+    module_parts = ['embedding_net', 'input_gate', 'dynamic_gates', 'head']
 
     def __init__(self, cfg: Config):
         super(EALSTM, self).__init__(cfg=cfg)
         self._hidden_size = cfg.hidden_size
 
-        input_size_stat = len(cfg.evolving_attributes + cfg.static_attributes + cfg.hydroatlas_attributes)
-        if cfg.use_basin_id_encoding:
-            input_size_stat += cfg.number_of_basins
+        self.embedding_net = InputLayer(cfg)
 
-        # If hidden units for a embedding network are specified, create FC, otherwise single linear layer
-        if cfg.embedding_hiddens:
-            self.input_gate = FC(cfg=cfg)
-        else:
-            self.input_gate = nn.Linear(input_size_stat, cfg.hidden_size)
+        self.input_gate = nn.Linear(self.embedding_net.statics_output_size, cfg.hidden_size)
 
         # create tensors of learnable parameters
-        self.dynamic_gates = _DynamicGates(cfg=cfg)
+        self.dynamic_gates = _DynamicGates(cfg=cfg, input_size=self.embedding_net.dynamics_output_size)
         self.dropout = nn.Dropout(p=cfg.output_dropout)
 
         self.head = get_head(cfg=cfg, n_in=cfg.hidden_size, n_out=self.output_size)
@@ -87,16 +81,9 @@ class EALSTM(BaseModel):
                 - `c_n`: cell state at the last time step of the sequence of shape 
                     [batch size, sequence length, number of target variables].
         """
-        # transpose to [seq_length, batch_size, n_features]
-        x_d = data['x_d'].transpose(0, 1)
-
-        if 'x_s' in data and 'x_one_hot' in data:
-            x_s = torch.cat([data['x_s'], data['x_one_hot']], dim=-1)
-        elif 'x_s' in data:
-            x_s = data['x_s']
-        elif 'x_one_hot' in data:
-            x_s = data['x_one_hot']
-        else:
+        # possibly pass dynamic and static inputs through embedding layers
+        x_d, x_s = self.embedding_net(data, concatenate_output=False)
+        if x_s is None:
             raise ValueError('Need x_s or x_one_hot in forward pass.')
 
         # TODO: move hidden and cell state initialization to init and only reset states in forward pass to zero.
@@ -130,10 +117,10 @@ class EALSTM(BaseModel):
 class _DynamicGates(nn.Module):
     """Internal class to wrap the dynamic gate parameters into a dedicated PyTorch Module"""
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, input_size: int):
         super(_DynamicGates, self).__init__()
         self.cfg = cfg
-        self.weight_ih = nn.Parameter(torch.FloatTensor(len(cfg.dynamic_inputs), 3 * cfg.hidden_size))
+        self.weight_ih = nn.Parameter(torch.FloatTensor(input_size, 3 * cfg.hidden_size))
         self.weight_hh = nn.Parameter(torch.FloatTensor(cfg.hidden_size, 3 * cfg.hidden_size))
         self.bias = nn.Parameter(torch.FloatTensor(3 * cfg.hidden_size))
 

@@ -23,26 +23,30 @@ validate_n_random_basins: 4
 cache_validation_data: True
 metrics:
   - NSE
-  - KGE
-  - Alpha-NSE
-  - Beta-NSE
 
 # --- Model configuration --------------------------------------------------------------------------
-model: cudalstm
+model: transformer
 head: regression
 output_activation: linear
 
-hidden_size: 16
-initial_forget_bias: 3
-output_dropout: 0.4
+transformer_nheads: 4
+transformer_positional_encoding_type: sum
+transformer_dim_feedforward: 5
+transformer_nlayers: 2
+transformer_dropout: 0.4
+transformer_positional_dropout: 0.4
+
+statics_embedding: True
+dynamics_embedding: True
+embedding_hiddens:
+  - 4
+  - 8
 
 # --- Training configuration -----------------------------------------------------------------------
 optimizer: Adam
 loss: MSE
 learning_rate:
   0: 1e-3
-  10: 5e-4
-  20: 1e-4
 batch_size: 256
 epochs: 1
 clip_gradient_norm: 1
@@ -52,8 +56,8 @@ seq_length: 30
 
 num_workers: 0
 log_interval: 5
-log_tensorboard: True
-log_n_figures: 2
+log_tensorboard: False
+log_n_figures: 0
 save_weights_every: 1
 save_validation_results: False
 
@@ -64,8 +68,6 @@ forcings: daymet
 dynamic_inputs:
   - prcp(mm/day)
   - tmax(C)
-  - rand_col  # this is the column from the additional_features file
-additional_feature_files: ./test/test_data/additional_features.p
 target_variables:
   - QObs(mm/d)
 static_attributes:

@@ -7,16 +7,15 @@ from neuralhydrology.utils.config import Config
 
 class FC(nn.Module):
     """Auxiliary class to build (multi-layer) fully-connected networks.
-    
-    This class is used in different places of the codebase to build fully-connected networks. E.g., the `EA-LSTM` and
-    `EmbCudaLSTM` use this class to create embedding networks for the static inputs.
+
+    This class is used to build fully-connected embedding networks for static and/or dynamic input data.
     Use the config argument `embedding_hiddens` to specify the hidden neurons of the embedding network. If only one
     number is specified the embedding network consists of a single linear layer that maps the input into the specified
     dimension.
     Use the config argument `embedding_activation` to specify the activation function for intermediate layers. Currently
     supported are 'tanh' and 'sigmoid'.
     Use the config argument `embedding_dropout` to specify the dropout rate in intermediate layers.
-    
+
     Parameters
     ----------
     cfg : Config
@@ -40,7 +39,7 @@ class FC(nn.Module):
         else:
             hidden_sizes = []
 
-        output_size = cfg.embedding_hiddens[-1]
+        self.output_size = cfg.embedding_hiddens[-1]
 
         # by default tanh
         activation = self._get_activation(cfg.embedding_activation)
@@ -58,9 +57,9 @@ class FC(nn.Module):
                 # by default 0.0
                 layers.append(nn.Dropout(p=cfg.embedding_dropout))
 
-            layers.append(nn.Linear(hidden_size, output_size))
+            layers.append(nn.Linear(hidden_size, self.output_size))
         else:
-            layers.append(nn.Linear(input_size, output_size))
+            layers.append(nn.Linear(input_size, self.output_size))
 
         self.net = nn.Sequential(*layers)
         self._reset_parameters()
@@ -87,7 +86,7 @@ class FC(nn.Module):
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Perform a forward pass on the FC model.
-        
+
         Parameters
         ----------
         x : torch.Tensor
@@ -96,7 +95,7 @@ class FC(nn.Module):
         Returns
         -------
         torch.Tensor
-            Embedded inputs of shape [any, any, output_size], where 'output_size' is the last number specified in the 
+            Embedded inputs of shape [any, any, output_size], where 'output_size' is the last number specified in the
             `embedding_hiddens` config argument.
         """
         return self.net(x)
