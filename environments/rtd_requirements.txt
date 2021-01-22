@@ -1,0 +1,8 @@
+sphinx
+sphinx-rtd-theme
+nbsphinx
+nbsphinx-link
+ipython
+numpy
+tensorboard
+torch

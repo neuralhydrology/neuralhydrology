@@ -9,7 +9,7 @@ import torch.nn as nn
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
-from neuralhydrology.modelzoo.fc import FC
+from neuralhydrology.modelzoo.inputlayer import InputLayer
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.utils.config import Config
 
@@ -47,21 +47,11 @@ class CustomLSTM(BaseModel):
     def __init__(self, cfg: Config):
         super(CustomLSTM, self).__init__(cfg=cfg)
 
-        # in case this class is used for analysis of an EmbCudaLSTM, we need to initialize the embedding network
-        if cfg.model in ["embcudalstm", "lstm"] and cfg.embedding_hiddens:
-            self.embedding_net = FC(cfg=cfg)
-            self._has_embedding_net = True
-            input_size = len(cfg.dynamic_inputs) + cfg.embedding_hiddens[-1]
-        else:
-            self._has_embedding_net = False
-            input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.static_attributes +
-                             cfg.hydroatlas_attributes)
-            if cfg.use_basin_id_encoding:
-                input_size += cfg.number_of_basins
+        self.embedding_net = InputLayer(cfg)
 
         self._hidden_size = cfg.hidden_size
 
-        self.cell = _LSTMCell(input_size=input_size,
+        self.cell = _LSTMCell(input_size=self.embedding_net.output_size,
                               hidden_size=self._hidden_size,
                               initial_forget_bias=cfg.initial_forget_bias)
 
@@ -69,45 +59,9 @@ class CustomLSTM(BaseModel):
 
         self.head = get_head(cfg=cfg, n_in=self._hidden_size, n_out=self.output_size)
 
-    def _preprocess_embcudalstm(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
-        x_d = data['x_d'].transpose(0, 1)
-
-        if 'x_s' in data and 'x_one_hot' in data:
-            x_s = torch.cat([data['x_s'], data['x_one_hot']], dim=-1)
-        elif 'x_s' in data:
-            x_s = data['x_s']
-        elif 'x_one_hot' in data:
-            x_s = data['x_one_hot']
-        else:
-            raise ValueError('Need x_s or x_one_hot in forward pass.')
-
-        embedding = self.embedding_net(x_s)
-
-        embedding = embedding.unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-        x_d = torch.cat([x_d, embedding], dim=-1)
-
-        return x_d
-
-    def _preprocess_lstm(self, data: Dict[str, torch.Tensor]) -> torch.Tensor:
-        x_d = data['x_d'].transpose(0, 1)
-
-        # concat all inputs
-        if 'x_s' in data and 'x_one_hot' in data:
-            x_s = data['x_s'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s, x_one_hot], dim=-1)
-        elif 'x_s' in data:
-            x_s = data['x_s'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s], dim=-1)
-        elif 'x_one_hot' in data:
-            x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_one_hot], dim=-1)
-        else:
-            pass
-
-        return x_d
-
-    def forward(self, data: Dict[str, torch.Tensor], h_0: torch.Tensor = None,
+    def forward(self,
+                data: Dict[str, torch.Tensor],
+                h_0: torch.Tensor = None,
                 c_0: torch.Tensor = None) -> Dict[str, torch.Tensor]:
         """Perform a forward pass on the LSTM model.
 
@@ -125,10 +79,8 @@ class CustomLSTM(BaseModel):
         Dict[str, torch.Tensor]
             Model output and all intermediate states and gate activations as a dictionary.
         """
-        if self._has_embedding_net:
-            x_d = self._preprocess_embcudalstm(data)
-        else:
-            x_d = self._preprocess_lstm(data)
+        # possibly pass dynamic and static inputs through embedding layers, then concatenate them
+        x_d = self.embedding_net(data, concatenate_output=True)
 
         seq_len, batch_size, _ = x_d.size()
 
@@ -171,11 +123,7 @@ class CustomLSTM(BaseModel):
 
         assert isinstance(optimized_lstm, CudaLSTM) or isinstance(optimized_lstm, EmbCudaLSTM)
 
-        if isinstance(optimized_lstm, EmbCudaLSTM):
-            if self._has_embedding_net:
-                self.embedding_net.load_state_dict(optimized_lstm.embedding_net.state_dict())
-            else:
-                raise RuntimeError("This model was not initialized with an embedding network.")
+        self.embedding_net.load_state_dict(optimized_lstm.embedding_net.state_dict())
 
         # copy lstm cell weights
         self.cell.copy_weights(optimized_lstm.lstm, layer=0)

@@ -1,2 +1,4 @@
-conda:
-    file: environments/environment_cpu.yml
+python:
+  version: 3.7
+  install:
+    - requirements: environments/rtd_requirements.txt

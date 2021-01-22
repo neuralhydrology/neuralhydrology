@@ -93,7 +93,7 @@ Validation settings
 
 -  ``metrics``: List of metrics to calculate during validation/testing.
    See
-   `codebase.evaluation.metrics <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.evaluation.metrics.html>`__
+   :py:mod:`neuralhydrology.evaluation.metrics`
    for a list of available metrics.
 
 -  ``save_validation_results``: True/False, if True, stores the
@@ -105,8 +105,8 @@ General model configuration
 
 -  ``model``: Defines the core of the model that will be used. Names
    have to match the values in `this
-   function <https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/modelzoo/__init__.py#L14>`__,
-   e.g., [``cudalstm``, ``ealstm``, ``embcudalstm``, ``mtslstm``]
+   function <https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/modelzoo/__init__.py#L17>`__,
+   e.g., [``cudalstm``, ``ealstm``, ``mtslstm``]
 
 -  ``head``: The prediction head that is used on top of the output of
    the core model. Currently supported is ``regression``.
@@ -185,12 +185,17 @@ These are used if ``model == odelstm``.
 Embedding network settings
 --------------------------
 
-These settings apply to small fully connected networks that are used in
-various places, such as the embedding network for static features in the
-``embcudalstm`` model or as an optional extended input gate network in 
-the ``ealstm`` model. For all other models, these settings can be ignored.
-If specified, but the ``cudalstm`` model is selected, the code will print a 
-warning.
+These settings define fully connected networks that are used in various places, such as the embedding network
+for static or dynamic features in the single-frequency models or as an optional extended input gate network in
+the EA-LSTM model. For multi-timescale models, these settings can be ignored.
+
+- ``statics_embedding``: Boolean to indicate whether the static inputs should be passed through an embedding network.
+  Note that for EA-LSTM, there will always be an additional linear layer that maps to the EA-LSTM's hidden size. This
+  means that the the embedding layer output size does not have to be equal to ``hidden_size``.
+
+- ``dynamics_embedding``: Boolean to indicate whether the dynamic inputs should be passed through an embedding network.
+  If both ``statics_embedding`` and ``dynamics_embedding`` are true, they will each use an individual embedding network,
+  but both networks will have the same structure (as defined by ``embedding_hiddens/activation/dropout``).
 
 -  ``embedding_hiddens``: List of integers that define the number of
    neurons per layer in the fully connected network. The last number is
@@ -209,11 +214,11 @@ Training settings
 
 -  ``optimizer``: Specify which optimizer to use. Currently supported
    is Adam (standard). New optimizers can be added
-   `here <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.training.html#neuralhydrology.training.get_optimizer>`__.
+   :py:func:`here <neuralhydrology.training.get_optimizer>`.
 
 -  ``loss``: Which loss to use. Currently supported are ``MSE``,
    ``NSE``, ``WeightedNSE``, ``RMSE``. New losses can be added
-   `here <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.training.loss.html>`__.
+   :py:mod:`here <neuralhydrology.training.loss>`.
    The ``WeightedNSE`` is especially for multi-target 
    settings. Use ``target_loss_weights`` to specify per-target
    weights.
@@ -225,7 +230,7 @@ Training settings
 -  ``regularization``: List of optional regularization terms. Currently
    supported is ``tie_frequencies``, which couples the predictions of
    all frequencies via an MSE term. New regularizations can be added
-   `here <https://neuralhydrology.readthedocs.io/en/latest/api/neuralhydrology.training.regularization.html>`__.
+   :py:mod:`here <neuralhydrology.training.regularization>`.
 
 -  ``learning_rate``: Learning rate. Can be either a single number (for
    a constant learning rate) or a dictionary. If it is a dictionary, the

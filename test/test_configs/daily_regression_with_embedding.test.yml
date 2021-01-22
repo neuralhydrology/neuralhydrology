@@ -23,26 +23,27 @@ validate_n_random_basins: 4
 cache_validation_data: True
 metrics:
   - NSE
-  - KGE
-  - Alpha-NSE
-  - Beta-NSE
 
 # --- Model configuration --------------------------------------------------------------------------
 model: cudalstm
 head: regression
 output_activation: linear
 
-hidden_size: 16
+hidden_size: 12
 initial_forget_bias: 3
 output_dropout: 0.4
+
+statics_embedding: True
+dynamics_embedding: True
+embedding_hiddens:
+  - 4
+  - 8
 
 # --- Training configuration -----------------------------------------------------------------------
 optimizer: Adam
 loss: MSE
 learning_rate:
   0: 1e-3
-  10: 5e-4
-  20: 1e-4
 batch_size: 256
 epochs: 1
 clip_gradient_norm: 1
@@ -64,8 +65,6 @@ forcings: daymet
 dynamic_inputs:
   - prcp(mm/day)
   - tmax(C)
-  - rand_col  # this is the column from the additional_features file
-additional_feature_files: ./test/test_data/additional_features.p
 target_variables:
   - QObs(mm/d)
 static_attributes:

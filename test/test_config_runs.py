@@ -40,24 +40,10 @@ def test_daily_regression(get_config: Fixture[Callable[[str], dict]], single_tim
         'dynamic_inputs': single_timescale_forcings['variables']
     })
 
-    basin = '01022500'
-    test_start_date, test_end_date = _get_test_start_end_dates(config)
-
     start_training(config)
     start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
 
-    results = _get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
-
-    assert pd.to_datetime(results['date'].values[0]) == test_start_date.date()
-    assert pd.to_datetime(results['date'].values[-1]) == test_end_date.date()
-
-    discharge = _get_discharge(config, basin)
-
-    assert discharge.loc[test_start_date:test_end_date].values \
-           == approx(results[f'{config.target_variables[0]}_obs'].values.reshape(-1), nan_ok=True)
-
-    # CAMELS forcings have no NaNs, so there should be no NaN predictions
-    assert not pd.isna(results[f'{config.target_variables[0]}_sim']).any()
+    _check_results(config, '01022500')
 
 
 def test_daily_regression_additional_features(get_config: Fixture[Callable[[str], dict]]):
@@ -70,24 +56,46 @@ def test_daily_regression_additional_features(get_config: Fixture[Callable[[str]
     """
     config = get_config('daily_regression_additional_features')
 
-    basin = '01022500'
-    test_start_date, test_end_date = _get_test_start_end_dates(config)
+    start_training(config)
+    start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
+
+    _check_results(config, '01022500')
+
+
+def test_daily_regression_with_embedding(get_config: Fixture[Callable[[str], dict]],
+                                         single_timescale_model: Fixture[str]):
+    """Tests training and testing with static and dynamic embedding network.
+
+    Parameters
+    ----------
+    get_config : Fixture[Callable[[str], dict]]
+        Method that returns a run configuration
+    single_timescale_model : Fixture[str]
+        Name of a single-timescale model
+    """
+    config = get_config('daily_regression_with_embedding')
+    config.update_config({'model': single_timescale_model})
 
     start_training(config)
     start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
 
-    results = _get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
+    _check_results(config, '01022500')
 
-    assert pd.to_datetime(results['date'].values[0]) == test_start_date.date()
-    assert pd.to_datetime(results['date'].values[-1]) == test_end_date.date()
 
-    discharge = _get_discharge(config, basin)
+def test_transformer_daily_regression(get_config: Fixture[Callable[[str], dict]]):
+    """Tests training and testing with a transformer model.
 
-    assert discharge.loc[test_start_date:test_end_date].values \
-           == approx(results[f'{config.target_variables[0]}_obs'].values.reshape(-1), nan_ok=True)
+    Parameters
+    ----------
+    get_config : Fixture[Callable[[str], dict]]
+        Method that returns a run configuration
+    """
+    config = get_config('transformer_daily_regression')
 
-    # CAMELS forcings have no NaNs, so there should be no NaN predictions
-    assert not pd.isna(results[f'{config.target_variables[0]}_sim']).any()
+    start_training(config)
+    start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
+
+    _check_results(config, '01022500')
 
 
 def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], multi_timescale_model: Fixture[str]):
@@ -132,6 +140,35 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
     assert not pd.isna(daily_results['qobs_mm_per_hour_sim'].values).any()
 
 
+def _check_results(config: Config, basin: str):
+    """Perform basic sanity checks of model predictions.
+
+    Checks that the results file has the correct date range, that the observed discharge in the file is correct, and
+    that there are no NaN predictions.
+
+    Parameters
+    ----------
+    config : Config
+        The run configuration used to produce the results
+    basin : str
+        Id of a basin for which to check the results
+    """
+    test_start_date, test_end_date = _get_test_start_end_dates(config)
+
+    results = _get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
+
+    assert pd.to_datetime(results['date'].values[0]) == test_start_date.date()
+    assert pd.to_datetime(results['date'].values[-1]) == test_end_date.date()
+
+    discharge = _get_discharge(config, basin)
+
+    assert discharge.loc[test_start_date:test_end_date].values \
+           == approx(results[f'{config.target_variables[0]}_obs'].values.reshape(-1), nan_ok=True)
+
+    # CAMELS forcings have no NaNs, so there should be no NaN predictions
+    assert not pd.isna(results[f'{config.target_variables[0]}_sim']).any()
+
+
 def _get_test_start_end_dates(config: Config) -> Tuple[datetime, datetime]:
     test_start_date = pd.to_datetime(config.test_start_date, format='%d/%m/%Y')
     test_end_date = pd.to_datetime(config.test_end_date, format='%d/%m/%Y') + pd.Timedelta(days=1, seconds=-1)
@@ -142,7 +179,7 @@ def _get_test_start_end_dates(config: Config) -> Tuple[datetime, datetime]:
 def _get_basin_results(run_dir: Path, epoch: int) -> Dict:
     results_file = list(run_dir.glob(f'test/model_epoch{str(epoch).zfill(3)}/test_results.p'))
     if len(results_file) != 1:
-        pytest.fail(f'Results file not found.')
+        pytest.fail('Results file not found.')
 
     return pickle.load(open(str(results_file[0]), 'rb'))
 

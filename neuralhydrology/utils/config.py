@@ -293,6 +293,10 @@ class Config(object):
         return self._get_value_verbose("dynamic_inputs")
 
     @property
+    def dynamics_embedding(self) -> bool:
+        return self._cfg.get("dynamics_embedding", False)
+
+    @property
     def embedding_activation(self) -> str:
         return self._cfg.get("embedding_activation", "tanh")
 
@@ -593,6 +597,10 @@ class Config(object):
             return self._as_default_list(self._cfg["camels_attributes"])
         else:
             return []
+
+    @property
+    def statics_embedding(self) -> bool:
+        return self._cfg.get("statics_embedding", False)
 
     @property
     def target_loss_weights(self) -> List[float]:

@@ -1,25 +1,23 @@
-import logging
 from typing import Dict
 
 import torch
 import torch.nn as nn
 
+from neuralhydrology.modelzoo.inputlayer import InputLayer
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.utils.config import Config
-
-LOGGER = logging.getLogger(__name__)
 
 
 class CudaLSTM(BaseModel):
     """LSTM model class, which relies on PyTorch's CUDA LSTM class.
 
-    This class implements the standard LSTM combined with a model head, as specified in the config. All features 
-    (time series and static) are concatenated and passed to the LSTM directly. If you want to embed the static features
-    prior to the concatenation, use the `EmbCudaLSTM` class.
-    To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set 
+    This class implements the standard LSTM combined with a model head, as specified in the config. Depending on the
+    embedding settings, static and/or dynamic features may or may not be fed through embedding networks before being
+    concatenated and passed through the LSTM.
+    To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set
     this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
-    the gradient flow. 
+    the gradient flow.
     The `CudaLSTM` class only supports single-timescale predictions. Use `MTSLSTM` to train a model and get
     predictions on multiple temporal resolutions at the same time.
 
@@ -29,23 +27,14 @@ class CudaLSTM(BaseModel):
         The run configuration.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-    module_parts = ['lstm', 'head']
+    module_parts = ['embedding_net', 'lstm', 'head']
 
     def __init__(self, cfg: Config):
         super(CudaLSTM, self).__init__(cfg=cfg)
 
-        if cfg.embedding_hiddens:
-            LOGGER.warning("## Warning: Embedding settings are ignored. Use EmbCudaLSTM for embeddings")
+        self.embedding_net = InputLayer(cfg)
 
-        input_size = len(cfg.dynamic_inputs + cfg.evolving_attributes + cfg.hydroatlas_attributes +
-                         cfg.static_attributes)
-        if cfg.use_basin_id_encoding:
-            input_size += cfg.number_of_basins
-
-        if cfg.head.lower() == "umal":
-            input_size += 1
-
-        self.lstm = nn.LSTM(input_size=input_size, hidden_size=cfg.hidden_size)
+        self.lstm = nn.LSTM(input_size=self.embedding_net.output_size, hidden_size=cfg.hidden_size)
 
         self.dropout = nn.Dropout(p=cfg.output_dropout)
 
@@ -69,28 +58,13 @@ class CudaLSTM(BaseModel):
         Returns
         -------
         Dict[str, torch.Tensor]
-            Model outputs and intermediate states as a dictionary. 
+            Model outputs and intermediate states as a dictionary.
                 - `y_hat`: model predictions of shape [batch size, sequence length, number of target variables].
                 - `h_n`: hidden state at the last time step of the sequence of shape [batch size, 1, hidden size].
                 - `c_n`: cell state at the last time step of the sequence of shape [batch size, 1, hidden size].
         """
-        # transpose to [seq_length, batch_size, n_features]
-        x_d = data['x_d'].transpose(0, 1)
-
-        # concat all inputs
-        if 'x_s' in data and 'x_one_hot' in data:
-            x_s = data['x_s'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s, x_one_hot], dim=-1)
-        elif 'x_s' in data:
-            x_s = data['x_s'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s], dim=-1)
-        elif 'x_one_hot' in data:
-            x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_one_hot], dim=-1)
-        else:
-            pass
-
+        # possibly pass dynamic and static inputs through embedding layers, then concatenate them
+        x_d = self.embedding_net(data)
         lstm_output, (h_n, c_n) = self.lstm(input=x_d)
 
         # reshape to [batch_size, seq, n_hiddens]

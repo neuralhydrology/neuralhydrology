@@ -32,7 +32,7 @@ model: mtslstm
 head: regression
 output_activation: linear
 
-hidden_size: 64
+hidden_size: 16
 initial_forget_bias: 3
 output_dropout: 0.4
 

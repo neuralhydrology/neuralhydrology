@@ -9,7 +9,7 @@ from test import Fixture
 
 
 def test_model_equality(get_config: Fixture[Callable[[str], dict]], custom_lstm_supported_models: Fixture[str]):
-    config = get_config('daily_regression')
+    config = get_config('daily_regression_with_embedding')
 
     # we only need to test for a single data set, input/output setting and model specifications
     config.update_config({
