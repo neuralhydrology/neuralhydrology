@@ -99,7 +99,7 @@ class Config(object):
                 yaml = YAML()
                 yaml.dump(dict(OrderedDict(sorted(temp_cfg.items()))), fp)
         else:
-            FileExistsError(yml_path)
+            raise FileExistsError(yml_path)
 
     def update_config(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
         """Update config arguments.
