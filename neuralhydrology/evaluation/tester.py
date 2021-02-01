@@ -293,7 +293,7 @@ class BaseTester(object):
                             for k, v in values.items():
                                 results[basin][freq][k] = v
 
-        if (self.period == "validation") and (self.cfg.log_n_figures > 0):
+        if (self.period == "validation") and (self.cfg.log_n_figures > 0) and (experiment_logger is not None):
             self._create_and_log_figures(results, experiment_logger, epoch)
 
         if save_results:
