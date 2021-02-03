@@ -36,11 +36,17 @@ transformer_nlayers: 2
 transformer_dropout: 0.4
 transformer_positional_dropout: 0.4
 
-statics_embedding: True
-dynamics_embedding: True
-embedding_hiddens:
-  - 4
-  - 8
+statics_embedding:
+  type: fc
+  hiddens:
+    - 4
+    - 8
+
+dynamics_embedding:
+  type: fc
+  hiddens:
+    - 4
+    - 8
 
 # --- Training configuration -----------------------------------------------------------------------
 optimizer: Adam

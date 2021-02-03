@@ -12,7 +12,7 @@ CudaLSTM
 --------
 :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` is a network using the standard PyTorch LSTM implementation.
 All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
-If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will be passed through embedding networks before
+If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will be passed through embedding networks before
 being concatenated.
 The initial forget gate bias can be defined in config.yml (``initial_forget_bias``) and will be set accordingly during
 model initialization.
@@ -34,25 +34,24 @@ EA-LSTM
 The static features (``x_s`` and/or ``x_one_hot``) are used to compute the input gate activations, while the dynamic
 inputs ``x_d`` are used in all other gates of the network.
 The initial forget gate bias can be defined in config.yml (``initial_forget_bias``).
-If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will first be passed through embedding networks.
+If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will first be passed through embedding networks.
 The output of the static embedding network will then be passed through the input gate, which consists of a single linear
 layer.
 
 EmbCudaLSTM
 -----------
 .. deprecated:: 0.9.11-beta
-   Use `CudaLSTM`_ with ``embedding_hiddens`` and ``statics_embedding: True``.
+   Use `CudaLSTM`_ with ``statics_embedding``.
 
 :py:class:`neuralhydrology.modelzoo.embcudalstm.EmbCudaLSTM` is similar to `CudaLSTM`_,
 with the only difference that static inputs (``x_s`` and/or ``x_one_hot``) are passed through an embedding network
-(defined, for instance, by ``embedding_hiddens``) before being concatenated to the dynamic inputs ``x_d``
-at each time step.
+before being concatenated to the dynamic inputs ``x_d`` at each time step.
 
 GRU
 ---
 :py:class:`neuralhydrology.modelzoo.gru.GRU` is a network using the standard PyTorch GRU implementation.
 All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
-If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will be passed through embedding networks before
+If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will be passed through embedding networks before
 being concatenated.
 
 MTS-LSTM
@@ -72,9 +71,9 @@ Transformer
 :py:class:`neuralhydrology.modelzoo.transformer.Transformer` is the encoding portion of a standard transformer network with self-attention. 
 This uses the standard PyTorch TransformerEncoder implementation. All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed 
 to the network at each time step. Unless the number of inputs is divisible by the number of transformer heads (``transformer_nheads``), it is
-necessary to use an embedding network that guarantees this. To achieve this, set ``statics/dynamics_embedding`` to true, so the static/dynamic
+necessary to use an embedding network that guarantees this. To achieve this, use ``statics/dynamics_embedding``, so the static/dynamic
 inputs will be passed through embedding networks before being concatenated. The embedding network will then map the static and dynamic features
-each to size ``embedding_hiddens[-1]`` (i.e., the total input size will be twice this value if both static and dynamic inputs are embedded).
+to size ``statics/dynamics_embedding['hiddens'][-1]``, so the total embedding size will be the sum of these values.
 Instead of a decoder, this model uses a standard head (e.g., linear). 
 The model requires the following hyperparameters specified in the config file: 
 

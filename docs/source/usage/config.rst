@@ -189,25 +189,22 @@ These settings define fully connected networks that are used in various places, 
 for static or dynamic features in the single-frequency models or as an optional extended input gate network in
 the EA-LSTM model. For multi-timescale models, these settings can be ignored.
 
-- ``statics_embedding``: Boolean to indicate whether the static inputs should be passed through an embedding network.
+- ``statics_embedding``: None (default) or a dict that defines the embedding network for static inputs.
+   The dictionary can have the following keys:
+
+   - ``type`` (default 'fc'): Type of the embedding net. Currently, only 'fc' for fully-connected net is supported.
+   - ``hiddens``: List of integers that define the number of neurons per layer in the fully connected network.
+     The last number is the number of output neurons. Must have at least length one.
+   - ``activation`` (default 'tanh'): activation function of the network. Supported values are 'tanh', 'sigmoid', 'linear'.
+     The activation function is not applied to the output neurons, which always have a linear activation function.
+     An activation function for the output neurons has to be applied in the main model class.
+   - ``dropout`` (default 0.0): Dropout rate applied to the embedding network.
+
   Note that for EA-LSTM, there will always be an additional linear layer that maps to the EA-LSTM's hidden size. This
   means that the the embedding layer output size does not have to be equal to ``hidden_size``.
 
-- ``dynamics_embedding``: Boolean to indicate whether the dynamic inputs should be passed through an embedding network.
-  If both ``statics_embedding`` and ``dynamics_embedding`` are true, they will each use an individual embedding network,
-  but both networks will have the same structure (as defined by ``embedding_hiddens/activation/dropout``).
-
--  ``embedding_hiddens``: List of integers that define the number of
-   neurons per layer in the fully connected network. The last number is
-   the number of output neurons.
-
--  ``embedding_activation``: activation function of embedding network
-   (currently only ``tanh`` is supported). The activation function is
-   not applied to the output neurons, which always have a linear
-   activation function. A activation function for the output neurons has
-   to be applied in the main model class.
-
--  ``embedding_dropout``: Dropout rate applied to the embedding network
+- ``dynamics_embedding``: None (default) or a dict that defines the embedding network for dynamic inputs. See ``statics_embedding``
+  for a description of the dictionary structure.
 
 Training settings
 -----------------

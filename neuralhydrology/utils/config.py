@@ -31,7 +31,10 @@ class Config(object):
 
     # Lists of deprecated config keys and purely informational metadata keys, needed when checking for unrecognized
     # config keys since these keys are not properties of the Config class.
-    _deprecated_keys = ['static_inputs', 'camels_attributes', 'target_variable']
+    _deprecated_keys = [
+        'static_inputs', 'camels_attributes', 'target_variable', 'embedding_hiddens', 'embedding_activation',
+        'embedding_dropout'
+    ]
     _metadata_keys = ['package_version', 'commit_hash']
 
     def __init__(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
@@ -294,19 +297,11 @@ class Config(object):
 
     @property
     def dynamics_embedding(self) -> bool:
-        return self._cfg.get("dynamics_embedding", False)
+        embedding_spec = self._cfg.get("dynamics_embedding", None)
 
-    @property
-    def embedding_activation(self) -> str:
-        return self._cfg.get("embedding_activation", "tanh")
-
-    @property
-    def embedding_dropout(self) -> float:
-        return self._cfg.get("embedding_dropout", 0.0)
-
-    @property
-    def embedding_hiddens(self) -> List[int]:
-        return self._as_default_list(self._cfg.get("embedding_hiddens", []))
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
 
     @property
     def epochs(self) -> int:
@@ -600,7 +595,11 @@ class Config(object):
 
     @property
     def statics_embedding(self) -> bool:
-        return self._cfg.get("statics_embedding", False)
+        embedding_spec = self._cfg.get("statics_embedding", None)
+
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
 
     @property
     def target_loss_weights(self) -> List[float]:
@@ -716,13 +715,35 @@ class Config(object):
     @property
     def verbose(self) -> int:
         """Defines level of verbosity.
-        
+
         0: Only log info messages, don't show progress bars
         1: Log info messages and show progress bars
-        
+
         Returns
         -------
         int
             Level of verbosity.
         """
         return self._cfg.get("verbose", 1)
+
+    def _get_embedding_spec(self, embedding_spec: dict) -> dict:
+        if isinstance(embedding_spec, bool) and embedding_spec:  #
+            msg = [
+                "The semantics of 'dynamics/statics_embedding' have changed, and the associated arguments "
+                "'embedding_hiddens/activation/dropout' are deprecated. The old specifications may no longer work in "
+                "the future. Specify embeddings as a dict in dynamics/statics_embedding instead."
+            ]
+            warnings.warn(" ".join(msg), FutureWarning)
+            return {
+                'type': 'fc',
+                'hiddens': self._as_default_list(self._cfg.get("embedding_hiddens", [])),
+                'activation': self._cfg.get("embedding_activation", "tanh"),
+                'dropout': self._cfg.get("embedding_dropout", 0.0)
+            }
+
+        return {
+            'type': embedding_spec.get('type', 'fc'),
+            'hiddens': self._as_default_list(embedding_spec.get('hiddens', [])),
+            'activation': embedding_spec.get('activation', 'tanh'),
+            'dropout': embedding_spec.get('dropout', 0.0)
+        }

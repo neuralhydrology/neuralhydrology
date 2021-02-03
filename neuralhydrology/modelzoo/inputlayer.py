@@ -1,5 +1,5 @@
 import logging
-from typing import Dict, Union, Tuple
+from typing import Dict, Optional, Union, Tuple
 
 import torch
 import torch.nn as nn
@@ -14,10 +14,16 @@ class InputLayer(nn.Module):
     """Input layer to preprocess static and dynamic inputs.
 
     This module provides optional embedding of dynamic and static inputs. If ``dynamic_embeddings`` or
-    ``static_embeddings`` are set to True in the config, a fully-connected embedding network will be prepended to the
-    timeseries model. See the `FC` class for information on how to configure the embedding layers. While the dynamic
-    and static embedding layers are always separate (with separate weights), at this point they always share the same
-    architecture.
+    ``static_embeddings`` are specified as dictionaries in the config, a fully-connected embedding network will be
+    prepended to the timeseries model. The dictionaries have the following keys:
+
+    - ``type`` (default 'fc'): Type of the embedding net. Currently, only 'fc' for fully-connected net is supported.
+    - ``hiddens``: List of integers that define the number of neurons per layer in the fully connected network.
+      The last number is the number of output neurons. Must have at least length one.
+    - ``activation`` (default 'tanh'): activation function of the network. Supported values are 'tanh', 'sigmoid',
+      'linear'. The activation function is not applied to the output neurons, which always have a linear activation
+      function. An activation function for the output neurons has to be applied in the main model class.
+    - ``dropout`` (default 0.0): Dropout rate applied to the embedding network.
 
     Note that this module does not support multi-frequency runs.
 
@@ -30,36 +36,57 @@ class InputLayer(nn.Module):
     def __init__(self, cfg: Config):
         super(InputLayer, self).__init__()
 
-        if not cfg.embedding_hiddens and (cfg.statics_embedding or cfg.dynamics_embedding):
-            raise ValueError('static or dynamic embeddings are active, but embedding_hiddens is undefined.')
-        if cfg.embedding_hiddens and not (cfg.statics_embedding or cfg.dynamics_embedding):
-            LOGGER.warning('embedding_hiddens will be ignored since statics_embedding and dynamics_embedding are False')
-
-        self.statics_output_size = 0
-        self.dynamics_output_size = 0
-
+        dynamics_input_size = len(cfg.dynamic_inputs)
         statics_input_size = len(cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
         if cfg.use_basin_id_encoding:
             statics_input_size += cfg.number_of_basins
 
-        if cfg.statics_embedding:
-            if statics_input_size == 0:
-                raise ValueError('Cannot create a static embedding layer with input size 0')
-            self.statics_embedding = FC(cfg, statics_input_size)
-            self.statics_output_size += self.statics_embedding.output_size
-        else:
-            self.statics_embedding = nn.Identity()
-            self.statics_output_size += statics_input_size
-
-        dynamics_input_size = len(cfg.dynamic_inputs)
-        if cfg.dynamics_embedding:
-            self.dynamics_embedding = FC(cfg, len(cfg.dynamic_inputs))
-            self.dynamics_output_size += self.dynamics_embedding.output_size
-        else:
-            self.dynamics_embedding = nn.Identity()
-            self.dynamics_output_size += dynamics_input_size
+        self.statics_embedding, self.statics_output_size = \
+            self._get_embedding_net(cfg.statics_embedding, statics_input_size, 'statics')
+        self.dynamics_embedding, self.dynamics_output_size = \
+            self._get_embedding_net(cfg.dynamics_embedding, dynamics_input_size, 'dynamics')
 
         self.output_size = self.dynamics_output_size + self.statics_output_size
+
+    @staticmethod
+    def _get_embedding_net(embedding_spec: Optional[dict], input_size: int, purpose: str) -> Tuple[nn.Module, int]:
+        """Get an embedding net following the passed specifications.
+
+        If the `embedding_spec` is None, the returned embedding net will be the identity function.
+
+        Parameters
+        ----------
+        embedding_spec : Optional[dict]
+            Specification of the embedding net from the run configuration or None.
+        input_size : int
+            Size of the inputs into the embedding network.
+        purpose : str
+            Purpose of the embedding network, used for error messages.
+
+        Returns
+        -------
+        Tuple[nn.Module, int]
+            The embedding net and its output size.
+        """
+        if embedding_spec is None:
+            return nn.Identity(), input_size
+
+        if input_size == 0:
+            raise ValueError(f'Cannot create {purpose} embedding layer with input size 0')
+
+        emb_type = embedding_spec['type'].lower()
+        if emb_type != 'fc':
+            raise ValueError(f'{purpose} embedding type {emb_type} not supported.')
+
+        hiddens = embedding_spec['hiddens']
+        if len(hiddens) == 0:
+            raise ValueError(f'{purpose} embedding "hiddens" must be a list of hidden sizes with at least one entry')
+
+        dropout = embedding_spec['dropout']
+        activation = embedding_spec['activation']
+
+        emb_net = FC(input_size=input_size, hidden_sizes=hiddens, activation=activation, dropout=dropout)
+        return emb_net, emb_net.output_size
 
     def forward(self, data: Dict[str, torch.Tensor], concatenate_output: bool = True) \
             -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:

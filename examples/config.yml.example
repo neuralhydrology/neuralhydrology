@@ -67,17 +67,31 @@ output_activation: linear
 
 # ----> Embedding network settings <----
 
-# define number of neurons per layer in the FC network used as embedding/shortcut network
-embedding_hiddens:
-- 30
-- 20
-- 64
+# define embedding network for static inputs
+statics_embedding:
+  type: fc
+  # define number of neurons per layer in the FC network used as embedding network
+  hiddens:
+    - 30
+    - 20
+    - 64
+  # activation function of embedding network
+  activation: tanh
+  # dropout applied to embedding network
+  dropout: 0.0
 
-# activation function of embedding network (currently only tanh supported)
-embedding_activation: tanh
-
-# dropout applied to embedding network
-embedding_dropout: 0.0
+# define embedding network for dynamic inputs
+dynamics_embedding:
+  type: fc
+  # define number of neurons per layer in the FC network used as embedding network
+  hiddens:
+    - 30
+    - 20
+    - 64
+  # activation function of embedding network
+  activation: tanh
+  # dropout applied to embedding network
+  dropout: 0.0
 
 # ----> MTSLSTM settings <----
 

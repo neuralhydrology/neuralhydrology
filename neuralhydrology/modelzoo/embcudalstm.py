@@ -13,17 +13,16 @@ class EmbCudaLSTM(BaseModel):
     """EmbCudaLSTM model class, which adds embedding networks for static inputs to the standard LSTM.
 
     .. deprecated:: 0.9.11-beta
-       Use :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` with ``embedding_hiddens`` and
-       ``statics_embedding: True``).
+       Use :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` with ``statics_embedding``.
 
     This class extends the standard `CudaLSTM` class to preprocess the static inputs by an embedding network, prior
-    to concatenating those values to the dynamic (time series) inputs. Use the config argument `embedding_hiddens` to
+    to concatenating those values to the dynamic (time series) inputs. Use the config argument `statics_embedding` to
     specify the architecture of the fully-connected embedding network. No activation function is applied to the outputs
     of the embedding network.
     To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set
     this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
     the gradient flow.
-    The `EmbCudaLSTM` class only supports single timescale predictions. Use `MTSLSTM` to train a model and get 
+    The `EmbCudaLSTM` class only supports single timescale predictions. Use `MTSLSTM` to train a model and get
     predictions on multiple temporal resolutions at the same time.
 
     Parameters

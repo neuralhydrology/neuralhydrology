@@ -18,13 +18,12 @@ class CustomLSTM(BaseModel):
     """A custom implementation of the LSTM with support for a dedicated embedding network.
 
     The idea of this model is mainly to be used as an analytical tool, where you can train a model using the optimized
-    `CudaLSTM` or `EmbCudaLSTM` classes, and later copy the weights into this model for a more in-depth network 
+    `CudaLSTM` or `EmbCudaLSTM` classes, and later copy the weights into this model for a more in-depth network
     analysis (e.g. inspecting model states or gate activations). The advantage of this implementation is that it returns
     the entire time series of state vectors and gate activations.
-    However, you can also use this model class for training but note that it will be considerably slower than its 
-    optimized counterparts. If your config includes specifications for the `embedding_hiddens` argument, this class
-    will mimic the `EmbCudaLSTM` during training. If not, it will default to mimic the `CudaLSTM`, where all static
-    inputs are concatenated directly to the time series inputs.
+    However, you can also use this model class for training but note that it will be considerably slower than its
+    optimized counterparts. Depending on the embedding settings, static and/or dynamic features may or may not be fed
+    through embedding networks before being concatenated and passed through the LSTM.
 
     Parameters
     ----------
@@ -36,7 +35,7 @@ class CustomLSTM(BaseModel):
     >>> # Example for copying the weights of an optimzed `CudaLSTM` or `EmbCudaLSTM` into a `CustomLSTM` instance
     >>> cfg = ... # A config instance corresponding to the original, optimized model
     >>> optimized_lstm = ... # A model instance of `CudaLSTM` or `EmbCudaLSTM`
-    >>> 
+    >>>
     >>> # Use the original config to initialize this model to differentiate between `CudaLSTM` and `EmbCudaLSTM`
     >>> custom_lstm = CustomLSTM(cfg=cfg)
     >>>
