@@ -357,12 +357,12 @@ Data settings
 
 -  ``lagged_features``: Can be used to add a lagged copy of another
    feature to the list of available input/output features. Has to be a
-   dictionary mapping from strings to int, where the string specifies the
-   feature name and the int the number of lagged time steps. Those values
+   dictionary mapping from strings to int or a list of ints, where the string 
+   specifies the feature name and the int(s) the number of lagged time steps. Those values
    can be positive or negative (see
    `pandas shift <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.shift.html>`__
-   for details). We append ``_shiftN`` to each lagged feature, where `N`
-   is the shift count.
+   for details). If a list of integers is provided, only unique values are considered.
+   We append ``_shiftN`` to each lagged feature, where `N` is the shift count.
 
 -  ``custom_normalization``: Has to be a dictionary, mapping from
    time series feature names to ``centering`` and/or ``scaling``. Using
