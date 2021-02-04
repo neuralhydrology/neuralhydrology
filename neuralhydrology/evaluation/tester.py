@@ -18,12 +18,12 @@ from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datautils.utils import load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
-from neuralhydrology.evaluation.metrics import calculate_metrics
+from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
-from neuralhydrology.utils.errors import NoTrainDataError
+from neuralhydrology.utils.errors import AllNaNError, NoTrainDataError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -277,11 +277,20 @@ class BaseTester(object):
 
                             if 'samples' in sim.dims:
                                 sim = sim.mean(dim='samples')
-                            values = calculate_metrics(
-                                obs,
-                                sim,
-                                metrics=metrics if isinstance(metrics, list) else metrics[target_variable],
-                                resolution=freq)
+
+                            var_metrics = metrics if isinstance(metrics, list) else metrics[target_variable]
+                            if 'all' in var_metrics:
+                                var_metrics = get_available_metrics()
+                            try:
+                                values = calculate_metrics(obs, sim, metrics=var_metrics, resolution=freq)
+                            except AllNaNError as err:
+                                msg = f'Basin {basin} ' \
+                                    + (f'{target_variable} ' if len(self.cfg.target_variables) > 1 else '') \
+                                    + (f'{freq} ' if len(ds.frequencies) > 1 else '') \
+                                    + str(err)
+                                LOGGER.warning(msg)
+                                values = {metric: np.nan for metric in var_metrics}
+
                             # add variable identifier to metrics if needed
                             if len(self.cfg.target_variables) > 1:
                                 values = {f"{target_variable}_{key}": val for key, val in values.items()}

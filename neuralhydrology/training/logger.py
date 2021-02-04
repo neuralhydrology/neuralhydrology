@@ -154,7 +154,7 @@ class Logger(object):
         if self._train:
             value = avg_loss
         else:
-            value = {key: np.median(val) for key, val in self._metrics.items()}
+            value = {key: np.nanmedian(val) for key, val in self._metrics.items()}
 
         # clear buffer
         self._metrics = defaultdict(list)

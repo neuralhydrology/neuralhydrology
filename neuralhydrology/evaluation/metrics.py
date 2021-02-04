@@ -1,5 +1,5 @@
 import logging
-from typing import List, Dict
+from typing import Dict, List, Tuple
 
 import numpy as np
 import pandas as pd
@@ -7,13 +7,14 @@ from scipy import stats, signal
 from xarray.core.dataarray import DataArray
 
 from neuralhydrology.datautils import utils
+from neuralhydrology.utils.errors import AllNaNError
 
 LOGGER = logging.getLogger(__name__)
 
 
 def get_available_metrics() -> List[str]:
     """Get list of available metrics.
-    
+
     Returns
     -------
     List[str]
@@ -31,7 +32,7 @@ def _validate_inputs(obs: DataArray, sim: DataArray):
         raise RuntimeError("Metrics only defined for time series (1d or 2d with second dimension 1)")
 
 
-def _mask_valid(obs: DataArray, sim: DataArray) -> (DataArray, DataArray):
+def _mask_valid(obs: DataArray, sim: DataArray) -> Tuple[DataArray, DataArray]:
     # mask of invalid entries. NaNs in simulations can happen during validation/testing
     idx = (~sim.isnull()) & (~obs.isnull())
 
@@ -580,7 +581,7 @@ def mean_peak_timing(obs: DataArray,
     obs, sim = _mask_valid(obs, sim)
 
     # heuristic to get indices of peaks and their corresponding height.
-    peaks, properties = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
 
     # infer name of datetime index
     if datetime_coord is None:
@@ -642,9 +643,14 @@ def calculate_all_metrics(obs: DataArray,
     -------
     Dict[str, float]
         Dictionary with keys corresponding to metric name and values corresponding to metric values.
+
+    Raises
+    ------
+    AllNaNError
+        If all observations or all simulations are NaN.
     """
-    if _is_all_nan(obs, sim):
-        return {m: np.nan for m in get_available_metrics()}
+    _check_all_nan(obs, sim)
+
     results = {
         "NSE": nse(obs, sim),
         "MSE": mse(obs, sim),
@@ -686,12 +692,16 @@ def calculate_metrics(obs: DataArray,
     -------
     Dict[str, float]
         Dictionary with keys corresponding to metric name and values corresponding to metric values.
+
+    Raises
+    ------
+    AllNaNError
+        If all observations or all simulations are NaN.
     """
     if 'all' in metrics:
         return calculate_all_metrics(obs, sim, resolution=resolution)
 
-    if _is_all_nan(obs, sim):
-        return {m: np.nan for m in metrics}
+    _check_all_nan(obs, sim)
 
     values = {}
     for metric in metrics:
@@ -723,14 +733,15 @@ def calculate_metrics(obs: DataArray,
     return values
 
 
-def _is_all_nan(obs: DataArray, sim: DataArray) -> bool:
-    """Check if all observations or simulations are NaN and log a warning if this is the case. """
-    all_nan = False
-    if all(obs.isnull()):
-        LOGGER.warning("All observed values are NaN, thus metrics will be NaN, too.")
-        all_nan = True
-    if all(sim.isnull()):
-        LOGGER.warning("All simulated values are NaN, thus metrics will be NaN, too.")
-        all_nan = True
+def _check_all_nan(obs: DataArray, sim: DataArray):
+    """Check if all observations or simulations are NaN and raise an exception if this is the case.
 
-    return all_nan
+    Raises
+    ------
+    AllNaNError
+        If all observations or all simulations are NaN.
+    """
+    if all(obs.isnull()):
+        raise AllNaNError("All observed values are NaN, thus metrics will be NaN, too.")
+    if all(sim.isnull()):
+        raise AllNaNError("All simulated values are NaN, thus metrics will be NaN, too.")
