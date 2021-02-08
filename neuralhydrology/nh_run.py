@@ -99,9 +99,9 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
 
     # check if a GPU has been specified as command line argument. If yes, overwrite config
     if gpu is not None and gpu >= 0:
-        config.device = f"cuda:{gpu}"
+        base_config.device = f"cuda:{gpu}"
     if gpu is not None and gpu < 0:
-        config.device = "cpu"
+        base_config.device = "cpu"
 
     start_training(base_config)
 
