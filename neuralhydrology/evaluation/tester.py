@@ -450,10 +450,14 @@ class UncertaintyTester(BaseTester):
         super(UncertaintyTester, self).__init__(cfg, run_dir, period, init_model)
 
     def _generate_predictions(self, model: BaseModel, data: Dict[str, torch.Tensor]):
-        if self.cfg.mc_dropout:
-            return model.sample(data, self.cfg.n_samples)
+        if self.cfg.head.lower() == "gmm":
+            return model.sample_gmm(data, self.cfg.n_samples)
+        elif self.cfg.head.lower() == "cmal":
+            return model.sample_cmal(data, self.cfg.n_samples)
+        elif self.cfg.head.lower() == "umal":
+            return model.sample_umal(data, self.cfg.n_samples)
         else:
-            raise ValueError(f"Currently, uncertainty evaluation does only support MC-Dropout")
+            return model.sample(data, self.cfg.n_samples)
 
     def _subset_targets(self,
                         model: BaseModel,
@@ -461,8 +465,8 @@ class UncertaintyTester(BaseTester):
                         predictions: np.ndarray,
                         predict_last_n: int,
                         freq: str = None):
-        y_hat_sub = predictions  # predictions are already subset by the sample functions
-        y_sub = data['y'][:, -predict_last_n:, :]
+        y_hat_sub = predictions[f'y_hat{freq}'][:, -predict_last_n:, :]
+        y_sub = data[f'y{freq}'][:, -predict_last_n:, :]
         return y_hat_sub, y_sub
 
     def _create_xarray(self, y_hat: np.ndarray, y: np.ndarray):

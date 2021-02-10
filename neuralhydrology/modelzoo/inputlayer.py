@@ -47,6 +47,8 @@ class InputLayer(nn.Module):
             self._get_embedding_net(cfg.dynamics_embedding, dynamics_input_size, 'dynamics')
 
         self.output_size = self.dynamics_output_size + self.statics_output_size
+        if cfg.head.lower() == "umal":
+            self.output_size += 1
 
     @staticmethod
     def _get_embedding_net(embedding_spec: Optional[dict], input_size: int, purpose: str) -> Tuple[nn.Module, int]:

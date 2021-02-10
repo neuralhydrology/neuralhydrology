@@ -104,10 +104,11 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
         The uncertainty plot.
     """
 
-    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(7, 3), gridspec_kw={'width_ratios': [3, 5]})
+    fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(6.5, 3), gridspec_kw={'width_ratios': [4, 5]})
 
     # only take part of y to have a better zoom-in
-    y_flat = y.flatten()
+    y_long = y.flatten()
+    y_hat_long = y_hat.reshape(y_long.shape[0], -1)
     x_bnd = np.arange(0, 400)
     y_bnd_len = len(x_bnd)
 
@@ -121,9 +122,9 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
     for idx in range(len(quantiles)):
         lb = round(50 - (quantiles[idx] * 100) / 2)
         ub = round(50 + (quantiles[idx] * 100) / 2)
-        y_lb = np.percentile(y_hat[x_bnd, :, :], lb, axis=-1).flatten()
-        y_ub = np.percentile(y_hat[x_bnd, :, :], ub, axis=-1).flatten()
-        y_r[idx] = np.sum(((y_flat[x_bnd] > y_lb) * (y_flat[x_bnd] < y_ub))) / y_bnd_len
+        y_lb = np.percentile(y_hat_long[x_bnd, :], lb, axis=-1).flatten()
+        y_ub = np.percentile(y_hat_long[x_bnd, :], ub, axis=-1).flatten()
+        y_r[idx] = np.sum(((y_long[x_bnd] > y_lb) * (y_long[x_bnd] < y_ub))) / y_bnd_len
         if idx <= 3:
             axs[1].fill_between(x_bnd,
                                 y_lb,
@@ -131,9 +132,9 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
                                 color=labels_and_colors['colors'][idx],
                                 label=labels_and_colors['labels'][idx])
 
-    y_median = np.median(y_hat, axis=-1).flatten()
+    y_median = np.median(y_hat_long, axis=-1).flatten()
     axs[1].plot(x_bnd, y_median[x_bnd], '-', color='red', label="median")
-    axs[1].plot(x_bnd, y_flat[x_bnd], '--', color='black', label="observed")
+    axs[1].plot(x_bnd, y_long[x_bnd], '--', color='black', label="observed")
     axs[1].legend(prop={'size': 5})
     axs[1].set_ylabel("runoff")
     axs[1].set_xlabel("time index")
@@ -142,8 +143,8 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
     y_r = quantiles * 0.0
     for idx in range(len(y_r)):
         ub = quantiles[idx]
-        y_ub = np.percentile(y_hat[x_bnd, :, :], ub, axis=-1).flatten()
-        y_r[idx] = np.sum(y_flat[x_bnd] < y_ub) / y_bnd_len
+        y_ub = np.percentile(y_hat_long[x_bnd, :], ub, axis=-1).flatten()
+        y_r[idx] = np.sum(y_long[x_bnd] < y_ub) / y_bnd_len
 
     axs[0].plot([0, 1], [0, 1], 'k--')
     axs[0].plot(quantiles / 100, y_r, 'ro', ms=3.0)
@@ -152,12 +153,11 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
     axs[0].xaxis.grid(color='#ECECEC', linestyle='dashed')
     axs[0].xaxis.set_ticks(np.arange(0, 1, 0.2))
     axs[0].yaxis.set_ticks(np.arange(0, 1, 0.2))
-    axs[0].set_xlabel("cumulative nominal quantiles")
-    axs[0].set_ylabel("cumulative empirical quantiles")
+    axs[0].set_xlabel("theoretical quantile frequency")
+    axs[0].set_ylabel("count")
 
-    axs[0].set_title(title)
-
-    fig.tight_layout()
+    fig.suptitle(title, fontsize=14)
+    fig.tight_layout(rect=[0, 0.1, 1, 0.95])
 
     return fig, axs
 

@@ -103,17 +103,17 @@ Validation settings
 General model configuration
 ---------------------------
 
--  ``model``: Defines the core of the model that will be used. Names
+-  ``model``: Defines the model class, i.e. the core of the model, that will be used. Names
    have to match the values in `this
    function <https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/modelzoo/__init__.py#L17>`__,
    e.g., [``cudalstm``, ``ealstm``, ``mtslstm``]
 
 -  ``head``: The prediction head that is used on top of the output of
-   the core model. Currently supported is ``regression``.
+   the model class. Currently supported are ``regression``, ``gmm``, ``cmal``, and ``umal``.
    Make sure to pass the necessary options depending on your
    choice of the head (see below).
 
--  ``hidden_size``: Hidden size of the core model. In the case of an
+-  ``hidden_size``: Hidden size of the model class. In the case of an
    LSTM, this reflects the number of LSTM states.
 
 -  ``initial_forget_bias``: Initial value of the forget gate bias.
@@ -122,13 +122,73 @@ General model configuration
 
 Regression head
 ~~~~~~~~~~~~~~~
-
 Can be ignored if ``head != 'regression'``
 
 -  ``output_activation``: Which activation to use on the output
    neuron(s) of the linear layer. Currently supported are ``linear``,
    ``relu``, ``softplus``. If empty, ``linear`` is used.
+-  ``mc_dropout``: True/False. Wheter Monte-Carlo dropout is used to 
+   sample during inference. 
+   
+GMM head
+~~~~~~~~
+Can be ignored if ``head != 'gmm'``
 
+-  ``n_distributions``: The number of distributions used for the GMM head. 
+-  ``n_samples``: Number of samples generated  (per time-step) from GMM. 
+-  ``negative_sample_handling``: How to account for negative samples. 
+   Possible values are ``none`` for doing nothing, ``clip`` for clipping 
+   the values at zero, and ``truncate`` for resampling values that
+   were drawn below zero. If the last option is chosen, the additional 
+   argument ``negative_sample_max_retries`` controls how often the values 
+   are resampled. 
+-  ``negative_sample_max_retries``: The number of repeated samples for the 
+   ``truncate`` option of the ``negative_sample_max_retries`` argument.
+-  ``mc_dropout``: True/False. Whether Monte-Carlo dropout is used to 
+   sample during inference. 
+
+CMAL head
+~~~~~~~~~
+Can be ignored if ``head != 'cmal'``
+
+-  ``n_distributions``: The number of distributions used for the CMAL head. 
+-  ``n_samples``: Number of samples generated  (per time-step) from CMAL. 
+-  ``negative_sample_handling``: Approach for handling negative sampling. 
+   Possible values are ``none`` for doing nothing, ``clip`` for clipping 
+   the values at zero, and ``truncate`` for resampling values that
+   were drawn below zero. If the last option is chosen, the additional 
+   argument ``negative_sample_max_retries`` controls how often the values 
+   are resampled. 
+-  ``negative_sample_max_retries``: The number of repeated samples for the 
+   ``truncate`` option of the ``negative_sample_max_retries`` argument.
+-  ``mc_dropout``: True/False. Whether Monte-Carlo dropout is used to 
+   sample during inference.    
+
+
+UMAL head
+~~~~~~~~~
+Can be ignored if ``head != 'umal'``
+
+-  ``n_taus``: The number of taus sampled to approximate the 
+   uncountable distributions.
+-  ``umal_extend_batch``: True/False. Whether the batches should be 
+   extended ``n_taus`` times, to account for a specific approximation 
+   density already during the training.
+-  ``tau_down`` The lower sampling bound of asymmetry parameter (should be 
+   above 0, below 1 and smaller than ``tau_up``).
+-  ``tau_up`` The upper sampling bound of asymmetry parameter (should be 
+   above 0, below 1 and larger than ``tau_down``).   
+-  ``n_samples``: Number of samples generated  (per time-step) from UMAL. 
+-  ``negative_sample_handling``: Approach for handling negative sampling. 
+   Possible values are ``none`` for doing nothing, ``clip`` for clipping 
+   the values at zero, and ``truncate`` for resampling values that
+   were drawn below zero. If the last option is chosen, the additional 
+   argument ``negative_sample_max_retries`` controls how often the values 
+   are resampled. 
+-  ``negative_sample_max_retries``: The number of repeated samples for the 
+   ``truncate`` option of the ``negative_sample_max_retries`` argument.
+-  ``mc_dropout``: True/False. Whether Monte-Carlo dropout is used to 
+   sample during inference. 
 
 Multi-timescale training settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

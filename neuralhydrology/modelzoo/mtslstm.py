@@ -222,6 +222,7 @@ class MTSLSTM(BaseModel):
                 # for highest frequency, we can pass the entire sequence at once
                 lstm_output, _ = self.lstms[freq](x_d[freq], (h_0_transfer, c_0_transfer))
 
-            outputs[f'y_hat_{freq}'] = self.heads[freq](self.dropout(lstm_output.transpose(0, 1)))['y_hat']
+            head_out = self.heads[freq](self.dropout(lstm_output.transpose(0, 1)))
+            outputs.update({f'{key}_{freq}': value for key, value in head_out.items()})
 
         return outputs

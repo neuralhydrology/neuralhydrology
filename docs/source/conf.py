@@ -66,7 +66,9 @@ napoleon_numpy_docstring = True
 # -- Other settings -----------------------------------------------------------
 
 # Path to logo image file
-html_logo = '_static/img/neural-hyd-logo-white.png'
+html_logo = '_static/img/neural-hyd-logo.png'
+
+html_theme_options = {'style_nav_header_background': '#175762'}
 
 # Allows to build the docs with a minimal environment without warnings about missing packages
 autodoc_mock_imports = [
