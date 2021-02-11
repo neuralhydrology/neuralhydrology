@@ -13,8 +13,9 @@ from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from neuralhydrology.datautils.utils import sort_frequencies
-from neuralhydrology.evaluation.metrics import calculate_metrics
+from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.utils.config import Config
+from neuralhydrology.utils.errors import AllNaNError
 
 
 def create_results_ensemble(run_dirs: List[Path],
@@ -115,11 +116,22 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
                     sim = xr.where(sim < 0, 0, sim)
 
                 # calculate metrics
-                ensemble_metrics = calculate_metrics(
-                    ensemble_xr[f'{target_var}_obs'],
-                    sim,
-                    metrics=config.metrics if isinstance(config.metrics, list) else config.metrics[target_var],
-                    resolution=freq)
+                metrics = config.metrics if isinstance(config.metrics, list) else config.metrics[target_var]
+                if 'all' in metrics:
+                    metrics = get_available_metrics()
+                try:
+                    ensemble_metrics = calculate_metrics(ensemble_xr[f'{target_var}_obs'],
+                                                         sim,
+                                                         metrics=metrics,
+                                                         resolution=freq)
+                except AllNaNError as err:
+                    msg = f'Basin {basin} ' \
+                        + (f'{target_var} ' if len(target_vars) > 1 else '') \
+                        + (f'{freq} ' if len(frequencies) > 1 else '') \
+                        + str(err)
+                    print(msg)
+                    ensemble_metrics = {metric: np.nan for metric in metrics}
+
                 # add variable identifier to metrics if needed
                 if len(target_vars) > 1:
                     ensemble_metrics = {f'{target_var}_{key}': val for key, val in ensemble_metrics.items()}

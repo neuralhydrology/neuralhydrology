@@ -18,10 +18,10 @@ class Transformer(BaseModel):
 
     This class implements the encoder of a transformer network which can be used for regression.
     Unless the number of inputs is divisible by the number of transformer heads (``transformer_nheads``), it is
-    necessary to use an embedding network that guarantees this. To achieve this, set ``statics/dynamics_embedding`` to
-    true, so the static/dynamic inputs will be passed through embedding networks before being concatenated.
-    The embedding network will then map the static and dynamic features each to size ``embedding_hiddens[-1]``
-    (i.e., the total input size will be twice this value if both static and dynamic inputs are embedded).
+    necessary to use an embedding network that guarantees this. To achieve this, use ``statics/dynamics_embedding``,
+    so the static/dynamic inputs will be passed through embedding networks before being concatenated. The embedding
+    network will then map the static and dynamic features to size ``statics/dynamics_embedding['hiddens'][-1]``, so the
+    total embedding size will be the sum of these values.
     The model configuration is specified in the config file using the following options:
 
     * ``transformer_positional_encoding_type``: choices to "sum" or "concatenate" positional encoding to other model

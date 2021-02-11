@@ -230,7 +230,14 @@ class BaseDataset(Dataset):
 
     def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
         for feature, shift in self.cfg.lagged_features.items():
-            df[f"{feature}_shift{shift}"] = df[feature].shift(periods=shift, freq="infer")
+            if isinstance(shift, list):
+                # only consider unique shift values, otherwise we have columns with identical names
+                for s in set(shift):
+                    df[f"{feature}_shift{s}"] = df[feature].shift(periods=s, freq="infer")
+            elif isinstance(shift, int):
+                df[f"{feature}_shift{shift}"] = df[feature].shift(periods=shift, freq="infer")
+            else:
+                raise ValueError("The value of the 'lagged_features' arg must be either an int or a list of ints")
         return df
 
     def _load_or_create_xarray_dataset(self) -> xarray.Dataset:

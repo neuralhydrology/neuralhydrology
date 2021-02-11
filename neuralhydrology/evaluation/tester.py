@@ -18,12 +18,12 @@ from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datautils.utils import load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
-from neuralhydrology.evaluation.metrics import calculate_metrics
+from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
-from neuralhydrology.utils.errors import NoTrainDataError
+from neuralhydrology.utils.errors import AllNaNError, NoTrainDataError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -277,11 +277,20 @@ class BaseTester(object):
 
                             if 'samples' in sim.dims:
                                 sim = sim.mean(dim='samples')
-                            values = calculate_metrics(
-                                obs,
-                                sim,
-                                metrics=metrics if isinstance(metrics, list) else metrics[target_variable],
-                                resolution=freq)
+
+                            var_metrics = metrics if isinstance(metrics, list) else metrics[target_variable]
+                            if 'all' in var_metrics:
+                                var_metrics = get_available_metrics()
+                            try:
+                                values = calculate_metrics(obs, sim, metrics=var_metrics, resolution=freq)
+                            except AllNaNError as err:
+                                msg = f'Basin {basin} ' \
+                                    + (f'{target_variable} ' if len(self.cfg.target_variables) > 1 else '') \
+                                    + (f'{freq} ' if len(ds.frequencies) > 1 else '') \
+                                    + str(err)
+                                LOGGER.warning(msg)
+                                values = {metric: np.nan for metric in var_metrics}
+
                             # add variable identifier to metrics if needed
                             if len(self.cfg.target_variables) > 1:
                                 values = {f"{target_variable}_{key}": val for key, val in values.items()}
@@ -293,7 +302,7 @@ class BaseTester(object):
                             for k, v in values.items():
                                 results[basin][freq][k] = v
 
-        if (self.period == "validation") and (self.cfg.log_n_figures > 0):
+        if (self.period == "validation") and (self.cfg.log_n_figures > 0) and (experiment_logger is not None):
             self._create_and_log_figures(results, experiment_logger, epoch)
 
         if save_results:
@@ -441,10 +450,14 @@ class UncertaintyTester(BaseTester):
         super(UncertaintyTester, self).__init__(cfg, run_dir, period, init_model)
 
     def _generate_predictions(self, model: BaseModel, data: Dict[str, torch.Tensor]):
-        if self.cfg.mc_dropout:
-            return model.sample(data, self.cfg.n_samples)
+        if self.cfg.head.lower() == "gmm":
+            return model.sample_gmm(data, self.cfg.n_samples)
+        elif self.cfg.head.lower() == "cmal":
+            return model.sample_cmal(data, self.cfg.n_samples)
+        elif self.cfg.head.lower() == "umal":
+            return model.sample_umal(data, self.cfg.n_samples)
         else:
-            raise ValueError(f"Currently, uncertainty evaluation does only support MC-Dropout")
+            return model.sample(data, self.cfg.n_samples)
 
     def _subset_targets(self,
                         model: BaseModel,
@@ -452,8 +465,8 @@ class UncertaintyTester(BaseTester):
                         predictions: np.ndarray,
                         predict_last_n: int,
                         freq: str = None):
-        y_hat_sub = predictions  # predictions are already subset by the sample functions
-        y_sub = data['y'][:, -predict_last_n:, :]
+        y_hat_sub = predictions[f'y_hat{freq}'][:, -predict_last_n:, :]
+        y_sub = data[f'y{freq}'][:, -predict_last_n:, :]
         return y_hat_sub, y_sub
 
     def _create_xarray(self, y_hat: np.ndarray, y: np.ndarray):

@@ -12,7 +12,7 @@ from neuralhydrology.modelzoo.mtslstm import MTSLSTM
 from neuralhydrology.modelzoo.transformer import Transformer
 from neuralhydrology.utils.config import Config
 
-SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru"]
+SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru", "transformer"]
 
 
 def get_model(cfg: Config) -> nn.Module:
@@ -28,29 +28,29 @@ def get_model(cfg: Config) -> nn.Module:
     nn.Module
         A new model instance of the type specified in the config.
     """
-    if cfg.model in SINGLE_FREQ_MODELS and len(cfg.use_frequencies) > 1:
+    if cfg.model.lower() in SINGLE_FREQ_MODELS and len(cfg.use_frequencies) > 1:
         raise ValueError(f"Model {cfg.model} does not support multiple frequencies.")
 
-    if cfg.model == "cudalstm":
+    if cfg.model.lower() == "cudalstm":
         model = CudaLSTM(cfg=cfg)
-    elif cfg.model == "ealstm":
+    elif cfg.model.lower() == "ealstm":
         model = EALSTM(cfg=cfg)
-    elif cfg.model == "customlstm":
+    elif cfg.model.lower() == "customlstm":
         model = CustomLSTM(cfg=cfg)
-    elif cfg.model == "lstm":
+    elif cfg.model.lower() == "lstm":
         warnings.warn(
             "The `LSTM` class has been renamed to `CustomLSTM`. Support for `LSTM` will we dropped in the future.",
             FutureWarning)
         model = CustomLSTM(cfg=cfg)
-    elif cfg.model == "gru":
+    elif cfg.model.lower() == "gru":
         model = GRU(cfg=cfg)
-    elif cfg.model == "embcudalstm":
+    elif cfg.model.lower() == "embcudalstm":
         model = EmbCudaLSTM(cfg=cfg)
-    elif cfg.model == "mtslstm":
+    elif cfg.model.lower() == "mtslstm":
         model = MTSLSTM(cfg=cfg)
-    elif cfg.model == "odelstm":
+    elif cfg.model.lower() == "odelstm":
         model = ODELSTM(cfg=cfg)
-    elif cfg.model == "transformer":
+    elif cfg.model.lower() == "transformer":
         model = Transformer(cfg=cfg)
     else:
         raise NotImplementedError(f"{cfg.model} not implemented or not linked in `get_model()`")

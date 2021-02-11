@@ -1,24 +1,57 @@
 Modelzoo
 ========
 
-The following section gives an overview of all implemented models. See `Implementing a new model`_ for details
-on how to add your own model to the neuralHydrology package.
+The following section gives an overview of all implemented models in the ``neuralhydrology`` package. Conceptually, all models in our package consist of two parts, the model class (which constitutes the core of the model as such) and the model heads (which relate the outputs of the model class to the predicted variables). The section `Model Heads`_ provides a list of all implemented model heads, and the section `Model Classes`_ a list of all model classes. If you want to implement your own model within the package you best start at the section `Implementing a new model`_, which provides the necessary details to do so. 
+
+
+Model Heads
+-----------
+The head of the model is used on top of the model class and relates the outputs of the `Model Classes`_ to the predicted variable. Currently four model heads are available: `Regression`_, `GMM`_, `CMAL`_ and `UMAL`_. The latter three heads provide options for probabilistic modelling. A detailed overview can be found in `Klotz et al. "Uncertainty Estimation with Deep Learning for Rainfall-Runoff Modelling" <https://arxiv.org/abs/2012.14295>`__. 
+
+Regression
+^^^^^^^^^^
+:py:class:`neuralhydrology.modelzoo.head.Regression` provides a single layer *regression* head, that includes different activation options for the output. (namely a linear, relu and softplus). 
+
+It is possible to obtain probabilistic predictions with the regression head by using Monte-Carlo Dropout. Its usage is defined in the config.yml by setting ``mc_dropout``. The sampling behavior is governed by picking the number of samples (``n_samples``) and the approach for handling negative samples (``negative_sample_handling``).   
+
+GMM
+^^^
+:py:class:`neuralhydrology.modelzoo.head.GMM` implements a *Gaussian Mixture Model* head. That is, a mixture density network with Gaussian distributions as components. Each Gaussian component is defined by two parameters (the mean, the variance) and by a set of weights. The current implementation of the GMM head uses two layers. Specific output activations are used for the variances (:py:func:`torch.exp`) and the weights (:py:func:`torch.softmax`).
+
+The number of components can be set in the config.yml using ``n_distributions``. Additionally, the sampling behavior (for the inference) is defined with config.yml by setting the number of samples (``n_samples``), and the approach for handling negative samples (``negative_sample_handling``).  
+
+CMAL
+^^^^
+:py:class:`neuralhydrology.modelzoo.head.CMAL` implements a *Countable Mixture of Asymmetric Laplacians* head. That is, a mixture density network with asymmetric Laplace distributions as components. The name is a homage to `UMAL`_, which provides an uncountable extension. The CMAL components are defined by three parameters (location, scale, and asymmetry) and linked by a set of weights. The current implementation of the CMAL head uses two layers. Specific output activations are used for the component scales (:py:class:`torch.nn.Softplus(2)`), the asymmetries (:py:func:`torch.sigmoid`), and the weights (:py:func:`torch.softmax`). In our preliminary experiments this heuristic achieved better results. 
+
+The number of components can be set in the config.yml using ``n_distributions``. Additionally, one can sample from CMAL. The behavior of which is defined by setting the number of samples (``n_samples``), and the approach for handling negative samples (``negative_sample_handling``).  
+
+UMAL
+^^^^
+:py:class:`neuralhydrology.modelzoo.head.CMAL` implements an *Uncountable Mixture of Asymmetric Laplacians* head. That is, a mixture density network that uses an uncountable amount of asymmetric Laplace distributions as components. The *uncountable property* is achieved by implicitly learning the conditional density and approximating it, when needed, with a Monte-Carlo integration, using sampled asymmetry parameters. The UMAL components are defined by two parameters (the location and the scale) and linked by a set of weights. The current implementation uses two hidden layers. The output activation for the scale has some major differences to the original implementation, since it is upper bounded (using :py:func:`0.5*torch.sigmoid`).
+
+During inference the number of components and weights used for the Monte-Carlo approximation are defined in the config.yml by ``n_taus``. The additional argument ``umal_extend_batch`` allows to explicitly account for this integration step during training by repeatedly sampling the asymmetry parameter and extending the batch by ``n_taus``. Furthermore, depending on the used output activation the sampling of the asymmetry parameters can yield unwarranted model behavior. Therefore the lower- and upper-bounds of the sampling can be adjusted using the ``tau_down`` and ``tau_up`` options in the config yml. 
+The sampling for UMAL is defined by choosing the number of samples (``n_samples``), and the approach for handling negative samples (``negative_sample_handling``).  
+
+
+Model Classes
+-------------
 
 BaseModel
----------
+^^^^^^^^^
 Abstract base class from which all models derive. Do not use this class for model training.
 
 CudaLSTM
---------
+^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` is a network using the standard PyTorch LSTM implementation.
 All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
-If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will be passed through embedding networks before
+If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will be passed through embedding networks before
 being concatenated.
 The initial forget gate bias can be defined in config.yml (``initial_forget_bias``) and will be set accordingly during
 model initialization.
 
 CustomLSTM
-----------
+^^^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.customlstm.CustomLSTM` is a variant of the ``CudaLSTM``
 that returns all gate and state activations for all time steps. This class is mainly implemented for exploratory
 reasons. You can use the method ``model.copy_weights()`` to copy the weights of a ``CudaLSTM`` model
@@ -28,53 +61,52 @@ config.yml) or as a starter for your own modifications to the LSTM cell. Note, h
 is considerably slower than its optimized counterparts.
 
 EA-LSTM
--------
+^^^^^^^
 :py:class:`neuralhydrology.modelzoo.ealstm.EALSTM` is an implementation of the Entity-Aware LSTM, as introduced in
 `Kratzert et al. "Towards learning universal, regional, and local hydrological behaviors via machine learning applied to large-sample datasets" <https://hess.copernicus.org/articles/23/5089/2019/hess-23-5089-2019.html>`__.
 The static features (``x_s`` and/or ``x_one_hot``) are used to compute the input gate activations, while the dynamic
 inputs ``x_d`` are used in all other gates of the network.
 The initial forget gate bias can be defined in config.yml (``initial_forget_bias``).
-If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will first be passed through embedding networks.
+If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will first be passed through embedding networks.
 The output of the static embedding network will then be passed through the input gate, which consists of a single linear
 layer.
 
 EmbCudaLSTM
------------
+^^^^^^^^^^^
 .. deprecated:: 0.9.11-beta
-   Use `CudaLSTM`_ with ``embedding_hiddens`` and ``statics_embedding: True``.
+   Use `CudaLSTM`_ with ``statics_embedding``.
 
 :py:class:`neuralhydrology.modelzoo.embcudalstm.EmbCudaLSTM` is similar to `CudaLSTM`_,
 with the only difference that static inputs (``x_s`` and/or ``x_one_hot``) are passed through an embedding network
-(defined, for instance, by ``embedding_hiddens``) before being concatenated to the dynamic inputs ``x_d``
-at each time step.
+before being concatenated to the dynamic inputs ``x_d`` at each time step.
 
 GRU
----
+^^^
 :py:class:`neuralhydrology.modelzoo.gru.GRU` is a network using the standard PyTorch GRU implementation.
 All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to the network at each time step.
-If ``statics/dynamics_embedding`` are true, the static/dynamic inputs will be passed through embedding networks before
+If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will be passed through embedding networks before
 being concatenated.
 
 MTS-LSTM
---------
+^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.mtslstm.MTSLSTM` is a newly proposed model by `Gauch et al. "Rainfall--Runoff Prediction at Multiple Timescales with a Single Long Short-Term Memory Network" <https://arxiv.org/abs/2010.07921>`__.
 This model allows the training on more than temporal resolution (e.g., daily and hourly inputs) and
 returns multi-timescale model predictions accordingly. A more detailed tutorial will follow shortly.
 
 ODE-LSTM
---------
+^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.odelstm.ODELSTM` is a PyTorch implementation of the ODE-LSTM proposed by
 `Lechner and Hasani <https://arxiv.org/abs/2006.04418>`_. This model can be used with unevenly sampled inputs and can
 be queried to return predictions for any arbitrary time step.
 
 Transformer
------------
+^^^^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.transformer.Transformer` is the encoding portion of a standard transformer network with self-attention. 
 This uses the standard PyTorch TransformerEncoder implementation. All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed 
 to the network at each time step. Unless the number of inputs is divisible by the number of transformer heads (``transformer_nheads``), it is
-necessary to use an embedding network that guarantees this. To achieve this, set ``statics/dynamics_embedding`` to true, so the static/dynamic
+necessary to use an embedding network that guarantees this. To achieve this, use ``statics/dynamics_embedding``, so the static/dynamic
 inputs will be passed through embedding networks before being concatenated. The embedding network will then map the static and dynamic features
-each to size ``embedding_hiddens[-1]`` (i.e., the total input size will be twice this value if both static and dynamic inputs are embedded).
+to size ``statics/dynamics_embedding['hiddens'][-1]``, so the total embedding size will be the sum of these values.
 Instead of a decoder, this model uses a standard head (e.g., linear). 
 The model requires the following hyperparameters specified in the config file: 
 
@@ -87,7 +119,7 @@ The model requires the following hyperparameters specified in the config file:
 
 
 Implementing a new model
-------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^
 The listing below shows the skeleton of a template model you can use to start implementing your own model.
 Once you have implemented your model, make sure to modify :py:func:`neuralhydrology.modelzoo.__init__.get_model`.
 Furthermore, make sure to select a *unique* model abbreviation that will be used to specify the model in the config.yml

@@ -51,15 +51,20 @@ def get_loss_obj(cfg: Config) -> loss.BaseLoss:
         A new loss instance that implements the loss specified in the config or, if different, the loss required by the 
         head.
     """
-    if cfg.loss == "MSE":
+    if cfg.loss.lower() == "mse":
         loss_obj = loss.MaskedMSELoss(cfg)
-    elif cfg.loss == "NSE":
+    elif cfg.loss.lower() == "nse":
         loss_obj = loss.MaskedNSELoss(cfg)
-    elif cfg.loss == "WeightedNSE":
+    elif cfg.loss.lower() == "weightednse":
         loss_obj = loss.MaskedWeightedNSELoss(cfg)
-    elif cfg.loss == "RMSE":
+    elif cfg.loss.lower() == "rmse":
         loss_obj = loss.MaskedRMSELoss(cfg)
-
+    elif cfg.loss.lower() == "gmmloss":
+        loss_obj = loss.MaskedGMMLoss(cfg)
+    elif cfg.loss.lower() == "cmalloss":
+        loss_obj = loss.MaskedCMALLoss(cfg)
+    elif cfg.loss.lower() == "umalloss":
+        loss_obj = loss.MaskedUMALLoss(cfg)
     else:
         raise NotImplementedError(f"{cfg.loss} not implemented or not linked in `get_loss()`")
 

@@ -103,17 +103,17 @@ Validation settings
 General model configuration
 ---------------------------
 
--  ``model``: Defines the core of the model that will be used. Names
+-  ``model``: Defines the model class, i.e. the core of the model, that will be used. Names
    have to match the values in `this
    function <https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/modelzoo/__init__.py#L17>`__,
    e.g., [``cudalstm``, ``ealstm``, ``mtslstm``]
 
 -  ``head``: The prediction head that is used on top of the output of
-   the core model. Currently supported is ``regression``.
+   the model class. Currently supported are ``regression``, ``gmm``, ``cmal``, and ``umal``.
    Make sure to pass the necessary options depending on your
    choice of the head (see below).
 
--  ``hidden_size``: Hidden size of the core model. In the case of an
+-  ``hidden_size``: Hidden size of the model class. In the case of an
    LSTM, this reflects the number of LSTM states.
 
 -  ``initial_forget_bias``: Initial value of the forget gate bias.
@@ -122,13 +122,73 @@ General model configuration
 
 Regression head
 ~~~~~~~~~~~~~~~
-
 Can be ignored if ``head != 'regression'``
 
 -  ``output_activation``: Which activation to use on the output
    neuron(s) of the linear layer. Currently supported are ``linear``,
    ``relu``, ``softplus``. If empty, ``linear`` is used.
+-  ``mc_dropout``: True/False. Wheter Monte-Carlo dropout is used to 
+   sample during inference. 
+   
+GMM head
+~~~~~~~~
+Can be ignored if ``head != 'gmm'``
 
+-  ``n_distributions``: The number of distributions used for the GMM head. 
+-  ``n_samples``: Number of samples generated  (per time-step) from GMM. 
+-  ``negative_sample_handling``: How to account for negative samples. 
+   Possible values are ``none`` for doing nothing, ``clip`` for clipping 
+   the values at zero, and ``truncate`` for resampling values that
+   were drawn below zero. If the last option is chosen, the additional 
+   argument ``negative_sample_max_retries`` controls how often the values 
+   are resampled. 
+-  ``negative_sample_max_retries``: The number of repeated samples for the 
+   ``truncate`` option of the ``negative_sample_max_retries`` argument.
+-  ``mc_dropout``: True/False. Whether Monte-Carlo dropout is used to 
+   sample during inference. 
+
+CMAL head
+~~~~~~~~~
+Can be ignored if ``head != 'cmal'``
+
+-  ``n_distributions``: The number of distributions used for the CMAL head. 
+-  ``n_samples``: Number of samples generated  (per time-step) from CMAL. 
+-  ``negative_sample_handling``: Approach for handling negative sampling. 
+   Possible values are ``none`` for doing nothing, ``clip`` for clipping 
+   the values at zero, and ``truncate`` for resampling values that
+   were drawn below zero. If the last option is chosen, the additional 
+   argument ``negative_sample_max_retries`` controls how often the values 
+   are resampled. 
+-  ``negative_sample_max_retries``: The number of repeated samples for the 
+   ``truncate`` option of the ``negative_sample_max_retries`` argument.
+-  ``mc_dropout``: True/False. Whether Monte-Carlo dropout is used to 
+   sample during inference.    
+
+
+UMAL head
+~~~~~~~~~
+Can be ignored if ``head != 'umal'``
+
+-  ``n_taus``: The number of taus sampled to approximate the 
+   uncountable distributions.
+-  ``umal_extend_batch``: True/False. Whether the batches should be 
+   extended ``n_taus`` times, to account for a specific approximation 
+   density already during the training.
+-  ``tau_down`` The lower sampling bound of asymmetry parameter (should be 
+   above 0, below 1 and smaller than ``tau_up``).
+-  ``tau_up`` The upper sampling bound of asymmetry parameter (should be 
+   above 0, below 1 and larger than ``tau_down``).   
+-  ``n_samples``: Number of samples generated  (per time-step) from UMAL. 
+-  ``negative_sample_handling``: Approach for handling negative sampling. 
+   Possible values are ``none`` for doing nothing, ``clip`` for clipping 
+   the values at zero, and ``truncate`` for resampling values that
+   were drawn below zero. If the last option is chosen, the additional 
+   argument ``negative_sample_max_retries`` controls how often the values 
+   are resampled. 
+-  ``negative_sample_max_retries``: The number of repeated samples for the 
+   ``truncate`` option of the ``negative_sample_max_retries`` argument.
+-  ``mc_dropout``: True/False. Whether Monte-Carlo dropout is used to 
+   sample during inference. 
 
 Multi-timescale training settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -189,25 +249,22 @@ These settings define fully connected networks that are used in various places, 
 for static or dynamic features in the single-frequency models or as an optional extended input gate network in
 the EA-LSTM model. For multi-timescale models, these settings can be ignored.
 
-- ``statics_embedding``: Boolean to indicate whether the static inputs should be passed through an embedding network.
+- ``statics_embedding``: None (default) or a dict that defines the embedding network for static inputs.
+   The dictionary can have the following keys:
+
+   - ``type`` (default 'fc'): Type of the embedding net. Currently, only 'fc' for fully-connected net is supported.
+   - ``hiddens``: List of integers that define the number of neurons per layer in the fully connected network.
+     The last number is the number of output neurons. Must have at least length one.
+   - ``activation`` (default 'tanh'): activation function of the network. Supported values are 'tanh', 'sigmoid', 'linear'.
+     The activation function is not applied to the output neurons, which always have a linear activation function.
+     An activation function for the output neurons has to be applied in the main model class.
+   - ``dropout`` (default 0.0): Dropout rate applied to the embedding network.
+
   Note that for EA-LSTM, there will always be an additional linear layer that maps to the EA-LSTM's hidden size. This
   means that the the embedding layer output size does not have to be equal to ``hidden_size``.
 
-- ``dynamics_embedding``: Boolean to indicate whether the dynamic inputs should be passed through an embedding network.
-  If both ``statics_embedding`` and ``dynamics_embedding`` are true, they will each use an individual embedding network,
-  but both networks will have the same structure (as defined by ``embedding_hiddens/activation/dropout``).
-
--  ``embedding_hiddens``: List of integers that define the number of
-   neurons per layer in the fully connected network. The last number is
-   the number of output neurons.
-
--  ``embedding_activation``: activation function of embedding network
-   (currently only ``tanh`` is supported). The activation function is
-   not applied to the output neurons, which always have a linear
-   activation function. A activation function for the output neurons has
-   to be applied in the main model class.
-
--  ``embedding_dropout``: Dropout rate applied to the embedding network
+- ``dynamics_embedding``: None (default) or a dict that defines the embedding network for dynamic inputs. See ``statics_embedding``
+  for a description of the dictionary structure.
 
 Training settings
 -----------------
@@ -360,12 +417,12 @@ Data settings
 
 -  ``lagged_features``: Can be used to add a lagged copy of another
    feature to the list of available input/output features. Has to be a
-   dictionary mapping from strings to int, where the string specifies the
-   feature name and the int the number of lagged time steps. Those values
+   dictionary mapping from strings to int or a list of ints, where the string 
+   specifies the feature name and the int(s) the number of lagged time steps. Those values
    can be positive or negative (see
    `pandas shift <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.shift.html>`__
-   for details). We append ``_shiftN`` to each lagged feature, where `N`
-   is the shift count.
+   for details). If a list of integers is provided, only unique values are considered.
+   We append ``_shiftN`` to each lagged feature, where `N` is the shift count.
 
 -  ``custom_normalization``: Has to be a dictionary, mapping from
    time series feature names to ``centering`` and/or ``scaling``. Using

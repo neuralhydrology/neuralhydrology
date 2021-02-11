@@ -53,15 +53,15 @@ def get_dataset(cfg: Config,
     NotImplementedError
         If no data set class is implemented for the 'dataset' argument in the config.
     """
-    if cfg.dataset == "camels_us":
+    if cfg.dataset.lower() == "camels_us":
         Dataset = CamelsUS
-    elif cfg.dataset == "camels_gb":
+    elif cfg.dataset.lower() == "camels_gb":
         Dataset = CamelsGB
-    elif cfg.dataset == "hourly_camels_us":
+    elif cfg.dataset.lower() == "hourly_camels_us":
         Dataset = HourlyCamelsUS
-    elif cfg.dataset == "camels_cl":
+    elif cfg.dataset.lower() == "camels_cl":
         Dataset = CamelsCL
-    elif cfg.dataset == "generic":
+    elif cfg.dataset.lower() == "generic":
         Dataset = GenericDataset
     else:
         raise NotImplementedError(f"No dataset class implemented for dataset {cfg.dataset}")
