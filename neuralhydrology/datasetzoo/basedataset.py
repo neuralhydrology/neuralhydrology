@@ -510,8 +510,8 @@ class BaseDataset(Dataset):
 
         xr = self._load_or_create_xarray_dataset()
 
-        if "NSE" in self.cfg.loss:
-            # get the std of the discharge for each basin, which is needed for the NSE loss.
+        if self.cfg.loss.lower() in ['nse', 'weightednse']:
+            # get the std of the discharge for each basin, which is needed for the (weighted) NSE loss.
             self._calculate_per_basin_std(xr)
 
         if self._compute_scaler:
