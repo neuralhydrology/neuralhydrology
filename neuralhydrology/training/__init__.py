@@ -1,4 +1,5 @@
 import logging
+import warnings
 from typing import List
 
 import torch
@@ -38,7 +39,7 @@ def get_optimizer(model: torch.nn.Module, cfg: Config) -> torch.optim.Optimizer:
 def get_loss_obj(cfg: Config) -> loss.BaseLoss:
     """Get loss object, depending on the run configuration.
     
-    Currently supported are 'MSE', 'NSE', 'RMSE', 'WeightedNSE'.
+    Currently supported are 'MSE', 'NSE', 'RMSE', 'GMMLoss', 'CMALLoss', and 'UMALLoss'.
     
     Parameters
     ----------
@@ -56,7 +57,8 @@ def get_loss_obj(cfg: Config) -> loss.BaseLoss:
     elif cfg.loss.lower() == "nse":
         loss_obj = loss.MaskedNSELoss(cfg)
     elif cfg.loss.lower() == "weightednse":
-        loss_obj = loss.MaskedWeightedNSELoss(cfg)
+        warnings.warn("'WeightedNSE loss has been removed. Use 'NSE' with 'target_loss_weights'", FutureWarning)
+        loss_obj = loss.MaskedNSELoss(cfg)
     elif cfg.loss.lower() == "rmse":
         loss_obj = loss.MaskedRMSELoss(cfg)
     elif cfg.loss.lower() == "gmmloss":
