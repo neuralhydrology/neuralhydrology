@@ -87,6 +87,37 @@ All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to th
 If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will be passed through embedding networks before
 being concatenated.
 
+.. _MC-LSTM:
+
+MC-LSTM
+^^^^^^^
+:py:class:`neuralhydrology.modelzoo.mclstm.MCLSTM` is a concept for a mass-conserving model architecture inspired by the
+LSTM that was recently proposed by `Hoedt et al. (2021) <https://arxiv.org/abs/2101.05186>`_. The implementation included
+in this library is the exact model configuration that was used for the hydrology experiments in the linked publication 
+(for details, see Appendix B.4.2).
+The inputs for the model are split into two groups: i) the mass input, whose values are stored in the memory cells of 
+the model and from which the target is calculated and ii) auxiliary inputs, which are used to control the gates 
+within the model. In this implementation, only a single mass input per timestep (e.g. precipitation) is allowed, which
+has to be specified with the config argument ``mass_inputs``. Make sure to exclude the mass input feature, as well as
+the target variable from the standard feature normalization. This can be done using the ``custom_normalization`` config argument
+and by setting the ``centering`` and ``scaling`` key to ``None``. For example, if the mass input is named "precipitation"
+and the target feature is named "discharge", this would look like this:
+
+.. code-block:: yaml
+
+    custom_normalization:
+        precipitation:
+            centering: None
+            scaling: None
+        discharge:
+            centering: None
+            scaling: None
+
+All inputs specified by the ``dynamic_inputs`` config argument are used as auxiliary inputs, as are (possibly embedded)
+static inputs (e.g. catchment attributes).
+The config argument ``head`` is ignored for this model and the model prediction is always computed as the sum over the 
+outgoing mass (excluding the trash cell output).
+
 MTS-LSTM
 ^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.mtslstm.MTSLSTM` is a newly proposed model by `Gauch et al. "Rainfall--Runoff Prediction at Multiple Timescales with a Single Long Short-Term Memory Network" <https://arxiv.org/abs/2010.07921>`__.

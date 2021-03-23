@@ -342,7 +342,10 @@ class Config(object):
 
     @property
     def head(self) -> str:
-        return self._get_value_verbose("head")
+        if self.model == "mclstm":
+            return ''
+        else:
+            return self._get_value_verbose("head")
 
     @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:
@@ -418,6 +421,10 @@ class Config(object):
     @loss.setter
     def loss(self, loss: str):
         self._cfg["loss"] = loss
+
+    @property
+    def mass_inputs(self) -> List[str]:
+        return self._as_default_list(self._cfg.get("mass_inputs", []))
 
     @property
     def mc_dropout(self) -> bool:

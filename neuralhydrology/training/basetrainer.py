@@ -151,7 +151,7 @@ class BaseTrainer(object):
                 self._scaler = pickle.load(fp)
 
         self.optimizer = self._get_optimizer()
-        self.loss_obj = self._get_loss_obj()
+        self.loss_obj = self._get_loss_obj().to(self.device)
 
         # Add possible regularization terms to the loss function.
         self._set_regularization()
@@ -374,4 +374,3 @@ class BaseTrainer(object):
 
     def _pre_model_hook(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         return data
-

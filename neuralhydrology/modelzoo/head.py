@@ -8,8 +8,6 @@ from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
 
-SINGLE_TARGET_HEADS = ["gmm", "cmal", "umal"]
-
 
 def get_head(cfg: Config, n_in: int, n_out: int) -> nn.Module:
     """Get specific head module, depending on the run configuration.
@@ -28,9 +26,6 @@ def get_head(cfg: Config, n_in: int, n_out: int) -> nn.Module:
     nn.Module
         The model head, as specified in the run configuration.
     """
-    if cfg.head.lower() in SINGLE_TARGET_HEADS and len(cfg.target_variables) > 1:
-        raise ValueError(f"The {cfg.head} head does not support multiple targets.")
-
     if cfg.head.lower() == "regression":
         head = Regression(n_in=n_in, n_out=n_out, activation=cfg.output_activation)
     elif cfg.head.lower() == "gmm":
@@ -39,6 +34,8 @@ def get_head(cfg: Config, n_in: int, n_out: int) -> nn.Module:
         head = UMAL(n_in=n_in, n_out=n_out)
     elif cfg.head.lower() == "cmal":
         head = CMAL(n_in=n_in, n_out=n_out)
+    elif cfg.head.lower() == "":
+        raise ValueError(f"No 'head' specified in the config but is required for {cfg.model}")
     else:
         raise NotImplementedError(f"{cfg.head} not implemented or not linked in `get_head()`")
 
