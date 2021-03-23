@@ -26,7 +26,8 @@ def get_tester(cfg: Config, run_dir: Path, period: str, init_model: bool) -> Bas
     """
     if cfg.mc_dropout or cfg.head.lower() in ["gmm", "cmal", "umal"]:
         Tester = UncertaintyTester
-    elif cfg.head.lower() == "regression":
+    # MC-LSTM is a special case, where the head returns an empty string but the model is trained as regression model.
+    elif cfg.head.lower() in ["regression", ""]:
         Tester = RegressionTester
     else:
         NotImplementedError(f"No evaluation method implemented for {cfg.head} head")

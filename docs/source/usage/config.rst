@@ -242,6 +242,15 @@ These are used if ``model == odelstm``.
    documentation of the ODELSTM class for more details on the frequency
    randomization.
 
+MC-LSTM settings
+~~~~~~~~~~~~~~~~
+
+These are used if ``model == mclstm``.
+
+-  ``mass_inputs``: List of features that are used as mass input in the MC-LSTM model, i.e. whose quantity is conserved
+   over time. Currently, the MC-LSTM configuration implemented here only supports a single mass input. Make sure to
+   exclude this feature from the default normalization (see :ref:`MC-LSTM <MC-LSTM>` description).
+
 Embedding network settings
 --------------------------
 

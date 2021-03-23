@@ -246,7 +246,8 @@ class BaseDataset(Dataset):
             data_list = []
 
             # list of columns to keep, everything else will be removed to reduce memory footprint
-            keep_cols = self.cfg.target_variables + self.cfg.evolving_attributes
+            keep_cols = self.cfg.target_variables + self.cfg.evolving_attributes + self.cfg.mass_inputs
+
             if isinstance(self.cfg.dynamic_inputs, list):
                 keep_cols += self.cfg.dynamic_inputs
             else:
@@ -378,10 +379,11 @@ class BaseDataset(Dataset):
             # converting from xarray to pandas DataFrame because resampling is much faster in pandas.
             df_native = xr.sel(basin=basin).to_dataframe()
             for freq in self.frequencies:
+                # make sure that possible mass inputs are sorted to the beginning of the dynamic feature list
                 if isinstance(self.cfg.dynamic_inputs, list):
-                    dynamic_cols = self.cfg.dynamic_inputs
+                    dynamic_cols = self.cfg.mass_inputs + self.cfg.dynamic_inputs
                 else:
-                    dynamic_cols = self.cfg.dynamic_inputs[freq]
+                    dynamic_cols = self.cfg.mass_inputs + self.cfg.dynamic_inputs[freq]
 
                 df_resampled = df_native[dynamic_cols + self.cfg.target_variables +
                                          self.cfg.evolving_attributes].resample(freq).mean()
