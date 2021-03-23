@@ -18,6 +18,7 @@ nh.modelzoo
    neuralhydrology.modelzoo.gru
    neuralhydrology.modelzoo.head
    neuralhydrology.modelzoo.inputlayer
+   neuralhydrology.modelzoo.mclstm
    neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
    neuralhydrology.modelzoo.template

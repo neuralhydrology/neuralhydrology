@@ -242,6 +242,15 @@ These are used if ``model == odelstm``.
    documentation of the ODELSTM class for more details on the frequency
    randomization.
 
+MC-LSTM settings
+~~~~~~~~~~~~~~~~
+
+These are used if ``model == mclstm``.
+
+-  ``mass_inputs``: List of features that are used as mass input in the MC-LSTM model, i.e. whose quantity is conserved
+   over time. Currently, the MC-LSTM configuration implemented here only supports a single mass input. Make sure to
+   exclude this feature from the default normalization (see :ref:`MC-LSTM <MC-LSTM>` description).
+
 Embedding network settings
 --------------------------
 
@@ -274,15 +283,14 @@ Training settings
    :py:func:`here <neuralhydrology.training.get_optimizer>`.
 
 -  ``loss``: Which loss to use. Currently supported are ``MSE``,
-   ``NSE``, ``WeightedNSE``, ``RMSE``. New losses can be added
-   :py:mod:`here <neuralhydrology.training.loss>`.
-   The ``WeightedNSE`` is especially for multi-target 
-   settings. Use ``target_loss_weights`` to specify per-target
-   weights.
+   ``NSE``, ``RMSE``, ``GMMLoss``, ``CMALLoss``, and ``UMALLoss``. New 
+   losses can be added :py:mod:`here <neuralhydrology.training.loss>`.
 
--  ``target_loss_weights``: Only necessary if ``loss == WeightedNSE``. A list 
-   of float values specifying the per-target loss weight. The order of the 
-   weights corresponds to the order of the ``target_variables``.
+-  ``target_loss_weights``: A list of float values specifying the 
+   per-target loss weight, when training on multiple targets at once. 
+   Can be combined with any loss. By default, the weight of each target
+   is ``1/n`` with ``n`` being the number of target variables. The order 
+   of the weights corresponds to the order of the ``target_variables``.
 
 -  ``regularization``: List of optional regularization terms. Currently
    supported is ``tie_frequencies``, which couples the predictions of

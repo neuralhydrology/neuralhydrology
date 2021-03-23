@@ -7,12 +7,13 @@ from neuralhydrology.modelzoo.customlstm import CustomLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
 from neuralhydrology.modelzoo.gru import GRU
-from neuralhydrology.modelzoo.odelstm import ODELSTM
+from neuralhydrology.modelzoo.mclstm import MCLSTM
 from neuralhydrology.modelzoo.mtslstm import MTSLSTM
+from neuralhydrology.modelzoo.odelstm import ODELSTM
 from neuralhydrology.modelzoo.transformer import Transformer
 from neuralhydrology.utils.config import Config
 
-SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru", "transformer"]
+SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru", "transformer", "mclstm"]
 
 
 def get_model(cfg: Config) -> nn.Module:
@@ -30,6 +31,9 @@ def get_model(cfg: Config) -> nn.Module:
     """
     if cfg.model.lower() in SINGLE_FREQ_MODELS and len(cfg.use_frequencies) > 1:
         raise ValueError(f"Model {cfg.model} does not support multiple frequencies.")
+
+    if cfg.model.lower() != "mclstm" and cfg.mass_inputs:
+        raise ValueError(f"The use of 'mass_inputs' with {cfg.model} is not supported.")
 
     if cfg.model.lower() == "cudalstm":
         model = CudaLSTM(cfg=cfg)
@@ -50,6 +54,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = MTSLSTM(cfg=cfg)
     elif cfg.model.lower() == "odelstm":
         model = ODELSTM(cfg=cfg)
+    elif cfg.model.lower() == "mclstm":
+        model = MCLSTM(cfg=cfg)
     elif cfg.model.lower() == "transformer":
         model = Transformer(cfg=cfg)
     else:

@@ -12,7 +12,8 @@ def start_training(cfg: Config):
         The run configuration.
 
     """
-    if cfg.head.lower() in ['regression', 'gmm', 'cmal']:
+    # MC-LSTM is a special case, where the head returns an empty string but the model is trained as regression model.
+    if cfg.head.lower() in ['regression', 'gmm', 'cmal', '']:
         trainer = BaseTrainer(cfg=cfg)
     elif cfg.head.lower() == 'umal':
         trainer = UMALTrainer(cfg=cfg)
