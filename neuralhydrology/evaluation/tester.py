@@ -220,12 +220,20 @@ class BaseTester(object):
                     continue  # this frequency is not being predicted
                 results[basin][freq] = {}
 
+                # rescale observations
+                feature_scaler = self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values
+                feature_center = self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
+                y_freq = y[freq] * feature_scaler + feature_center
                 # rescale predictions
-                y_hat_freq = \
-                    y_hat[freq] * self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values \
-                    + self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
-                y_freq = y[freq] * self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values \
-                    + self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
+                if y_hat[freq].ndim == 3 or (len(feature_scaler) == 1):
+                    y_hat_freq = y_hat[freq] * feature_scaler + feature_center
+                elif y_hat[freq].ndim == 4:
+                    # if y_hat has 4 dim and we have multiple features we expand the dimensions for scaling
+                    feature_scaler = np.expand_dims(feature_scaler, (0, 1, 3))
+                    feature_center = np.expand_dims(feature_center, (0, 1, 3))
+                    y_hat_freq = y_hat[freq] * feature_scaler + feature_center
+                else:
+                    raise RuntimeError(f"Simulations have {y_hat[freq].ndim} dimension. Only 3 and 4 are supported.")
 
                 # create xarray
                 data = self._create_xarray(y_hat_freq, y_freq)
@@ -450,14 +458,9 @@ class UncertaintyTester(BaseTester):
         super(UncertaintyTester, self).__init__(cfg, run_dir, period, init_model)
 
     def _generate_predictions(self, model: BaseModel, data: Dict[str, torch.Tensor]):
-        if self.cfg.head.lower() == "gmm":
-            return model.sample_gmm(data, self.cfg.n_samples)
-        elif self.cfg.head.lower() == "cmal":
-            return model.sample_cmal(data, self.cfg.n_samples)
-        elif self.cfg.head.lower() == "umal":
-            return model.sample_umal(data, self.cfg.n_samples)
-        else:
-            return model.sample(data, self.cfg.n_samples)
+        samples = model.sample(data, self.cfg.n_samples)
+        model.eval()
+        return samples
 
     def _subset_targets(self,
                         model: BaseModel,
@@ -471,9 +474,9 @@ class UncertaintyTester(BaseTester):
 
     def _create_xarray(self, y_hat: np.ndarray, y: np.ndarray):
         data = {}
-        var = self.cfg.target_variables[0]
-        data[f"{var}_obs"] = (('date', 'time_step'), y[:, :, 0])
-        data[f"{var}_sim"] = (('date', 'time_step', 'samples'), y_hat[:, :, :])
+        for i, var in enumerate(self.cfg.target_variables):
+            data[f"{var}_obs"] = (('date', 'time_step'), y[:, :, i])
+            data[f"{var}_sim"] = (('date', 'time_step', 'samples'), y_hat[:, :, i, :])
         return data
 
     def _get_plots(self, qobs: np.ndarray, qsim: np.ndarray, title: str):
