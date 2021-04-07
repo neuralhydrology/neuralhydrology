@@ -116,7 +116,7 @@ class BaseLoss(torch.nn.Module):
                 loss = self._get_loss(target_pred, target_gt, **kwargs_sub)
                 losses.append(loss * weight)
 
-        loss = torch.mean(torch.stack(losses))
+        loss = torch.sum(torch.stack(losses))
         for regularization in self._regularization_terms:
             loss = loss + regularization(prediction_sub, ground_truth_sub,
                                          {k: v for k, v in prediction.items() if k not in self._prediction_keys})

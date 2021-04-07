@@ -6,6 +6,8 @@ from typing import List, Dict, Union
 
 import numpy as np
 import pandas as pd
+from pandas.tseries import frequencies
+from pandas.tseries.frequencies import to_offset
 import torch
 import xarray
 from numba import NumbaPendingDeprecationWarning
@@ -281,17 +283,35 @@ class BaseDataset(Dataset):
                 native_frequency = utils.infer_frequency(df.index)
                 if not self.frequencies:
                     self.frequencies = [native_frequency]  # use df's native resolution by default
-                if any([pd.to_timedelta(freq) < pd.to_timedelta(native_frequency) for freq in self.frequencies]):
+
+                # Assert that the used frequencies are lower or equal than the native frequency. There may be cases
+                # where our logic cannot determine whether this is the case, because pandas might return an exotic
+                # native frequency. In this case, all we can do is print a warning and let the user check themselves.
+                try:
+                    freq_vs_native = [utils.compare_frequencies(freq, native_frequency) for freq in self.frequencies]
+                except ValueError:
+                    LOGGER.warning('Cannot compare provided frequencies with native frequency. '
+                                   'Make sure the frequencies are not higher than the native frequency.')
+                    freq_vs_native = []
+                if any(comparison > 1 for comparison in freq_vs_native):
                     raise ValueError(f'Frequency is higher than native data frequency {native_frequency}.')
 
-                # get maximum warmup-offset across all frequencies
-                offset = max([(self.seq_len[i] - self._predict_last_n[i]) * pd.to_timedelta(freq)
-                              for i, freq in enumerate(self.frequencies)])
+                # used to get the maximum warmup-offset across all frequencies. We don't use to_timedelta because it
+                # does not support all frequency strings. We can't calculate the maximum offset here, because to
+                # compare offsets, they need to be anchored to a specific date (here, the start date).
+                offsets = [(self.seq_len[i] - self._predict_last_n[i]) * to_offset(freq)
+                           for i, freq in enumerate(self.frequencies)]
 
                 # create xarray data set for each period slice of the specific basin
                 for i, (start_date, end_date) in enumerate(zip(start_dates, end_dates)):
-                    # add warmup period, so that we can make prediction at the first time step specified by period
-                    warmup_start_date = start_date - offset
+                    # if the start date is not aligned with the frequency, the resulting datetime indices will be off
+                    if not all(to_offset(freq).is_on_offset(start_date) for freq in self.frequencies):
+                        misaligned = [freq for freq in self.frequencies if not to_offset(freq).is_on_offset(start_date)]
+                        raise ValueError(f'start date {start_date} is not aligned with frequencies {misaligned}.')
+                    # add warmup period, so that we can make prediction at the first time step specified by period.
+                    # offsets has the warmup offset needed for each frequency; the overall warmup starts with the
+                    # earliest date, i.e., the largest offset across all frequencies.
+                    warmup_start_date = min(start_date - offset for offset in offsets)
                     df_sub = df[warmup_start_date:end_date]
 
                     # make sure the df covers the full date range from warmup_start_date to end_date, filling any gaps
@@ -393,7 +413,7 @@ class BaseDataset(Dataset):
                     x_s[freq] = df_resampled[self.cfg.evolving_attributes].values
 
                 # number of frequency steps in one lowest-frequency step
-                frequency_factor = pd.to_timedelta(lowest_freq) // pd.to_timedelta(freq)
+                frequency_factor = int(utils.get_frequency_factor(lowest_freq, freq))
                 # array position i is the last entry of this frequency that belongs to the lowest-frequency sample i.
                 frequency_maps[freq] = np.arange(len(df_resampled) // frequency_factor) \
                                        * frequency_factor + (frequency_factor - 1)

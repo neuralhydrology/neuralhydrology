@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Dict, Tuple, Callable
 
 import pandas as pd
+from pandas.tseries.frequencies import to_offset
 import pytest
 from pytest import approx
 
@@ -122,18 +123,19 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
         .sel(basin=basin, date=slice(test_start_date, test_end_date))['qobs_mm_per_hour']
 
     hourly_results = results['1H']['xr'].to_dataframe().reset_index()
-    hourly_results.index = hourly_results['date'] + hourly_results['time_step']
+    hourly_results.index = hourly_results['date'] + hourly_results['time_step'] * to_offset('H')
+    assert (results['1H']['xr']['time_step'].values == list(range(24))).all()
     assert hourly_results.index[0] == test_start_date
     assert hourly_results.index[-1] == test_end_date.floor('H')
 
     daily_results = results['1D']['xr']
+    assert (results['1D']['xr']['time_step'].values == [0]).all()
     assert pd.to_datetime(daily_results['date'].values[0]) == test_start_date
     assert pd.to_datetime(daily_results['date'].values[-1]) == test_end_date.date()
     assert len(daily_results['qobs_mm_per_hour_obs']) == len(discharge) // 24
 
     assert len(discharge) == len(hourly_results)
-    assert discharge.values \
-           == approx(hourly_results['qobs_mm_per_hour_obs'].values, nan_ok=True)
+    assert discharge.values == approx(hourly_results['qobs_mm_per_hour_obs'].values, nan_ok=True)
 
     # Hourly CAMELS forcings have no NaNs, so there should be no NaN predictions
     assert not pd.isna(hourly_results['qobs_mm_per_hour_sim']).any()

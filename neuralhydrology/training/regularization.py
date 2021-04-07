@@ -3,7 +3,7 @@ from typing import Dict
 import pandas as pd
 import torch
 
-from neuralhydrology.datautils.utils import sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.utils.config import Config
 
 
@@ -95,7 +95,7 @@ class TiedFrequencyMSERegularization(BaseRegularization):
         for idx, freq in enumerate(self._frequencies):
             if idx == 0:
                 continue
-            frequency_factor = pd.to_timedelta(self._frequencies[idx - 1]) // pd.to_timedelta(freq)
+            frequency_factor = int(get_frequency_factor(self._frequencies[idx - 1], freq))
             freq_pred = prediction[f'y_hat_{freq}']
             mean_freq_pred = freq_pred.view(freq_pred.shape[0], freq_pred.shape[1] // frequency_factor,
                                             frequency_factor, -1).mean(dim=2)

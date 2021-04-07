@@ -107,8 +107,8 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
     fig, axs = plt.subplots(nrows=1, ncols=2, figsize=(6.5, 3), gridspec_kw={'width_ratios': [4, 5]})
 
     # only take part of y to have a better zoom-in
-    y_long = y.flatten()
-    y_hat_long = y_hat.reshape(y_long.shape[0], -1)
+    y_long = y[:, -1].flatten()
+    y_hat_long = y_hat[:, -1, :].reshape(y_long.shape[0], -1)
     x_bnd = np.arange(0, 400)
     y_bnd_len = len(x_bnd)
 
@@ -136,7 +136,7 @@ def uncertainty_plot(y: np.ndarray, y_hat: np.ndarray, title: str = '') -> Tuple
     axs[1].plot(x_bnd, y_median[x_bnd], '-', color='red', label="median")
     axs[1].plot(x_bnd, y_long[x_bnd], '--', color='black', label="observed")
     axs[1].legend(prop={'size': 5})
-    axs[1].set_ylabel("runoff")
+    axs[1].set_ylabel("value")
     axs[1].set_xlabel("time index")
     # probability-plot:
     quantiles = np.arange(0, 101, 5)
