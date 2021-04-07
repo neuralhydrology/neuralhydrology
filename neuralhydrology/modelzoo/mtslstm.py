@@ -5,7 +5,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from neuralhydrology.datautils.utils import sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.utils.config import Config
@@ -135,7 +135,7 @@ class MTSLSTM(BaseModel):
     def _init_frequency_factors_and_slice_timesteps(self):
         for idx, freq in enumerate(self._frequencies):
             if idx < len(self._frequencies) - 1:
-                frequency_factor = pd.to_timedelta(freq) / pd.to_timedelta(self._frequencies[idx + 1])
+                frequency_factor = get_frequency_factor(freq, self._frequencies[idx + 1])
                 if frequency_factor != int(frequency_factor):
                     raise ValueError('Adjacent frequencies must be multiples of each other.')
                 self._frequency_factors.append(int(frequency_factor))
