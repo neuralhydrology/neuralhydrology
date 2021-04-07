@@ -12,7 +12,7 @@ import xarray as xr
 from tqdm import tqdm
 
 sys.path.append(str(Path(__file__).parent.parent.parent))
-from neuralhydrology.datautils.utils import sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError
@@ -101,11 +101,19 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
             ensemble_xr = ensemble_sum[basin][freq]
 
             # combine date and time to a single index to calculate metrics
-            frequency_factor = pd.to_timedelta(lowest_freq) // pd.to_timedelta(freq)
+            # create datetime range at the current frequency, removing time steps that are not being predicted
+            frequency_factor = int(get_frequency_factor(lowest_freq, freq))
+            # make sure the last day is fully contained in the range
+            freq_date_range = pd.date_range(start=ensemble_xr.coords['date'][0],
+                                            end=ensemble_xr.coords['date'][-1] + pd.Timedelta(days=1, seconds=-1),
+                                            freq=freq)
+            mask = np.ones(frequency_factor).astype(bool)
+            mask[:-len(ensemble_xr.coords['time_step'])] = False
+            freq_date_range = freq_date_range[np.tile(mask, len(ensemble_xr.coords['date']))]
+
             ensemble_xr = ensemble_xr.isel(time_step=slice(-frequency_factor, None)).stack(
                 datetime=['date', 'time_step'])
-            ensemble_xr['datetime'] = ensemble_xr['date'] + ensemble_xr['time_step']
-
+            ensemble_xr['datetime'] = freq_date_range
             for target_var in target_vars:
                 # average predictions
                 ensemble_xr[f'{target_var}_sim'] = ensemble_xr[f'{target_var}_sim'] / len(results_files)

@@ -589,7 +589,7 @@ def mean_peak_timing(obs: DataArray,
 
     if window is None:
         # infer a reasonable window size
-        window = max((0.5 * pd.to_timedelta('1D')) // pd.to_timedelta(resolution), 3)
+        window = max(int(utils.get_frequency_factor('12H', resolution)), 3)
 
     # evaluate timing
     timing_errors = []

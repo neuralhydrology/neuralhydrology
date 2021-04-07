@@ -6,7 +6,7 @@ import pandas as pd
 import torch
 import torch.nn as nn
 
-from neuralhydrology.datautils.utils import sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.customlstm import _LSTMCell
@@ -91,13 +91,13 @@ class ODELSTM(BaseModel):
 
     def _init_frequency_factors_and_slice_timesteps(self):
         for i, freq in enumerate(self._frequencies):
-            frequency_factor = pd.to_timedelta(self._frequencies[0]) / pd.to_timedelta(freq)
+            frequency_factor = get_frequency_factor(self._frequencies[0], freq)
             if frequency_factor != int(frequency_factor):
                 raise ValueError('Frequencies must be multiples of the lowest frequency.')
             self._frequency_factors[freq] = int(frequency_factor)
 
             if i > 0:
-                prev_frequency_factor = pd.to_timedelta(self._frequencies[i - 1]) / pd.to_timedelta(freq)
+                prev_frequency_factor = get_frequency_factor(self._frequencies[i - 1], freq)
                 if self.cfg.predict_last_n[freq] % prev_frequency_factor != 0:
                     raise ValueError(
                         'At all frequencies, predict_last_n must align with the steps of the next-lower frequency.')
@@ -152,7 +152,7 @@ class ODELSTM(BaseModel):
 
     def _randomize_freq(self, x_d: torch.Tensor, low_frequency: str, high_frequency: str) -> torch.Tensor:
         """Randomize the frequency of the  input sequence. """
-        frequency_factor = pd.to_timedelta(low_frequency) // pd.to_timedelta(high_frequency)
+        frequency_factor = int(get_frequency_factor(low_frequency, high_frequency))
         possible_aggregate_steps = list(filter(lambda n: frequency_factor % n == 0, range(1, frequency_factor + 1)))
 
         t = 0

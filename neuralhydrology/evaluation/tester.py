@@ -9,6 +9,7 @@ from typing import Dict, List, Union
 
 import numpy as np
 import pandas as pd
+from pandas.tseries.frequencies import to_offset
 import torch
 import xarray
 from torch.utils.data import DataLoader
@@ -16,7 +17,7 @@ from tqdm import tqdm
 
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import load_basin_file, sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.modelzoo import get_model
@@ -238,26 +239,33 @@ class BaseTester(object):
                 # create xarray
                 data = self._create_xarray(y_hat_freq, y_freq)
 
-                # get maximum warmup-offset across all frequencies
+                # get warmup-offsets across all frequencies
                 offsets = {
-                    freq: (seq_length[freq] - predict_last_n[freq]) * pd.to_timedelta(freq) for freq in ds.frequencies
+                    freq: ds.get_period_start(basin) + (seq_length[freq] - 1) * to_offset(freq)
+                    for freq in ds.frequencies
                 }
                 max_offset_freq = max(offsets, key=offsets.get)
-                start_date = ds.get_period_start(basin) + offsets[max_offset_freq]
+                start_date = offsets[max_offset_freq]
 
                 # determine the end of the first sequence (first target in sequence-to-one)
                 # we use the end_date stored in the dataset, which also covers issues with per-basin different periods
-                end_date = ds.dates[basin]["end_dates"][0] \
-                    + pd.Timedelta(days=1, seconds=-1) \
-                    - pd.to_timedelta(max_offset_freq) * (predict_last_n[max_offset_freq] - 1)
+                end_date = ds.dates[basin]["end_dates"][0] + pd.Timedelta(days=1, seconds=-1)
+
+                # date range at the lowest frequency
                 date_range = pd.date_range(start=start_date, end=end_date, freq=lowest_freq)
                 if len(date_range) != data[f"{self.cfg.target_variables[0]}_obs"][1].shape[0]:
                     raise ValueError("Evaluation date range does not match generated predictions.")
 
-                frequency_factor = pd.to_timedelta(lowest_freq) // pd.to_timedelta(freq)
-                freq_range = pd.timedelta_range(end=(frequency_factor - 1) * pd.to_timedelta(freq),
-                                                periods=predict_last_n[freq],
-                                                freq=freq)
+                # freq_range are the steps of the current frequency at each lowest-frequency step
+                frequency_factor = int(get_frequency_factor(lowest_freq, freq))
+                freq_range = list(range(frequency_factor - predict_last_n[freq], frequency_factor))
+
+                # create datetime range at the current frequency
+                freq_date_range = pd.date_range(start=start_date, end=end_date, freq=freq)
+                # remove datetime steps that are not being predicted from the datetime range
+                mask = np.ones(frequency_factor).astype(bool)
+                mask[:-predict_last_n[freq]] = False
+                freq_date_range = freq_date_range[np.tile(mask, len(date_range))]
 
                 xr = xarray.Dataset(data_vars=data, coords={'date': date_range, 'time_step': freq_range})
                 results[basin][freq]['xr'] = xr
@@ -272,12 +280,12 @@ class BaseTester(object):
                         # stack dates and time_steps so we don't just evaluate every 24H when use_frequencies=[1D, 1H]
                         obs = xr.isel(time_step=slice(-frequency_factor, None)) \
                             .stack(datetime=['date', 'time_step'])[f"{target_variable}_obs"]
-                        obs['datetime'] = obs.coords['date'] + obs.coords['time_step']
+                        obs['datetime'] = freq_date_range
                         # check if there are observations for this period
                         if not all(obs.isnull()):
                             sim = xr.isel(time_step=slice(-frequency_factor, None)) \
                                 .stack(datetime=['date', 'time_step'])[f"{target_variable}_sim"]
-                            sim['datetime'] = sim.coords['date'] + sim.coords['time_step']
+                            sim['datetime'] = freq_date_range
 
                             # clip negative predictions to zero, if variable is listed in config 'clip_target_to_zero'
                             if target_variable in self.cfg.clip_targets_to_zero:
