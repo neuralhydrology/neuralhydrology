@@ -140,30 +140,36 @@ class _SamplingSetup():
         if not cfg.head.lower() == head.lower():
             raise NotImplementedError(f"{head} sampling not supported for the {cfg.head} head!")
 
-        max_implied_dropout = max([
-            model.dropout.p, model.embedding_net.statics_embedding_p_dropout,
-            model.embedding_net.dynamics_embedding_p_dropout
-        ])
+        dropout_modules = [model.dropout.p]
+
+        # Multi-Timescale models don't have an embedding_net
+        implied_statics_embedding, implied_dynamics_embedding = None, None
+        if cfg.model.lower() not in ['mtslstm', 'odelstm']:
+            implied_statics_embedding = model.embedding_net.statics_embedding_p_dropout
+            implied_dynamics_embedding = model.embedding_net.dynamics_embedding_p_dropout
+            dropout_modules += [implied_statics_embedding, implied_dynamics_embedding]
         # account for transformer
         implied_transformer_dropout = None
         if cfg.model.lower() == 'transfomer':
             implied_transformer_dropout = cfg.transformer_dropout
-            max_implied_dropout = max(max_implied_dropout, implied_transformer_dropout)
+            dropout_modules.append(implied_transformer_dropout)
+
+        max_implied_dropout = max(dropout_modules)
         # check lower bound dropout:
         if cfg.mc_dropout and max_implied_dropout <= 0.0:
             raise RuntimeError(f"""{cfg.model} with `mc_dropout` activated requires a dropout rate larger than 0.0
                                The current implied dropout-rates are:
                                   - model: {cfg.output_dropout}
-                                  - statics_embedding: {model.embedding_net.statics_embedding_p_dropout}
-                                  - dynamics_embedding: {model.embedding_net.dynamics_embedding_p_dropout}
+                                  - statics_embedding: {implied_statics_embedding}
+                                  - dynamics_embedding: {implied_dynamics_embedding}
                                   - transformer: {implied_transformer_dropout}""")
         # check upper bound dropout:
         if cfg.mc_dropout and max_implied_dropout >= 1.0:
             raise RuntimeError(f"""The maximal dropout-rate is 1. Please check your dropout-settings:
                                The current implied dropout-rates are:
                                   - model: {cfg.output_dropout}
-                                  - statics_embedding: {model.embedding_net.statics_embedding_p_dropout}
-                                  - dynamics_embedding: {model.embedding_net.dynamics_embedding_p_dropout}
+                                  - statics_embedding: {implied_statics_embedding}
+                                  - dynamics_embedding: {implied_dynamics_embedding}
                                   - transformer: {implied_transformer_dropout}""")
 
         # assign setup properties:
