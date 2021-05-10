@@ -209,7 +209,7 @@ def load_camels_us_discharge(data_dir: Path, basin: str, area: int) -> pd.Series
     """
 
     discharge_path = data_dir / 'usgs_streamflow'
-    file_path = list(discharge_path.glob(f'**/{basin}_*_streamflow_qc.txt'))
+    file_path = list(discharge_path.glob(f'**/{basin}_streamflow_qc.txt'))
     if file_path:
         file_path = file_path[0]
     else:
