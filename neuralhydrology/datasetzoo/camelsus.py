@@ -169,21 +169,21 @@ def load_camels_us_forcings(data_dir: Path, basin: str, forcings: str) -> Tuple[
     if not forcing_path.is_dir():
         raise OSError(f"{forcing_path} does not exist")
 
-    files = list(forcing_path.glob('**/*_forcing_leap.txt'))
-    file_path = [f for f in files if f.name[:8] == basin]
+    file_path = list(forcing_path.glob(f'**/{basin}_*_forcing_leap.txt'))
     if file_path:
         file_path = file_path[0]
     else:
         raise FileNotFoundError(f'No file for Basin {basin} at {file_path}')
 
-    df = pd.read_csv(file_path, sep='\s+', header=3)
-    df["date"] = pd.to_datetime(df.Year.map(str) + "/" + df.Mnth.map(str) + "/" + df.Day.map(str), format="%Y/%m/%d")
-    df = df.set_index("date")
-
-    # load area from header
     with open(file_path, 'r') as fp:
-        content = fp.readlines()
-        area = int(content[2])
+        # load area from header
+        fp.readline()
+        fp.readline()
+        area = int(fp.readline())
+        # load the dataframe from the rest of the stream
+        df = pd.read_csv(fp, sep='\s+')
+        df["date"] = pd.to_datetime(df.Year.map(str) + "/" + df.Mnth.map(str) + "/" + df.Day.map(str), format="%Y/%m/%d")
+        df = df.set_index("date")
 
     return df, area
 
@@ -209,8 +209,7 @@ def load_camels_us_discharge(data_dir: Path, basin: str, area: int) -> pd.Series
     """
 
     discharge_path = data_dir / 'usgs_streamflow'
-    files = list(discharge_path.glob('**/*_streamflow_qc.txt'))
-    file_path = [f for f in files if f.name[:8] == basin]
+    file_path = list(discharge_path.glob(f'**/{basin}_streamflow_qc.txt'))
     if file_path:
         file_path = file_path[0]
     else:
