@@ -119,10 +119,9 @@ class TCNN(BaseModel):
         tcnn_out = self.tcnn(input=x_d)
         ## slice:
         tcnn_out = tcnn_out[:, :, -20:]
-        # import pdb
-        # pdb.set_trace()
+
         y_hat = self.dense2(self.dropout(self.act(self.dense1(self.flat(tcnn_out)))))
-        # y_hat = self.head(self.flat(tcnn_out))
+
         y_hat = y_hat.unsqueeze(1)
 
         return y_hat, tcnn_out, x_d  # keep the same form with LSTM's other two outputs
