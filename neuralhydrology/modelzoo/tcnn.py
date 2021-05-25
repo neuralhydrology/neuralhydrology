@@ -3,10 +3,11 @@
 from typing import Dict
 
 import torch
-from codebase.modelzoo.basemodel import BaseModel
-from codebase.modelzoo.head import get_head
 from torch import nn
 from torch.nn.utils import weight_norm
+from neuralhydrology.modelzoo.basemodel import BaseModel
+from neuralhydrology.utils.config import Config
+from neuralhydrology.modelzoo.inputlayer import InputLayer
 
 
 class Chomp1d(nn.Module):  # causal padding
@@ -59,7 +60,7 @@ class TCNN(BaseModel):
         self.num_levels = cfg["num_levels"]
         self.num_channels = cfg["num_channels"]
         self.dr_rate = 0.4
-
+        self.embedding_net = InputLayer(cfg)
         n_attributes = 0
         if ("camels_attributes" in cfg.keys()) and cfg["camels_attributes"]:
             print('input attributes')
@@ -86,7 +87,7 @@ class TCNN(BaseModel):
 
         self.dropout = nn.Dropout(p=cfg["output_dropout"])
 
-        # self.head = get_head(cfg=cfg, n_in=20*20, n_out=self.output_size) ## Maybe final layer
+
 
         # self.reset_parameters()
         self.dense1 = nn.Linear(self.num_channels * 20, 100)
@@ -94,34 +95,19 @@ class TCNN(BaseModel):
         self.dense2 = nn.Linear(100, 1)
         self.flat = nn.Flatten()
 
-    def forward(self, x_d: torch.Tensor, x_s: torch.Tensor, x_one_hot: torch.Tensor):
-        # transpose to [seq_length, batch_size, n_features]
-        x_d = x_d.transpose(0, 1)
-        # original: batch_size, length, features
-        # to [batch_size, n_features, seq_length]
+    def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
 
-        # concat all inputs
-        if (x_s.nelement() > 0) and (x_one_hot.nelement() > 0):
-            x_s = x_s.unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_one_hot = x_one_hot.unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s, x_one_hot], dim=-1)
-        elif x_s.nelement() > 0:
-            x_s = x_s.unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s], dim=-1)
-        elif x_one_hot.nelement() > 0:
-            x_one_hot = x_one_hot.unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_one_hot], dim=-1)
-        else:
-            pass
+        x_d = self.embedding_net(data) # [seq_length, batch_size, n_features]
         ## convert to CNN inputs:
         x_d = x_d.transpose(0, 1)
-        x_d = x_d.transpose(1, 2)
+        x_d = x_d.transpose(1, 2) # [batch_size, n_features, seq_length]
         tcnn_out = self.tcnn(input=x_d)
         ## slice:
         tcnn_out = tcnn_out[:, :, -20:]
 
         y_hat = self.dense2(self.dropout(self.act(self.dense1(self.flat(tcnn_out)))))
 
-        y_hat = y_hat.unsqueeze(1)
+        # y_hat = y_hat.unsqueeze(1)
+        pred = {'y_hat': y_hat}
 
-        return y_hat, tcnn_out, x_d  # keep the same form with LSTM's other two outputs
+        return pred  # keep the same form with LSTM's other two outputs
