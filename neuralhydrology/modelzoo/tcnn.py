@@ -5,8 +5,8 @@ from typing import Dict
 import torch
 from torch import nn
 from torch.nn.utils import weight_norm
+
 from neuralhydrology.modelzoo.basemodel import BaseModel
-from neuralhydrology.utils.config import Config
 from neuralhydrology.modelzoo.inputlayer import InputLayer
 
 
@@ -53,9 +53,11 @@ class TemporalBlock(nn.Module):
 
 
 class TCNN(BaseModel):
+    # specify submodules of the model that can later be used for finetuning. Names must match class attributes
+    module_parts = ['tcnn', 'dense1']
+
     def __init__(self, cfg: Dict):
         super(TCNN, self).__init__(cfg=cfg)
-
         self.kernal_size = cfg["kernal_size"]
         self.num_levels = cfg["num_levels"]
         self.num_channels = cfg["num_channels"]
@@ -87,8 +89,6 @@ class TCNN(BaseModel):
 
         self.dropout = nn.Dropout(p=cfg["output_dropout"])
 
-
-
         # self.reset_parameters()
         self.dense1 = nn.Linear(self.num_channels * 20, 100)
         self.act = nn.ReLU()
@@ -97,10 +97,10 @@ class TCNN(BaseModel):
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
 
-        x_d = self.embedding_net(data) # [seq_length, batch_size, n_features]
+        x_d = self.embedding_net(data)  # [seq_length, batch_size, n_features]
         ## convert to CNN inputs:
         x_d = x_d.transpose(0, 1)
-        x_d = x_d.transpose(1, 2) # [batch_size, n_features, seq_length]
+        x_d = x_d.transpose(1, 2)  # [batch_size, n_features, seq_length]
         tcnn_out = self.tcnn(input=x_d)
         ## slice:
         tcnn_out = tcnn_out[:, :, -20:]
