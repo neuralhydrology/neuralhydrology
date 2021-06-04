@@ -9,12 +9,12 @@ validation_basin_file: 1_basin.txt
 test_basin_file: 1_basin.txt
 
 # training, validation and test time periods (format = 'dd/mm/yyyy')
-train_start_date: '01/10/1999'
-train_end_date: '30/09/2008'
-validation_start_date: '01/10/1980'
-validation_end_date: '30/09/1989'
-test_start_date: '01/10/1989'
-test_end_date: '30/09/1999'
+train_start_date: "01/10/1999"
+train_end_date: "30/09/2008"
+validation_start_date: "01/10/1980"
+validation_end_date: "30/09/1989"
+test_start_date: "01/10/1989"
+test_end_date: "30/09/1999"
 
 # which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu or None]
 device: cpu
@@ -31,7 +31,7 @@ validate_n_random_basins: 1
 # this can either be a list or a dictionary. If a dictionary is used, the inner keys must match the name of the
 # target_variable specified below. Using dicts allows for different metrics per target variable.
 metrics:
-- NSE
+  - NSE
 
 # --- Model configuration --------------------------------------------------------------------------
 
@@ -66,8 +66,8 @@ loss: MSE
 
 # specify learning rates to use starting at specific epochs (0 is the initial learning rate)
 learning_rate:
-    0: 1e-2
-    15: 5e-3
+  0: 1e-2
+  15: 5e-3
 
 # Mini-batch size
 batch_size: 256
@@ -107,23 +107,23 @@ save_weights_every: 1
 dataset: camels_us
 
 # Path to data set root
-data_dir: ../../data/CAMELS_US
+data_dir: ../../data/datadir/CAMELS_US
 
 # Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
 # can be either a list of forcings or a single forcing product
-forcings: nldas_extended
+forcings: daymet
 
 dynamic_inputs:
-- PRCP(mm/day)
-- SRAD(W/m2)
-- Tmax(C)
-- Tmin(C)
-- Vp(Pa)
+  - prcp(mm/day)
+  - srad(W/m2)
+  - tmax(C)
+  - tmin(C)
+  - vp(Pa)
 
 # which columns to use as target
 target_variables:
-- QObs(mm/d)
+  - QObs(mm/d)
 
 # clip negative predictions to zero for all variables listed below. Should be a list, even for single variables.
 clip_targets_to_zero:
-- QObs(mm/d)
+  - QObs(mm/d)
