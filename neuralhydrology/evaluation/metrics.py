@@ -20,7 +20,21 @@ def get_available_metrics() -> List[str]:
     List[str]
         List of implemented metric names.
     """
-    metrics = ["NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-NSE", "FHV", "FMS", "FLV", "Peak-Timing"]
+    metrics = ["NSE", 
+               "MSE", 
+               "RMSE", 
+               "KGE", 
+               "Alpha-NSE", 
+               "Pearson-r", 
+               "Beta-NSE", 
+               "FHV", 
+               "FMS", 
+               "FLV",
+               "Peak-Timing-Error",
+               "Peak-Timing-Abs-Error",
+               "Missed-Peaks",
+               "Peak-Abs-Bias"
+              ]
     return metrics
 
 
@@ -532,19 +546,19 @@ def fdc_flv(obs: DataArray, sim: DataArray, l: float = 0.3) -> float:
     return flv * 100
 
 
-def mean_peak_timing(obs: DataArray,
-                     sim: DataArray,
-                     window: int = None,
-                     resolution: str = '1D',
-                     datetime_coord: str = None) -> float:
-    """Mean difference in peak flow timing.
+def peak_timing_error(obs: DataArray,
+                      sim: DataArray,
+                      percentile: float = 0.95,
+                      window: int = None,
+                      resolution: str = '1D',
+                      datetime_coord: str = None) -> float:
     
-    Uses scipy.find_peaks to find peaks in the observed time series. Starting with all observed peaks, those with a
-    prominence of less than the standard deviation of the observed time series are discarded. Next, the lowest peaks
-    are subsequently discarded until all remaining peaks have a distance of at least 100 steps. Finally, the
-    corresponding peaks in the simulated time series are searched in a window of size `window` on either side of the
-    observed peaks and the absolute time differences between observed and simulated peaks is calculated.
-    The final metric is the mean absolute time difference across all peaks. For more details, see Appendix of [#]_
+    """Peak error and peak timing statistics.
+    
+    Uses scipy.find_peaks to find peaks in the observed and simulated time series above a certain percentile threshold. 
+    Counts the number of peaks that the model predicts (within a given window of an observed peak), as well as the 
+    average timing error (for peaks that were hit), the number of missed peaks, and the average absolute percent
+    estimation error. 
     
     Parameters
     ----------
@@ -552,6 +566,8 @@ def mean_peak_timing(obs: DataArray,
         Observed time series.
     sim : DataArray
         Simulated time series.
+    percentile: float, optional
+        Percentile threhold that defines a "peak".
     window : int, optional
         Size of window to consider on each side of the observed peak for finding the simulated peak. That is, the total
         window length to find the peak in the simulations is :math:`2 * \\text{window} + 1` centered at the observed
@@ -561,18 +577,22 @@ def mean_peak_timing(obs: DataArray,
         Temporal resolution of the time series in pandas format, e.g. '1D' for daily and '1H' for hourly.
     datetime_coord : str, optional
         Name of datetime coordinate. Tried to infer automatically if not specified.
-        
 
     Returns
     -------
-    float
-        Mean peak time difference.
-
+    mean_timing_error : float
+        Mean timing error (in units of the original timeseries) of peaks that the model predicted within window.
+    mean_abs_timing_error : float
+        Mean *absolute* timing error (in units of the original timeseries) of peaks that the model predicted within window.
+    missed_fraction : float
+        Fraction of peaks (at a given percentile) that the model missed.
+    mean_peak_estimation_error : float
+        Absolute percent bias of the peaks that the model hit.
+    
     References
     ----------
-    .. [#] Kratzert, F., Klotz, D., Hochreiter, S., and Nearing, G. S.: A note on leveraging synergy in multiple 
-        meteorological datasets with deep learning for rainfall-runoff modeling, Hydrol. Earth Syst. Sci. Discuss., 
-        https://doi.org/10.5194/hess-2020-221, in review, 2020. 
+    .. [#] Klotz, D., et al.: Forward vs. Inverse Methods for Using Near-Real-Time Streamflow Data in 
+    Long Short Term Memory Networks, Hydrol. Earth Syst. Sci. Discuss., in review, 2021. 
     """
     # verify inputs
     _validate_inputs(obs, sim)
@@ -580,46 +600,66 @@ def mean_peak_timing(obs: DataArray,
     # get time series with only valid observations (scipy's find_peaks doesn't guarantee correctness with NaNs)
     obs, sim = _mask_valid(obs, sim)
 
-    # heuristic to get indices of peaks and their corresponding height.
-    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
-
     # infer name of datetime index
     if datetime_coord is None:
         datetime_coord = utils.infer_datetime_coord(obs)
 
+    # infer a reasonable window size
     if window is None:
-        # infer a reasonable window size
         window = max(int(utils.get_frequency_factor('12H', resolution)), 3)
 
-    # evaluate timing
+    # minimum height of a peak, as defined by percentile, which can be passed
+    min_obs_height = np.percentile(obs.values, percentile*100)
+    min_sim_height = np.percentile(sim.values, percentile*100)
+
+    # get time indices of peaks in obs and sim.
+    peaks_obs_times, _ = signal.find_peaks(obs, distance=30, height=min_obs_height)
+    peaks_sim_times, _ = signal.find_peaks(sim, distance=30, height=min_sim_height)
+
+    # lists of obs and sim peak time differences for peaks that overlap
     timing_errors = []
-    for idx in peaks:
+    abs_timing_errors = []
+    
+    # list of peak estimation errors for peaks that we hit
+    value_errors = []
+
+    # count missed peaks
+    missed_events = 0
+    
+    for peak_obs_time in peaks_obs_times:
+        
         # skip peaks at the start and end of the sequence and peaks around missing observations
         # (NaNs that were removed in obs & sim would result in windows that span too much time).
-        if (idx - window < 0) or (idx + window >= len(obs)) or (pd.date_range(obs[idx - window][datetime_coord].values,
-                                                                              obs[idx + window][datetime_coord].values,
-                                                                              freq=resolution).size != 2 * window + 1):
+        if ((peak_obs_time - window < 0) 
+            or (peak_obs_time + window >= len(obs))
+            or (pd.date_range(obs[peak_obs_time - window][datetime_coord].values,
+                              obs[peak_obs_time + window][datetime_coord].values,
+                              freq=resolution).size != 2 * window + 1)):
             continue
 
-        # check if the value at idx is a peak (both neighbors must be smaller)
-        if (sim[idx] > sim[idx - 1]) and (sim[idx] > sim[idx + 1]):
-            peak_sim = sim[idx]
+        nearby_peak_sim_index = np.where(np.abs(peaks_sim_times - peak_obs_time) <= window)[0]
+        if len(nearby_peak_sim_index) > 0:
+            peak_sim_time = peaks_sim_times[nearby_peak_sim_index]            
+            delta = obs[peak_obs_time].coords[datetime_coord] - sim[peak_sim_time].coords[datetime_coord]
+            timing_errors.append(delta.values / pd.to_timedelta(resolution))
+            abs_timing_errors.append(np.abs(delta.values / pd.to_timedelta(resolution)))
+            value_errors.append((obs[peak_obs_time] - sim[peak_sim_time]) / obs[peak_obs_time])
         else:
-            # define peak around idx as the max value inside of the window
-            values = sim[idx - window:idx + window + 1]
-            peak_sim = values[values.argmax()]
-
-        # get xarray object of qobs peak, for getting the date and calculating the datetime offset
-        peak_obs = obs[idx]
-
-        # calculate the time difference between the peaks
-        delta = peak_obs.coords[datetime_coord] - peak_sim.coords[datetime_coord]
-
-        timing_error = np.abs(delta.values / pd.to_timedelta(resolution))
-
-        timing_errors.append(timing_error)
-
-    return np.mean(timing_errors) if len(timing_errors) > 0 else np.nan
+            missed_events += 1
+    
+    # calculate statistics
+    if len(timing_errors) > 0:
+        mean_timing_error = np.mean(np.asarray(timing_errors)) 
+        mean_abs_timing_error = np.mean(np.asarray(abs_timing_errors))
+        missed_fraction = missed_events / len(peaks_obs_times)
+        mean_peak_estimation_error = np.mean(np.abs(np.asarray(value_errors)))
+    else:
+        mean_timing_error = np.nan
+        mean_abs_timing_error = np.nan
+        missed_fraction = 1
+        mean_peak_estimation_error = np.nan
+        
+    return mean_timing_error, mean_abs_timing_error, missed_fraction, mean_peak_estimation_error
 
 
 def calculate_all_metrics(obs: DataArray,
@@ -651,6 +691,12 @@ def calculate_all_metrics(obs: DataArray,
     """
     _check_all_nan(obs, sim)
 
+    # calculate all peat timing stats
+    mean_timing_error, mean_abs_timing_error, missed_fraction, mean_peak_estimation_error = \
+    peak_timing_error(obs, sim, 
+                      resolution=resolution, 
+                      datetime_coord=datetime_coord)
+    
     results = {
         "NSE": nse(obs, sim),
         "MSE": mse(obs, sim),
@@ -662,7 +708,10 @@ def calculate_all_metrics(obs: DataArray,
         "FHV": fdc_fhv(obs, sim),
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
-        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+        "Peak-Timing-Error": mean_timing_error,
+        "Peak-Timing-Abs-Error": mean_abs_timing_error,
+        "Missed-Peaks": missed_fraction,
+        "Peak-Abs-Bias": mean_peak_estimation_error,
     }
 
     return results
@@ -703,6 +752,14 @@ def calculate_metrics(obs: DataArray,
 
     _check_all_nan(obs, sim)
 
+    peak_error_metrics = ["peak-timing-error", "peak-timing-abs-error", "missed-peaks", "peak-abs-bias"]
+    for metric in metrics:
+        if metric.lower() in peak_error_metrics:
+            mean_timing_error, mean_abs_timing_error, missed_fraction, mean_peak_estimation_error = \
+            peak_timing_error(obs, sim, 
+                              resolution=resolution, 
+                              datetime_coord=datetime_coord)
+                          
     values = {}
     for metric in metrics:
         if metric.lower() == "nse":
@@ -725,8 +782,14 @@ def calculate_metrics(obs: DataArray,
             values["FMS"] = fdc_fms(obs, sim)
         elif metric.lower() == "flv":
             values["FLV"] = fdc_flv(obs, sim)
-        elif metric.lower() == "peak-timing":
-            values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+        elif metric.lower() == "peak-timing-error":
+            values["Peak-Timing-Error"] = mean_timing_error
+        elif metric.lower() == "peak-timing-abs-error":
+            values["Peak-Timing-Abs-Error"] = mean_abs_timing_error
+        elif metric.lower() == "missed-peaks":
+            values["Missed-Peaks"] = missed_fraction
+        elif metric.lower() == "peak-abs-bias":
+            values["Peak-Abs-Bias"] = mean_peak_estimation_error
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 
