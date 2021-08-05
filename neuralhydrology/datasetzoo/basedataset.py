@@ -256,6 +256,7 @@ class BaseDataset(Dataset):
                 # keep all frequencies' dynamic inputs
                 keep_cols += [i for inputs in self.cfg.dynamic_inputs.values() for i in inputs]
             # make sure that even inputs that are used in multiple frequencies occur only once in the df
+
             keep_cols = list(sorted(set(keep_cols)))
 
             if not self._disable_pbar:
@@ -273,7 +274,15 @@ class BaseDataset(Dataset):
                 df = self._add_lagged_features(df)
 
                 # remove unnecessary columns
-                df = df[keep_cols]
+                try:
+                    df = df[keep_cols]
+                except KeyError:
+                    not_available_columns = [x for x in keep_cols if x not in df.columns]
+                    msg = [
+                        f"The following features are not available in the data: {not_available_columns}. ",
+                        f"These are the available features: {df.columns.tolist()}"
+                    ]
+                    raise KeyError("".join(msg))
 
                 # make end_date the last second of the specified day, such that the
                 # dataset will include all hours of the last day, not just 00:00.
