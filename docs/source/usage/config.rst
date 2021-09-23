@@ -413,7 +413,11 @@ Data settings
    the exact names as defined in the data set.
 
 -  ``clip_targets_to_zero``: Optional list of target variables to clip to
-   zero during evaluation.
+   zero during the computation of metrics (e.g. useful to compute zero-clipped metric during the validation between
+   training epochs. Will not affect the data that is saved to disk after evaluation. 
+   That is, always the `raw` model outputs are saved in the result files. Therefore, you eventually need to 
+   manually clip the targets to zero if you load the model outputs from file and want to reproduce
+   the metric values.
 
 -  ``duplicate_features``: Can be used to duplicate time series features
    (e.g., for different normalizations). Can be either a str, list or dictionary
