@@ -94,7 +94,11 @@ Validation settings
 -  ``metrics``: List of metrics to calculate during validation/testing.
    See
    :py:mod:`neuralhydrology.evaluation.metrics`
-   for a list of available metrics.
+   for a list of available metrics. Can also be a dictionary of lists,
+   where each key-value pair corresponds to one target variable and
+   the metrics that should be computed for this target. Like this,
+   it is possible to compute different metrics per target during 
+   validation and/or evaluation after the training.
 
 -  ``save_validation_results``: True/False, if True, stores the
    validation results to disk as a pickle file. Otherwise they are only
@@ -413,7 +417,11 @@ Data settings
    the exact names as defined in the data set.
 
 -  ``clip_targets_to_zero``: Optional list of target variables to clip to
-   zero during evaluation.
+   zero during the computation of metrics (e.g. useful to compute zero-clipped metric during the validation between
+   training epochs. Will not affect the data that is saved to disk after evaluation. 
+   That is, always the `raw` model outputs are saved in the result files. Therefore, you eventually need to 
+   manually clip the targets to zero if you load the model outputs from file and want to reproduce
+   the metric values.
 
 -  ``duplicate_features``: Can be used to duplicate time series features
    (e.g., for different normalizations). Can be either a str, list or dictionary
