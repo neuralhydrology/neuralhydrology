@@ -14,6 +14,7 @@ from tqdm import tqdm
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
+from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError
 
@@ -200,7 +201,7 @@ def _main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--run-dirs', type=str, nargs='+', help='Directories of the runs to be averaged.')
     parser.add_argument('--period', type=str, choices=['train', 'validation', 'test'], default='test')
-    parser.add_argument('--save-file', type=str, help='Path to target pickle file for averaged results.')
+    parser.add_argument('--output-dir', type=str, help='Path to directory, where results are stored.')
     parser.add_argument('--metrics',
                         type=str,
                         nargs='+',
@@ -221,9 +222,20 @@ def _main():
                                                metrics=args['metrics'],
                                                period=args['period'],
                                                epoch=args['epoch'])
+    output_dir = Path(args['output_dir']).absolute()
 
-    pickle.dump(ensemble_results, open(args['save_file'], 'wb'))
-    print(f'Successfully written results to {args["save_file"]}.')
+    try:
+        df = BaseTester.metrics_to_dataframe(ensemble_results)
+        file_name = output_dir / f"{args['period']}_ensemble_metrics.csv"
+        df.to_csv(file_name)
+        print(f"Stored metrics of ensemble run to {file_name}")
+    except RuntimeError as err:
+        # in case no metrics were computed
+        pass                                               
+
+    file_name = output_dir / f"{args['period']}_ensemble_results.p"
+    pickle.dump(ensemble_results, open(file_name, 'wb'))
+    print(f'Successfully written results to {file_name}')
 
 
 if __name__ == '__main__':

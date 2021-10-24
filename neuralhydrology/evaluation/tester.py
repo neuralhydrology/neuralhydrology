@@ -20,6 +20,7 @@ from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
+from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training.logger import Logger
@@ -93,9 +94,7 @@ class BaseTester(object):
         self.basins = load_basin_file(getattr(self.cfg, f"{self.period}_basin_file"))
 
         # load feature scaler
-        scaler_file = self.run_dir / "train_data" / "train_data_scaler.p"
-        with scaler_file.open('rb') as fp:
-            self.scaler = pickle.load(fp)
+        self.scaler = load_scaler(self.cfg.run_dir)
 
         # check for old scaler files, where the center/scale parameters had still old names
         if "xarray_means" in self.scaler.keys():
@@ -105,9 +104,7 @@ class BaseTester(object):
 
         # load basin_id to integer dictionary for one-hot-encoding
         if self.cfg.use_basin_id_encoding:
-            file_path = self.run_dir / "train_data" / "id_to_int.p"
-            with file_path.open("rb") as fp:
-                self.id_to_int = pickle.load(fp)
+            self.id_to_int = load_basin_id_encoding(self.cfg.run_dir)
 
         for file in self.cfg.additional_feature_files:
             with open(file, "rb") as fp:
@@ -318,6 +315,10 @@ class BaseTester(object):
                             for k, v in values.items():
                                 results[basin][freq][k] = v
 
+        # convert default dict back to normal Python dict to avoid unexpected behavior when trying to access
+        # a non-existing basin
+        results = dict(results)
+
         if (self.period == "validation") and (self.cfg.log_n_figures > 0) and (experiment_logger is not None):
             self._create_and_log_figures(results, experiment_logger, epoch)
 
@@ -347,16 +348,73 @@ class BaseTester(object):
                 experiment_logger.log_figures(figures, freq, preamble=re.sub(r"[^A-Za-z0-9\._\-]+", "", target_var))
 
     def _save_results(self, results: dict, epoch: int = None):
+        """Store results in various formats to disk.
+        
+        Developer note: We cannot store the time series data (the xarray objects) as netCDF file but have to use
+        pickle as a wrapper. The reason is that netCDF files have special constraints on the characters/symbols that can
+        be used as variable names. However, for convenience we will store metrics, if calculated, in a separate csv-file.
+        """
         # use name of weight file as part of the result folder name
         weight_file = self._get_weight_file(epoch=epoch)
 
+        # store all results packed as pickle file
         result_file = self.run_dir / self.period / weight_file.stem / f"{self.period}_results.p"
         result_file.parent.mkdir(parents=True, exist_ok=True)
-
         with result_file.open("wb") as fp:
             pickle.dump(results, fp)
 
+        if self.cfg.metrics:
+            df = self.metrics_to_dataframe(results)
+            file_name = self.run_dir / self.period / weight_file.stem / f"{self.period}_metrics.csv"
+            df.to_csv(file_name)
+
         LOGGER.info(f"Stored results at {result_file}")
+
+    @staticmethod
+    def metrics_to_dataframe(results: dict) -> pd.DataFrame:
+        """Extract all metric values from result dictionary and convert to pandas.DataFrame
+
+        Parameters
+        ----------
+        results: dict
+            Dictionary, containing the results of the model evaluation as returned by the `Tester.evaluate()`.
+
+        Returns
+        -------
+        A basin indexed DataFrame with one column per metric. In case of multi-frequency runs, the metric names contain
+        the corresponding frequency as a suffix.
+
+        Raises
+        ------
+        RuntimeError
+            If not a singe metric is stored in the result dict.
+        """
+        # List of all frequencies
+        frequencies = list(results[list(results.keys())[0]].keys())
+
+        # Dictionary mapping frequencies to available metrics
+        metrics_in_freq = {}
+        for freq in frequencies:
+            metrics_in_freq[freq] = [x for x in results[list(results.keys())[0]][freq].keys() if x != 'xr']
+
+        # Sanity check that the results dict contains at least one metric
+        if not bool([x for x in metrics_in_freq.values() if x != []]):
+            raise RuntimeError("No metrics found in result dict.")
+
+        metrics_dict = defaultdict(dict)
+        for basin, basin_data in results.items():
+            for freq, freq_results in basin_data.items():
+                for metric in metrics_in_freq[freq]:
+                    if metric in freq_results.keys():
+                        metrics_dict[basin][metric] = freq_results[metric]
+                    else:
+                        # in case the current period has no valid samples, the result dict has no metric-key
+                        metrics_dict[basin][metric] = np.nan
+        
+        df = pd.DataFrame.from_dict(metrics_dict, orient="index")
+        df.index.name = "basin"
+
+        return df
 
     def _evaluate(self, model: BaseModel, loader: DataLoader, frequencies: List[str]):
         """Evaluate model"""

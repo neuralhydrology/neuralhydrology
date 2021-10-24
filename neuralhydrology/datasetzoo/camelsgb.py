@@ -33,8 +33,8 @@ class CamelsGB(BaseDataset):
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
     scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the means and standard 
-        deviations for each feature and is stored to the run directory during training (train_data/train_data_scaler.p)
+        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
+        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
         
     References
     ----------

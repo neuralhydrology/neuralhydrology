@@ -75,6 +75,6 @@ To evaluate all runs in a specific directory you can, similarly to training, run
 To merge the predictons of a number of runs (stored in ``$DIR1``, ...) into one averaged ensemble,
 use the ``nh-results-ensemble`` script::
 
-    nh-results-ensemble --run-dirs $DIR1 $DIR2 ... --save-file /path/to/target/file.p --metrics NSE MSE ...
+    nh-results-ensemble --run-dirs $DIR1 $DIR2 ... --output-dir /path/to/output/directory --metrics NSE MSE ...
 
 ``--metrics`` specifies which metrics will be calculated for the averaged predictions.

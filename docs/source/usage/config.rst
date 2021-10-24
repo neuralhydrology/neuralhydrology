@@ -94,7 +94,11 @@ Validation settings
 -  ``metrics``: List of metrics to calculate during validation/testing.
    See
    :py:mod:`neuralhydrology.evaluation.metrics`
-   for a list of available metrics.
+   for a list of available metrics. Can also be a dictionary of lists,
+   where each key-value pair corresponds to one target variable and
+   the metrics that should be computed for this target. Like this,
+   it is possible to compute different metrics per target during 
+   validation and/or evaluation after the training.
 
 -  ``save_validation_results``: True/False, if True, stores the
    validation results to disk as a pickle file. Otherwise they are only
