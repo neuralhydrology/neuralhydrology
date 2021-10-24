@@ -34,8 +34,8 @@ class CamelsUS(BaseDataset):
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
     scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the means and standard 
-        deviations for each feature and is stored to the run directory during training (train_data/train_data_scaler.p)
+        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
+        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
         
     References
     ----------
@@ -182,7 +182,8 @@ def load_camels_us_forcings(data_dir: Path, basin: str, forcings: str) -> Tuple[
         area = int(fp.readline())
         # load the dataframe from the rest of the stream
         df = pd.read_csv(fp, sep='\s+')
-        df["date"] = pd.to_datetime(df.Year.map(str) + "/" + df.Mnth.map(str) + "/" + df.Day.map(str), format="%Y/%m/%d")
+        df["date"] = pd.to_datetime(df.Year.map(str) + "/" + df.Mnth.map(str) + "/" + df.Day.map(str),
+                                    format="%Y/%m/%d")
         df = df.set_index("date")
 
     return df, area

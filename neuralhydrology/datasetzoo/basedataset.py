@@ -2,6 +2,7 @@ import logging
 import pickle
 import sys
 import warnings
+from collections import defaultdict
 from typing import List, Dict, Union
 
 import numpy as np
@@ -12,6 +13,7 @@ import torch
 import xarray
 from numba import NumbaPendingDeprecationWarning
 from numba import njit, prange
+from ruamel.yaml import YAML
 from torch.utils.data import Dataset
 from tqdm import tqdm
 
@@ -49,8 +51,8 @@ class BaseDataset(Dataset):
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
     scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the means and standard 
-        deviations for each feature and is stored to the run directory during training (train_data/train_data_scaler.p)
+        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
+        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
     """
 
     def __init__(self,
@@ -179,20 +181,28 @@ class BaseDataset(Dataset):
         raise NotImplementedError
 
     def _create_id_to_int(self):
-        self.id_to_int = {b: i for i, b in enumerate(np.random.permutation(self.basins))}
+        self.id_to_int = {str(b): i for i, b in enumerate(np.random.permutation(self.basins))}
 
         # dump id_to_int dictionary into run directory for validation
-        file_path = self.cfg.train_dir / "id_to_int.p"
+        file_path = self.cfg.train_dir / "id_to_int.yml"
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open("wb") as fp:
-            pickle.dump(self.id_to_int, fp)
+        with file_path.open("w") as fp:
+            yaml = YAML()
+            yaml.dump(self.id_to_int, fp)
 
     def _dump_scaler(self):
-        # dump scaler dictionary into run directory for validation
-        file_path = self.cfg.train_dir / "train_data_scaler.p"
+        # dump scaler dictionary into run directory for inference
+        scaler = defaultdict(dict)
+        for key, value in self.scaler.items():
+            if isinstance(value, pd.Series) or isinstance(value, xarray.Dataset):
+                scaler[key] = value.to_dict()
+            else:
+                raise RuntimeError(f"Unknown datatype for scaler: {key}. Supported are pd.Series and xarray.Dataset")
+        file_path = self.cfg.train_dir / "train_data_scaler.yml"
         file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open("wb") as fp:
-            pickle.dump(self.scaler, fp)
+        with file_path.open("w") as fp:
+            yaml = YAML()
+            yaml.dump(dict(scaler), fp)
 
     def _get_start_and_end_dates(self):
 

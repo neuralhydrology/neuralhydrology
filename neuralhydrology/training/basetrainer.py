@@ -17,6 +17,7 @@ from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datautils.utils import load_basin_file
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
+from neuralhydrology.evaluation.utils import load_scaler
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
 from neuralhydrology.training.logger import Logger
@@ -146,9 +147,7 @@ class BaseTrainer(object):
         # freeze model parts and load scaler from pre-trained model
         if self.cfg.is_finetuning:
             self._freeze_model_parts()
-
-            with open(self.cfg.base_run_dir / "train_data" / "train_data_scaler.p", "rb") as fp:
-                self._scaler = pickle.load(fp)
+            self._scaler = load_scaler(self.cfg.base_run_dir)
 
         self.optimizer = self._get_optimizer()
         self.loss_obj = self._get_loss_obj().to(self.device)
