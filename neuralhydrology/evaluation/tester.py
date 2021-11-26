@@ -5,7 +5,7 @@ import re
 import sys
 from collections import defaultdict
 from pathlib import Path
-from typing import Dict, List, Union
+from typing import Dict, List, Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -23,6 +23,7 @@ from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_
 from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
+from neuralhydrology.training import get_loss_obj
 from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError, NoTrainDataError
@@ -71,6 +72,9 @@ class BaseTester(object):
 
         # placeholder to store cached validation data
         self.cached_datasets = {}
+
+        # initialize loss object to compute the loss of the evaluation data
+        self.loss_obj = get_loss_obj(cfg)
 
         self._load_run_data()
 
@@ -203,7 +207,11 @@ class BaseTester(object):
 
             loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=0)
 
-            y_hat, y = self._evaluate(model, loader, ds.frequencies)
+            y_hat, y, loss = self._evaluate(model, loader, ds.frequencies)
+
+            # log loss of this basin plus number of samples in the logger to compute epoch aggregates later
+            if experiment_logger is not None:
+                experiment_logger.log_step(loss=(loss, len(loader)))
 
             predict_last_n = self.cfg.predict_last_n
             seq_length = self.cfg.seq_length
@@ -410,7 +418,7 @@ class BaseTester(object):
                     else:
                         # in case the current period has no valid samples, the result dict has no metric-key
                         metrics_dict[basin][metric] = np.nan
-        
+
         df = pd.DataFrame.from_dict(metrics_dict, orient="index")
         df.index.name = "basin"
 
@@ -423,12 +431,13 @@ class BaseTester(object):
             predict_last_n = {frequencies[0]: predict_last_n}  # if predict_last_n is int, there's only one frequency
 
         preds, obs = {}, {}
+        losses = []
         with torch.no_grad():
             for data in loader:
 
                 for key in data:
                     data[key] = data[key].to(self.device)
-                predictions = self._generate_predictions(model, data)
+                predictions, loss = self._get_predictions_and_loss(model, data)
 
                 for freq in frequencies:
                     if predict_last_n[freq] == 0:
@@ -443,14 +452,18 @@ class BaseTester(object):
                         preds[freq] = torch.cat((preds[freq], y_hat_sub.detach().cpu()), 0)
                         obs[freq] = torch.cat((obs[freq], y_sub.detach().cpu()), 0)
 
+                losses.append(loss)
+
             for freq in preds.keys():
                 preds[freq] = preds[freq].numpy()
                 obs[freq] = obs[freq].numpy()
 
-        return preds, obs
+        return preds, obs, np.nanmean(losses)
 
-    def _generate_predictions(self, model: BaseModel, data: Dict[str, torch.Tensor]):
-        raise NotImplementedError
+    def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
+        predictions = model(data)
+        loss = self.loss_obj(predictions, data)
+        return predictions, loss.item()
 
     def _subset_targets(self, model: BaseModel, data: Dict[str, torch.Tensor], predictions: np.ndarray,
                         predict_last_n: int, freq: str):
@@ -482,9 +495,6 @@ class RegressionTester(BaseTester):
 
     def __init__(self, cfg: Config, run_dir: Path, period: str = "test", init_model: bool = True):
         super(RegressionTester, self).__init__(cfg, run_dir, period, init_model)
-
-    def _generate_predictions(self, model: BaseModel, data: Dict[str, torch.Tensor]):
-        return model(data)
 
     def _subset_targets(self, model: BaseModel, data: Dict[str, torch.Tensor], predictions: np.ndarray,
                         predict_last_n: np.ndarray, freq: str):
@@ -523,10 +533,12 @@ class UncertaintyTester(BaseTester):
     def __init__(self, cfg: Config, run_dir: Path, period: str = "test", init_model: bool = True):
         super(UncertaintyTester, self).__init__(cfg, run_dir, period, init_model)
 
-    def _generate_predictions(self, model: BaseModel, data: Dict[str, torch.Tensor]):
-        samples = model.sample(data, self.cfg.n_samples)
+    def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
+        outputs = model(data)
+        loss = self.loss_obj(outputs, data)
+        predictions = model.sample(data, self.cfg.n_samples)
         model.eval()
-        return samples
+        return predictions, loss.item()
 
     def _subset_targets(self,
                         model: BaseModel,

@@ -217,9 +217,10 @@ class BaseTrainer(object):
                                         experiment_logger=self.experiment_logger.valid())
 
                 valid_metrics = self.experiment_logger.summarise()
-                if valid_metrics:
-                    print_msg = f" -- Median validation metrics:"
-                    print_msg += ", ".join(f"{key}: {val:.5f}" for key, val in valid_metrics.items())
+                print_msg = f"Epoch {epoch} average validation loss: {valid_metrics['avg_loss']}"
+                if self.cfg.metrics:
+                    print_msg += f" -- Median validation metrics: "
+                    print_msg += ", ".join(f"{k}: {v:.5f}" for k, v in valid_metrics.items() if k != 'avg_loss')
                     LOGGER.info(print_msg)
 
         # make sure to close tensorboard to avoid losing the last epoch
