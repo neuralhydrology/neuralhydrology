@@ -1,11 +1,11 @@
 Tutorials
 =========
 
-| **Introduction to neuralHydrology**
-| If you're new to the neuralHydrology package, :doc:`this tutorial <introduction>` is the place to get started. It walks you through the basic command-line and API usage patterns, and you get to train and evaluate your first model.
+| **Introduction to NeuralHydrology**
+| If you're new to the NeuralHydrology package, :doc:`this tutorial <introduction>` is the place to get started. It walks you through the basic command-line and API usage patterns, and you get to train and evaluate your first model.
 
 | **Adding a New Model: Gated Recurrent Unit (GRU)**
-| Once you know the basics, you might want to add your own model. Using the `GRU <https://en.wikipedia.org/wiki/Gated_recurrent_unit>`__ model as an example, :doc:`this tutorial <adding-gru>` shows how and where to add models in the neuralHydrology codebase.
+| Once you know the basics, you might want to add your own model. Using the `GRU <https://en.wikipedia.org/wiki/Gated_recurrent_unit>`__ model as an example, :doc:`this tutorial <adding-gru>` shows how and where to add models in the NeuralHydrology codebase.
 
 | **Adding a New Dataset: CAMELS-CL**
 | Always using the United States CAMELS dataset is getting boring? :doc:`This tutorial <add-dataset>` shows you how to add a new dataset: The Chilean version of CAMELS.

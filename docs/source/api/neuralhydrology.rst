@@ -1,4 +1,4 @@
-neuralhydrology API
+NeuralHydrology API
 ===================
 
 .. automodule:: neuralhydrology

@@ -3,7 +3,7 @@ Quick Start
 
 Installation
 ------------
-There are two ways how you can install the ``neuralhydrology`` package: Editable or non-editable.
+There are two ways how you can install NeuralHydrology: Editable or non-editable.
 If all you want to do is run experiments with existing datasets and existing models, you can use the non-editable
 installation:
 
@@ -22,7 +22,7 @@ If you use git, you can run:
 
 If you don't know git, you can also download the code from `here <https://github.com/neuralhydrology/neuralhydrology/zipball/master>`__ and extract the zip-file.
 
-After you cloned or downloaded the zip-file, you'll end up with a directory called ``neuralhydrology`` (or ``neuralhydrology-master``).
+After you cloned or downloaded the zip-file, you'll end up with a directory called "neuralhydrology" (or "neuralhydrology-master").
 Next, we'll go to that directory and install a local, editable copy of the package:
 
 .. code-block::
