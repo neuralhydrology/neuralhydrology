@@ -36,7 +36,7 @@ def load_scaler(run_dir: Path) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
             yaml = YAML(typ="safe")
             scaler_dump = yaml.load(fp)
 
-        # transform scaler into the format expected by neuralHydrology
+        # transform scaler into the format expected by NeuralHydrology
         scaler = {}
         for key, value in scaler_dump.items():
             if key in ["attribute_means", "attribute_stds", "camels_attr_means", "camels_attr_stds"]:

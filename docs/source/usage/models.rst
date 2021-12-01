@@ -1,7 +1,7 @@
 Modelzoo
 ========
 
-The following section gives an overview of all implemented models in the ``neuralhydrology`` package. Conceptually, all models in our package consist of two parts, the model class (which constitutes the core of the model as such) and the model heads (which relate the outputs of the model class to the predicted variables). The section `Model Heads`_ provides a list of all implemented model heads, and the section `Model Classes`_ a list of all model classes. If you want to implement your own model within the package you best start at the section `Implementing a new model`_, which provides the necessary details to do so. 
+The following section gives an overview of all implemented models in NeuralHydrology. Conceptually, all models in our package consist of two parts, the model class (which constitutes the core of the model as such) and the model heads (which relate the outputs of the model class to the predicted variables). The section `Model Heads`_ provides a list of all implemented model heads, and the section `Model Classes`_ a list of all model classes. If you want to implement your own model within the package you best start at the section `Implementing a new model`_, which provides the necessary details to do so. 
 
 
 Model Heads
