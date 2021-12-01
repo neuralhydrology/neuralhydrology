@@ -13,6 +13,7 @@
 import datetime
 import os
 import sys
+
 sys.path.insert(0, os.path.abspath('.'))
 sys.path.insert(0, os.path.abspath('../../'))
 # -- Project information -----------------------------------------------------
@@ -20,7 +21,7 @@ about = {}
 with open('../../neuralhydrology/__about__.py', "r") as fp:
     exec(fp.read(), about)
 
-project = 'neuralHydrology'
+project = 'NeuralHydrology'
 copyright = f'{datetime.datetime.now().year}, Frederik Kratzert'
 author = 'Frederik Kratzert'
 

@@ -140,25 +140,32 @@ class Logger(object):
             self.epoch += 1
 
             # summarize training
-            avg_loss = np.nanmean(self._metrics["loss"]) if self._metrics["loss"] else np.nan
+            value = np.nanmean(self._metrics["loss"]) if self._metrics["loss"] else np.nan
 
             if self.writer is not None:
-                self.writer.add_scalar('/'.join([self.tag, 'avg_loss']), avg_loss, self.epoch)
+                self.writer.add_scalar('/'.join([self.tag, 'avg_loss']), value, self.epoch)
 
         # summarize validation
         else:
-            if self.writer is not None:
-                for k, v in self._metrics.items():
+            value = {}
+            for k, v in self._metrics.items():
+                if v and isinstance(v[0], tuple):
+                    # The only tuple that is passed is the per basin validation loss, which is a list of tuples, where
+                    # each element is defined as (basin loss, number of batches). The aggregate across basins is
+                    # weighted by the number of batches per basin, to approximate the training loss computation.
+                    num_samples = sum(samples for _, samples in v)
+                    weighted_loss = sum(loss * samples / num_samples for loss, samples in v)
+                    value['avg_loss'] = weighted_loss
+                    if self.writer is not None:
+                        self.writer.add_scalar('/'.join([self.tag, f'avg_loss']), weighted_loss, self.epoch)
+                else:
+                    # All other metrics are lists of float values
                     means = np.nanmean(v) if v else np.nan
                     medians = np.nanmedian(v) if v else np.nan
-                    self.writer.add_scalar('/'.join([self.tag, f'mean_{k.lower()}']), means, self.epoch)
-                    self.writer.add_scalar('/'.join([self.tag, f'median_{k.lower()}']), medians, self.epoch)
-
-        # return value for print in console
-        if self._train:
-            value = avg_loss
-        else:
-            value = {key: np.nanmedian(val) for key, val in self._metrics.items()}
+                    value[k] = medians
+                    if self.writer is not None:
+                        self.writer.add_scalar('/'.join([self.tag, f'mean_{k.lower()}']), means, self.epoch)
+                        self.writer.add_scalar('/'.join([self.tag, f'median_{k.lower()}']), medians, self.epoch)
 
         # clear buffer
         self._metrics = defaultdict(list)
