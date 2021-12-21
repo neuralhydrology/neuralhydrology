@@ -1,5 +1,3 @@
-EXAMPLES: https://joss.theoj.org/
-
 ---
 title: 'NeuralHydrology --- A Python library for Deep Learning research in hydrology'
 tags:
@@ -29,7 +27,7 @@ affiliations:
    index: 2
 
 date: 14 July 2021
-bibliography: paper.bib
+bibliography: bibliography.bib
 ---
 
 # Summary and statement of need
