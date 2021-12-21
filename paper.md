@@ -17,16 +17,15 @@ authors:
   - name: Grey Nearing
     orcid: 0000-0001-7031-6770
     affiliation: 1
-- name: Daniel Klotz
-    orcid: 0000-0002-9843-6798
-    affiliation: 2
+  - name: Daniel Klotz
+      orcid: 0000-0002-9843-6798
+      affiliation: 2
 affiliations:
- - name: Google Research
-   index: 1
- - name: Institute for Machine Learning, Johannes Kepler University Linz, Linz, Austria
-   index: 2
-
-date: 14 July 2021
+  - name: Google Research
+    index: 1
+  - name: Institute for Machine Learning, Johannes Kepler University Linz, Linz, Austria
+    index: 2
+date: 21 December 2021
 bibliography: bibliography.bib
 ---
 
