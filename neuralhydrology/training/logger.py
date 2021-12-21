@@ -153,11 +153,15 @@ class Logger(object):
                     # The only tuple that is passed is the per basin validation loss, which is a list of tuples, where
                     # each element is defined as (basin loss, number of batches). The aggregate across basins is
                     # weighted by the number of batches per basin, to approximate the training loss computation.
-                    num_samples = sum(samples for _, samples in v)
-                    weighted_loss = sum(loss * samples / num_samples for loss, samples in v)
+                    v_not_nan = [(loss, samples) for loss, samples in v if not np.isnan(loss)]
+                    num_samples = sum(samples for _, samples in v_not_nan)
+                    if num_samples > 0:
+                        weighted_loss = sum(loss * samples / num_samples for loss, samples in v_not_nan)
+                    else:
+                        weighted_loss = np.nan
                     value['avg_loss'] = weighted_loss
                     if self.writer is not None:
-                        self.writer.add_scalar('/'.join([self.tag, f'avg_loss']), weighted_loss, self.epoch)
+                        self.writer.add_scalar('/'.join([self.tag, 'avg_loss']), weighted_loss, self.epoch)
                 else:
                     # All other metrics are lists of float values
                     means = np.nanmean(v) if v else np.nan

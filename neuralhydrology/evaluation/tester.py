@@ -458,7 +458,9 @@ class BaseTester(object):
                 preds[freq] = preds[freq].numpy()
                 obs[freq] = obs[freq].numpy()
 
-        return preds, obs, np.nanmean(losses)
+        # set to NaN explicitly if all losses are NaN to avoid RuntimeWarning
+        mean_loss = np.nanmean(losses) if len(losses) > 0 and not all(np.isnan(l) for l in losses) else np.nan
+        return preds, obs, mean_loss
 
     def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
         predictions = model(data)

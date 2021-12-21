@@ -217,7 +217,7 @@ class BaseTrainer(object):
                                         experiment_logger=self.experiment_logger.valid())
 
                 valid_metrics = self.experiment_logger.summarise()
-                print_msg = f"Epoch {epoch} average validation loss: {valid_metrics['avg_loss']}"
+                print_msg = f"Epoch {epoch} average validation loss: {valid_metrics['avg_loss']:.5f}"
                 if self.cfg.metrics:
                     print_msg += f" -- Median validation metrics: "
                     print_msg += ", ".join(f"{k}: {v:.5f}" for k, v in valid_metrics.items() if k != 'avg_loss')
