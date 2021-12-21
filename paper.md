@@ -18,8 +18,8 @@ authors:
     orcid: 0000-0001-7031-6770
     affiliation: 1
   - name: Daniel Klotz
-      orcid: 0000-0002-9843-6798
-      affiliation: 2
+    orcid: 0000-0002-9843-6798
+    affiliation: 2
 affiliations:
   - name: Google Research
     index: 1
