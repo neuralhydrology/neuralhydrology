@@ -9,6 +9,7 @@ from torch.utils.tensorboard import SummaryWriter
 
 from neuralhydrology.__about__ import __version__
 from neuralhydrology.utils.config import Config
+from neuralhydrology.utils.logging_utils import get_git_hash, save_git_diff
 
 
 class Logger(object):
@@ -27,15 +28,11 @@ class Logger(object):
         self._img_log_dir = cfg.img_log_dir
 
         # get git commit hash if folder is a git repository
-        current_dir = str(Path(__file__).absolute().parent)
-        try:
-            if subprocess.call(["git", "-C", current_dir, "branch"],
-                               stderr=subprocess.DEVNULL,
-                               stdout=subprocess.DEVNULL) == 0:
-                git_output = subprocess.check_output(["git", "-C", current_dir, "describe", "--always"])
-                cfg.update_config({'commit_hash': git_output.strip().decode('ascii')})
-        except OSError:
-            pass  # likely, git is not installed.
+        cfg.update_config({'commit_hash': get_git_hash()})
+
+        # save git diff to file if branch is dirty
+        if cfg.save_git_diff:
+            save_git_diff(cfg.run_dir)
 
         # Additionally, the package version is stored in the config
         cfg.update_config({"package_version": __version__})
