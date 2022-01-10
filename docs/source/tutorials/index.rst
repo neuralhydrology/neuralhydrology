@@ -1,6 +1,9 @@
 Tutorials
 =========
 
+All tutorials are based on Jupyter notebooks that are hosted on GitHub. 
+If you want to run the code yourself, you can find the notebooks in the `examples folder <https://github.com/neuralhydrology/neuralhydrology/tree/master/examples>`__ of the NeuralHydrology GitHub repository.
+
 | **Introduction to NeuralHydrology**
 | If you're new to the NeuralHydrology package, :doc:`this tutorial <introduction>` is the place to get started. It walks you through the basic command-line and API usage patterns, and you get to train and evaluate your first model.
 

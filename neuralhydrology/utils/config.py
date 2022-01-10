@@ -341,6 +341,10 @@ class Config(object):
         return self._as_default_list(self._get_value_verbose("forcings"))
 
     @property
+    def save_git_diff(self) -> bool:
+        return self._cfg.get('save_git_diff', False)
+
+    @property
     def head(self) -> str:
         if self.model == "mclstm":
             return ''

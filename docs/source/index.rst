@@ -25,3 +25,4 @@ You might also be interested in our `Research Blog <https://neuralhydrology.gith
    tutorials/index
    usage/config
    api/neuralhydrology
+   contributing

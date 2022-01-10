@@ -372,6 +372,14 @@ Logger settings
    predictions as plots of that n specific (random) basins during
    validations.
 
+-  ``save_git_diff``: If set to True and NeuralHydrology is a git repository
+   with uncommitted changes, the git diff will be stored in the run directory.
+   When using this option, make sure that your run and data directories are either
+   not located inside the git repository, or that they are part of the ``.gitignore`` file.
+   Otherwise, the git diff may become very large and use up a lot of disk space.
+   To make sure everything is configured correctly, you can simply check that the
+   output of ``git diff HEAD`` only contains your code changes.
+
 Data settings
 -------------
 

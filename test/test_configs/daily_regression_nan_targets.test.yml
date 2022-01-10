@@ -1,0 +1,64 @@
+# --- Experiment configurations --------------------------------------------------------------------
+experiment_name: test_run
+
+run_dir:
+
+train_basin_file: ./test/test_data/1_basin_test_set.txt
+validation_basin_file: ./test/test_data/1_basin_test_set.txt
+test_basin_file: ./test/test_data/1_basin_test_set.txt
+
+train_start_date: '01/01/2000'
+train_end_date: '31/12/2001'
+validation_start_date: '01/01/2003'  # the specified basin has inputs but no targets for this period
+validation_end_date: '31/12/2003'
+test_start_date: '01/01/2003'
+test_end_date: '31/12/2003'
+
+seed: 111
+device: cpu
+
+# --- Validation configuration ---------------------------------------------------------------------
+validate_every: 1
+validate_n_random_basins: 4
+cache_validation_data: True
+metrics: []  # cannot calculate metrics because there are no observations during the val/test periods
+
+# --- Model configuration --------------------------------------------------------------------------
+model: cudalstm
+head: regression
+output_activation: linear
+
+hidden_size: 16
+initial_forget_bias: 3
+output_dropout: 0.4
+
+# --- Training configuration -----------------------------------------------------------------------
+optimizer: Adam
+loss: NSE
+learning_rate:
+  0: 1e-3
+  10: 5e-4
+  20: 1e-4
+batch_size: 256
+epochs: 1
+clip_gradient_norm: 1
+
+predict_last_n: 1
+seq_length: 30
+
+num_workers: 0
+log_interval: 5
+log_tensorboard: True
+log_n_figures: 2
+save_weights_every: 1
+save_validation_results: False
+
+# --- Data configurations --------------------------------------------------------------------------
+dataset: camels_us
+data_dir: ./test/test_data/camels_us
+forcings: daymet
+dynamic_inputs:
+  - prcp(mm/day)
+  - tmax(C)
+target_variables:
+  - QObs(mm/d)

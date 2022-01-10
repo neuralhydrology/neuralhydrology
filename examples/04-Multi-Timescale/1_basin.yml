@@ -130,7 +130,7 @@ save_weights_every: 1
 dataset: hourly_camels_us
 
 # Path to data set root
-data_dir: /data/Hydrology/CAMELS_US
+data_dir: ../../data/CAMELS_US
 
 # Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
 # can be either a list of forcings or a single forcing product
