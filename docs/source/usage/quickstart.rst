@@ -1,6 +1,24 @@
 Quick Start
 ============
 
+Prerequisites
+-------------
+As a first step you need a Python environment with all required dependencies. The recommended way is to use Mini-/Anaconda
+and to create a new environment using one of our predefined environment files in `environments/ <https://github.com/neuralhydrology/neuralhydrology/tree/master/environments>`__.
+Make sure to select the correct file, depending on your system.
+
+If you don't have a CUDA-capable GPU, use:
+
+.. code-block::
+
+    conda env create -f environments/environment_cpu.yml
+
+If you do have a CUDA-capable GPU, use either ``environment_cuda9_2.yml`` or ``environment_cuda10_2.yml``, depending on your hardware.
+
+If you prefer to not use Mini-/Anaconda, make sure you have a Python environment with Python >= 3.7 with all packages installed that are listed in 
+these environment files. 
+The next steps should be executed from within this Python environment.
+
 Installation
 ------------
 There are two ways how you can install NeuralHydrology: Editable or non-editable.

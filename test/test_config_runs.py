@@ -141,8 +141,27 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
     assert not pd.isna(hourly_results['qobs_mm_per_hour_sim']).any()
     assert not pd.isna(daily_results['qobs_mm_per_hour_sim'].values).any()
 
+def test_daily_regression_nan_targets(get_config: Fixture[Callable[[str], dict]]):
+    """Tests #112 (evaluation when target values are NaN).
 
-def _check_results(config: Config, basin: str):
+    Parameters
+    ----------
+    get_config : Fixture[Callable[[str], dict]]
+        Method that returns a run configuration
+    """
+    config = get_config('daily_regression_nan_targets')
+
+    start_training(config)
+    start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
+
+
+    # the fact that the targets are NaN should not lead the model to create NaN outputs.
+    # however, we do need to pass discharge as an NaN series, because the camels discharge loader would return [],
+    # as the test period is outside the part of the discharge time series that is stored on disk.
+    discharge = pd.Series(float('nan'), index=pd.date_range(*_get_test_start_end_dates(config)))
+    _check_results(config, '01022500', discharge=discharge)
+
+def _check_results(config: Config, basin: str, discharge: pd.Series = None):
     """Perform basic sanity checks of model predictions.
 
     Checks that the results file has the correct date range, that the observed discharge in the file is correct, and
@@ -154,6 +173,9 @@ def _check_results(config: Config, basin: str):
         The run configuration used to produce the results
     basin : str
         Id of a basin for which to check the results
+    discharge : pd.Series, optional
+        If provided, will check that the stored discharge obs match this series. Else, will compare to the discharge
+        loaded from disk.
     """
     test_start_date, test_end_date = _get_test_start_end_dates(config)
 
@@ -162,7 +184,8 @@ def _check_results(config: Config, basin: str):
     assert pd.to_datetime(results['date'].values[0]) == test_start_date.date()
     assert pd.to_datetime(results['date'].values[-1]) == test_end_date.date()
 
-    discharge = _get_discharge(config, basin)
+    if discharge is None:
+        discharge = _get_discharge(config, basin)
 
     assert discharge.loc[test_start_date:test_end_date].values \
            == approx(results[f'{config.target_variables[0]}_obs'].values.reshape(-1), nan_ok=True)
