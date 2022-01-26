@@ -42,7 +42,7 @@ def get_git_hash() -> Optional[str]:
     try:
         if subprocess.call(["git", "-C", current_dir, "branch"], stderr=subprocess.DEVNULL,
                            stdout=subprocess.DEVNULL) == 0:
-            return subprocess.check_output(["git", "-C", current_dir, "describe", "--always"])
+            return subprocess.check_output(["git", "-C", current_dir, "describe", "--always"]).strip().decode('ascii')
     except OSError:
         return None  # likely, git is not installed.
 
