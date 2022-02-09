@@ -56,9 +56,7 @@ Data
 Training and evaluating models requires a dataset.
 If you're unsure where to start, a common dataset is CAMELS US, available at
 `CAMELS US (NCAR) <https://ral.ucar.edu/solutions/products/camels>`_.
-Download the "CAMELS time series meteorology, observed flow, meta data" and place the actual data folder
-(``basin_dataset_public_v1p2``) in a directory.
-This directory will be referred to as the "data directory", or ``data_dir``.
+This dataset is used in all of our tutorials and we have a `dedicated tutorial <../tutorials/data-prerequisites.nblink>`_ with download instructions that you might want to look at.
 
 
 Training a model

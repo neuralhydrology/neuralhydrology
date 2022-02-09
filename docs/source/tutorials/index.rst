@@ -4,6 +4,9 @@ Tutorials
 All tutorials are based on Jupyter notebooks that are hosted on GitHub. 
 If you want to run the code yourself, you can find the notebooks in the `examples folder <https://github.com/neuralhydrology/neuralhydrology/tree/master/examples>`__ of the NeuralHydrology GitHub repository.
 
+| **Data Prerequisites**
+| For most of our tutorials you will need some data to train and evaluate models. In all of these examples we use the publicly available CAMELS US dataset. :doc:`This tutorial <data-prerequisites>` will guide you through the download process of the different dataset pieces and explain how the code expects the local folder structure.
+
 | **Introduction to NeuralHydrology**
 | If you're new to the NeuralHydrology package, :doc:`this tutorial <introduction>` is the place to get started. It walks you through the basic command-line and API usage patterns, and you get to train and evaluate your first model.
 
@@ -26,6 +29,7 @@ If you want to run the code yourself, you can find the notebooks in the `example
    :maxdepth: 1
    :caption: Contents:
 
+   data-prerequisites
    introduction
    adding-gru
    add-dataset

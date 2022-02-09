@@ -212,8 +212,16 @@ def load_hourly_us_discharge(data_dir: Path, basin: str) -> pd.DataFrame:
     pd.Series
         Time-index Series of the discharge values (mm/hour)
     """
+    pattern = '**/*usgs-hourly.csv'
     discharge_path = data_dir / 'hourly' / 'usgs_streamflow'
-    files = list(discharge_path.glob('**/*usgs-hourly.csv'))
+    files = list(discharge_path.glob(pattern))
+    
+    # https://github.com/neuralhydrology/neuralhydrology/issues/67 streamflow folder names are different in code
+    # vs. on Zenodo. We allow both ("-", "_") to not break any existing data directories.
+    if len(files) == 0:
+        discharge_path = discharge_path.parent / 'usgs-streamflow'
+        files = list(discharge_path.glob(pattern))
+    
     file_path = [f for f in files if basin in f.stem]
     if file_path:
         file_path = file_path[0]
