@@ -136,16 +136,10 @@ data_dir: ../../data/CAMELS_US
 # can be either a list of forcings or a single forcing product
 forcings:
   - nldas_hourly
-  - maurer_extended
   - daymet
 
 dynamic_inputs:
   1D:
-    - prcp(mm/day)_maurer_extended
-    - srad(W/m2)_maurer_extended
-    - tmax(C)_maurer_extended
-    - tmin(C)_maurer_extended
-    - vp(Pa)_maurer_extended
     - prcp(mm/day)_daymet
     - srad(W/m2)_daymet
     - tmax(C)_daymet
@@ -163,11 +157,6 @@ dynamic_inputs:
     - total_precipitation_nldas_hourly
     - wind_u_nldas_hourly
     - wind_v_nldas_hourly
-    - prcp(mm/day)_maurer_extended
-    - srad(W/m2)_maurer_extended
-    - tmax(C)_maurer_extended
-    - tmin(C)_maurer_extended
-    - vp(Pa)_maurer_extended
     - prcp(mm/day)_daymet
     - srad(W/m2)_daymet
     - tmax(C)_daymet

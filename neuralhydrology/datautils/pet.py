@@ -7,7 +7,7 @@ def get_priestley_taylor_pet(t_min: np.ndarray, t_max: np.ndarray, s_rad: np.nda
                              doy: np.ndarray) -> np.ndarray:
     """Calculate potential evapotranspiration (PET) as an approximation following the Priestley-Taylor equation.
 
-    The ground head flux G is assumed to be 0 at daily time steps (see Newman et al., 2015 [#]_). The 
+    The ground heat flux G is assumed to be 0 at daily time steps (see Newman et al., 2015 [#]_). The 
     equations follow FAO-56 (Allen et al., 1998 [#]_).
 
     Parameters
