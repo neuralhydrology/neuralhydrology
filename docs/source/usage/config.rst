@@ -290,6 +290,10 @@ Training settings
    ``NSE``, ``RMSE``, ``GMMLoss``, ``CMALLoss``, and ``UMALLoss``. New 
    losses can be added :py:mod:`here <neuralhydrology.training.loss>`.
 
+- ``allow_subsequent_nan_losses``: Define a number of training steps for
+   which a loss value of ``NaN`` is ignored and no error is raised but 
+   instead the training loop proceeds to the next iteration step.
+
 -  ``target_loss_weights``: A list of float values specifying the 
    per-target loss weight, when training on multiple targets at once. 
    Can be combined with any loss. By default, the weight of each target
