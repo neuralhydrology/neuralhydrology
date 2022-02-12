@@ -567,7 +567,7 @@ class Config(object):
         return self._get_value_verbose("transformer_dim_feedforward")
 
     @property
-    def transformer_positional_dropout(self) -> int:
+    def transformer_positional_dropout(self) -> float:
         return self._get_value_verbose("transformer_positional_dropout")
 
     @property
@@ -575,7 +575,7 @@ class Config(object):
         return self._get_value_verbose("transformer_dropout")
 
     @property
-    def transformer_nheads(self) -> float:
+    def transformer_nheads(self) -> int:
         return self._get_value_verbose("transformer_nheads")
 
     @seed.setter

@@ -47,11 +47,11 @@ class InputLayer(nn.Module):
             self._get_embedding_net(cfg.dynamics_embedding, dynamics_input_size, 'dynamics')
 
         if cfg.statics_embedding is None:
-            self.statics_embedding_p_dropout = 0.0  # if net has no statics dropout we tread is as zero
+            self.statics_embedding_p_dropout = 0.0  # if net has no statics dropout we treat is as zero
         else:
             self.statics_embedding_p_dropout = cfg.statics_embedding['dropout']
         if cfg.dynamics_embedding is None:
-            self.dynamics_embedding_p_dropout = 0.0  # if net has no dynamics dropout we tread is as zero
+            self.dynamics_embedding_p_dropout = 0.0  # if net has no dynamics dropout we treat is as zero
         else:
             self.dynamics_embedding_p_dropout = cfg.dynamics_embedding['dropout']
 
