@@ -23,12 +23,17 @@ Installation
 ------------
 There are two ways how you can install NeuralHydrology: Editable or non-editable.
 If all you want to do is run experiments with existing datasets and existing models, you can use the non-editable
-installation:
+installation. To install the latest release from PyPI:
+
+.. code-block::
+
+    pip install neuralhydrology
+
+To install the package directly from the current master branch of this repository, including any changes that are not yet part of a release, run:
 
 .. code-block::
 
     pip install git+https://github.com/neuralhydrology/neuralhydrology.git
-
 
 If you want to try implementing your own models or datasets, you'll need an editable installation.
 For this, start by downloading or cloning the repository to your local machine.
