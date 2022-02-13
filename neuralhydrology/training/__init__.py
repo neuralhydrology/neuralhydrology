@@ -28,7 +28,7 @@ def get_optimizer(model: torch.nn.Module, cfg: Config) -> torch.optim.Optimizer:
     torch.optim.Optimizer
         Optimizer object that can be used for model training.
     """
-    if cfg.optimizer == "Adam":
+    if cfg.optimizer.lower() == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate[0])
     else:
         raise NotImplementedError(f"{cfg.optimizer} not implemented or not linked in `get_optimizer()`")

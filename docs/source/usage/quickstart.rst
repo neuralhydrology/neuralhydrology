@@ -1,16 +1,39 @@
 Quick Start
 ============
 
+Prerequisites
+-------------
+As a first step you need a Python environment with all required dependencies. The recommended way is to use Mini-/Anaconda
+and to create a new environment using one of our predefined environment files in `environments/ <https://github.com/neuralhydrology/neuralhydrology/tree/master/environments>`__.
+Make sure to select the correct file, depending on your system.
+
+If you don't have a CUDA-capable GPU, use:
+
+.. code-block::
+
+    conda env create -f environments/environment_cpu.yml
+
+If you do have a CUDA-capable GPU, use either ``environment_cuda9_2.yml`` or ``environment_cuda10_2.yml``, depending on your hardware.
+
+If you prefer to not use Mini-/Anaconda, make sure you have a Python environment with Python >= 3.7 with all packages installed that are listed in 
+these environment files. 
+The next steps should be executed from within this Python environment.
+
 Installation
 ------------
 There are two ways how you can install NeuralHydrology: Editable or non-editable.
 If all you want to do is run experiments with existing datasets and existing models, you can use the non-editable
-installation:
+installation. To install the latest release from PyPI:
+
+.. code-block::
+
+    pip install neuralhydrology
+
+To install the package directly from the current master branch of this repository, including any changes that are not yet part of a release, run:
 
 .. code-block::
 
     pip install git+https://github.com/neuralhydrology/neuralhydrology.git
-
 
 If you want to try implementing your own models or datasets, you'll need an editable installation.
 For this, start by downloading or cloning the repository to your local machine.
@@ -38,9 +61,7 @@ Data
 Training and evaluating models requires a dataset.
 If you're unsure where to start, a common dataset is CAMELS US, available at
 `CAMELS US (NCAR) <https://ral.ucar.edu/solutions/products/camels>`_.
-Download the "CAMELS time series meteorology, observed flow, meta data" and place the actual data folder
-(``basin_dataset_public_v1p2``) in a directory.
-This directory will be referred to as the "data directory", or ``data_dir``.
+This dataset is used in all of our tutorials and we have a `dedicated tutorial <../tutorials/data-prerequisites.nblink>`_ with download instructions that you might want to look at.
 
 
 Training a model

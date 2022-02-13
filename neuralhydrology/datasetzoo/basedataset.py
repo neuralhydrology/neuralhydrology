@@ -378,6 +378,7 @@ class BaseDataset(Dataset):
         basin_coordinates = xr["basin"].values.tolist()
         if not self._disable_pbar:
             LOGGER.info("Calculating target variable stds per basin")
+        nan_basins = []
         for basin in tqdm(self.basins, file=sys.stdout, disable=self._disable_pbar):
             coords = [b for b in basin_coordinates if b == basin or b.startswith(f"{basin}_period")]
             if len(coords) > 0:
@@ -390,12 +391,19 @@ class BaseDataset(Dataset):
                     obs.append(xr.sel(basin=coord)[self.cfg.target_variables].to_array().values[:, :, np.newaxis])
                 # concat to shape [targets, time steps, periods], then reshape to [targets, time steps * periods]
                 obs = np.concatenate(obs, axis=-1).reshape(len(self.cfg.target_variables), -1)
-                if np.sum(~np.isnan(obs)) > 2:
+                if np.sum(~np.isnan(obs)) > 1:
                     # calculate std for each target
                     per_basin_target_stds = torch.tensor([np.nanstd(obs, axis=1)], dtype=torch.float32)
-                    # we store duplicates of the std for each coordinate of the same basin, so we are faster in getitem
-                    for coord in coords:
-                        self.per_basin_target_stds[coord] = per_basin_target_stds
+                else:
+                    nan_basins.append(basin)
+                    per_basin_target_stds = torch.full((1, obs.shape[0]), np.nan, dtype=torch.float32)
+                # we store duplicates of the std for each coordinate of the same basin, so we are faster in getitem
+                for coord in coords:
+                    self.per_basin_target_stds[coord] = per_basin_target_stds
+
+        if len(nan_basins) > 0:
+            LOGGER.warning("The following basins had not enough valid target values to calculate a standard deviation: "
+                           f"{', '.join(nan_basins)}. NSE loss values for this basin will be NaN.")
 
     def _create_lookup_table(self, xr: xarray.Dataset):
         lookup = []

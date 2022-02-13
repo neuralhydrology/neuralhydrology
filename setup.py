@@ -11,8 +11,6 @@ about = {}
 with open("neuralhydrology/__about__.py", "r") as fp:
     exec(fp.read(), about)
 
-# TODO: Add Classifier, License and update Authors etc.
-
 setup(name='neuralhydrology',
       version=about["__version__"],
       packages=[
@@ -25,7 +23,8 @@ setup(name='neuralhydrology',
           'Source': 'https://github.com/neuralhydrology/neuralhydrology',
           'Research Blog': 'https://neuralhydrology.github.io/'
       },
-      author='Frederik Kratzert <f.kratzert@gmail.com>, Daniel Klotz, Martin Gauch',
+      author='Frederik Kratzert, Daniel Klotz, Martin Gauch',
+      author_email='neuralhydrology@googlegroups.com',
       description='Library for training deep learning models with environmental focus',
       long_description=long_description,
       long_description_content_type='text/markdown',
@@ -35,7 +34,7 @@ setup(name='neuralhydrology',
               'nh-results-ensemble=neuralhydrology.utils.nh_results_ensemble:_main'
           ]
       },
-      python_requires='>=3.6',
+      python_requires='>=3.7',
       install_requires=[
           'matplotlib',
           'numba',

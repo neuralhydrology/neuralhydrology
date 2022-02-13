@@ -1,7 +1,7 @@
 # --- Experiment configurations --------------------------------------------------------------------
 
 # experiment name, used as folder name
-experiment_name: cudalstm_maurer_531_basins
+experiment_name: cudalstm_531_basins
 
 # place to store run directory (if empty runs are stored in $cwd$/runs/)
 run_dir:
@@ -107,12 +107,12 @@ save_validation_results: True
 dataset: camels_us
 
 # Path to CAMELS data set
-data_dir: /data/Hydrology/CAMELS_US
+data_dir: ../../data/CAMELS_US
 
 # Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended]
 # can be either a list of forcings or a single forcing product
 forcings:
-- maurer_extended
+- daymet
 
 # variables to use as time series input (names match the data file column headers)
 # Note: In case of multiple input forcing products, you have to append the forcing product behind

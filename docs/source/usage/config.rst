@@ -290,6 +290,10 @@ Training settings
    ``NSE``, ``RMSE``, ``GMMLoss``, ``CMALLoss``, and ``UMALLoss``. New 
    losses can be added :py:mod:`here <neuralhydrology.training.loss>`.
 
+- ``allow_subsequent_nan_losses``: Define a number of training steps for
+   which a loss value of ``NaN`` is ignored and no error is raised but 
+   instead the training loop proceeds to the next iteration step.
+
 -  ``target_loss_weights``: A list of float values specifying the 
    per-target loss weight, when training on multiple targets at once. 
    Can be combined with any loss. By default, the weight of each target
@@ -371,6 +375,14 @@ Logger settings
 -  ``log_n_figures``: If a (integer) value greater than 0, saves the
    predictions as plots of that n specific (random) basins during
    validations.
+
+-  ``save_git_diff``: If set to True and NeuralHydrology is a git repository
+   with uncommitted changes, the git diff will be stored in the run directory.
+   When using this option, make sure that your run and data directories are either
+   not located inside the git repository, or that they are part of the ``.gitignore`` file.
+   Otherwise, the git diff may become very large and use up a lot of disk space.
+   To make sure everything is configured correctly, you can simply check that the
+   output of ``git diff HEAD`` only contains your code changes.
 
 Data settings
 -------------
