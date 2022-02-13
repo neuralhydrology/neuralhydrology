@@ -19,5 +19,5 @@ this code in our day-to-day research and will continue to integrate our new rese
 
 # Contact
 
-If you have any questions regarding the usage of this repository, feature requests or comments, please open an issue.
-You can also reach out to Frederik Kratzert (kratzert(at)google.com) by email.
+For questions or comments regarding the usage of this repository, please use the [discussion section](https://github.com/neuralhydrology/neuralhydrology/discussions) on Github. For bug reports and feature requests, please open an [issue](https://github.com/neuralhydrology/neuralhydrology/issues) on GitHub.
+In special cases, you can also reach out to us by email: neuralhydrology(at)googlegroups.com
