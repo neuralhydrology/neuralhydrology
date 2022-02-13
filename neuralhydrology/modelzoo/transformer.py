@@ -9,6 +9,7 @@ import torch.nn as nn
 from neuralhydrology.modelzoo.inputlayer import InputLayer
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
+from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ class Transformer(BaseModel):
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
     module_parts = ['embedding_net', 'encoder', 'head']
 
-    def __init__(self, cfg: Dict):
+    def __init__(self, cfg: Config):
         super(Transformer, self).__init__(cfg=cfg)
 
         # embedding net before transformer
@@ -61,7 +62,7 @@ class Transformer(BaseModel):
         elif self._positional_encoding_type.lower() == 'sum':
             encoder_dim = self.embedding_net.output_size
         else:
-            raise RuntimeError(f"Unrecognized positional encoding type: {self.positional_encoding_type}")
+            raise RuntimeError(f"Unrecognized positional encoding type: {self._positional_encoding_type}")
         self.positional_encoder = _PositionalEncoding(embedding_dim=self.embedding_net.output_size,
                                                       dropout=cfg.transformer_positional_dropout,
                                                       position_type=cfg.transformer_positional_encoding_type,
@@ -106,7 +107,7 @@ class Transformer(BaseModel):
         Returns
         -------
         Dict[str, torch.Tensor]
-            Model outputs and intermediate states as a dictionary. 
+            Model outputs and intermediate states as a dictionary.
                 - `y_hat`: model predictions of shape [batch size, sequence length, number of target variables].
         """
         # pass dynamic and static inputs through embedding layers, then concatenate them
@@ -173,7 +174,7 @@ class _PositionalEncoding(nn.Module):
         ----------
         x : torch.Tensor
             Dimension is ``[sequence length, batch size, embedding output dimension]``.
-            Data that is to be the input to a transformer encoder after including positional encoding. 
+            Data that is to be the input to a transformer encoder after including positional encoding.
             Typically this will be output from an embedding layer.
 
         Returns
@@ -182,7 +183,7 @@ class _PositionalEncoding(nn.Module):
             Dimension is ``[sequence length, batch size, encoder input dimension]``.
             The encoder input dimension is either equal to the embedding output dimension (if ``position_type == sum``)
             or twice the embedding output dimension (if ``position_type == concatenate``).
-            Encoder input augmented with positional encoding. 
+            Encoder input augmented with positional encoding.
 
         """
         if self._concatenate:
