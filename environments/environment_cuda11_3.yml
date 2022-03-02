@@ -5,7 +5,7 @@ channels:
   - anaconda
 dependencies:
   - bokeh
-  - cudatoolkit=9.2
+  - cudatoolkit=11.3
   - h5py
   - hdf5
   - jupyter
