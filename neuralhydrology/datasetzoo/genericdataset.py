@@ -20,6 +20,10 @@ class GenericDataset(BaseDataset):
     be divided into groups of basins or groups of features (but not both, see `genericdataset.load_attributes` for
     more details).
 
+    Note: Invalid values have to be marked as NaN (e.g. using NumPy's np.nan) in the netCDF files and not something like
+    -999 for invalid discharge measurements, which is often found in hydrology datasets. If missing values are not 
+    marked as NaN's, the GenericDataset will not be able to identify these values as missing data points.
+
     Parameters
     ----------
     cfg : Config
