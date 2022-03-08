@@ -16,6 +16,24 @@ this code in our day-to-day research and will continue to integrate our new rese
 - Research Blog: [neuralhydrology.github.io](https://neuralhydrology.github.io)
 - Bug reports/Feature requests [https://github.com/neuralhydrology/neuralhydrology/issues](https://github.com/neuralhydrology/neuralhydrology/issues)
 
+# Cite NeuralHydrology
+
+In case you use NeuralHydrology in your research or work, it would be highly appreciated if you include a reference to our [JOSS paper](https://joss.theoj.org/papers/10.21105/joss.04050#) in any kind of publication.
+
+```bibtex
+@article{kratzert2022joss,
+  title = {NeuralHydrology --- A Python library for Deep Learning research in hydrology},
+  author = {Frederik Kratzert and Martin Gauch and Grey Nearing and Daniel Klotz},
+  journal = {Journal of Open Source Software},
+  publisher = {The Open Journal},
+  year = {2022},
+  volume = {7},
+  number = {71},
+  pages = {4050},
+  doi = {10.21105/joss.04050},
+  url = {https://doi.org/10.21105/joss.04050},
+}
+```
 
 # Contact
 
