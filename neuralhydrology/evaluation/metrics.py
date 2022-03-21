@@ -20,7 +20,10 @@ def get_available_metrics() -> List[str]:
     List[str]
         List of implemented metric names.
     """
-    metrics = ["NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-NSE", "FHV", "FMS", "FLV", "Peak-Timing"]
+    metrics = [
+        "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
+        "Peak-Timing"
+    ]
     return metrics
 
 
@@ -657,6 +660,7 @@ def calculate_all_metrics(obs: DataArray,
         "RMSE": rmse(obs, sim),
         "KGE": kge(obs, sim),
         "Alpha-NSE": alpha_nse(obs, sim),
+        "Beta-KGE": beta_kge(obs, sim),
         "Beta-NSE": beta_nse(obs, sim),
         "Pearson-r": pearsonr(obs, sim),
         "FHV": fdc_fhv(obs, sim),
@@ -715,6 +719,8 @@ def calculate_metrics(obs: DataArray,
             values["KGE"] = kge(obs, sim)
         elif metric.lower() == "alpha-nse":
             values["Alpha-NSE"] = alpha_nse(obs, sim)
+        elif metric.lower() == "beta-kge":
+            values["Beta-KGE"] = beta_kge(obs, sim)
         elif metric.lower() == "beta-nse":
             values["Beta-NSE"] = beta_nse(obs, sim)
         elif metric.lower() == "pearson-r":
