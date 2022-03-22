@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+authors:
+- family-names: "Kratzert"
+  given-names: "Frederik"
+- family-names: "Gauch"
+  given-names: "Martin"
+- family-names: "Nearing"
+  given-names: "Grey"
+- family-names: "Klotz"
+  given-names: "Daniel"
+title: "NeuralHydrology --- A Python library for Deep Learning research in hydrology"
+doi: 10.21105/joss.04050
+url: "https://doi.org/10.21105/joss.04050"
+preferred-citation:
+  type: article
+  authors:
+  - family-names: "Kratzert"
+    given-names: "Frederik"
+  - family-names: "Gauch"
+    given-names: "Martin"
+  - family-names: "Nearing"
+    given-names: "Grey"
+  - family-names: "Klotz"
+    given-names: "Daniel"
+  doi: "10.21105/joss.04050"
+  journal: "Journal of Open Source Software"
+  publisher: 
+    name: "The Open Journal"
+  start: 4050 # First page number
+  end: 4050 # Last page number
+  title: "NeuralHydrology --- A Python library for Deep Learning research in hydrology"
+  number: 71
+  volume: 7
+  year: 2022
