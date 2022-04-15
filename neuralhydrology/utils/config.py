@@ -523,6 +523,10 @@ class Config(object):
         return self._get_value_verbose("predict_last_n")
 
     @property
+    def random_holdout_from_dynamic_features(self) -> Dict[str, float]:
+        return self._as_default_dict(self._cfg.get("random_holdout_from_dynamic_features", {}))
+
+    @property
     def rating_curve_file(self) -> Path:
         return self._get_value_verbose("rating_curve_file")
 

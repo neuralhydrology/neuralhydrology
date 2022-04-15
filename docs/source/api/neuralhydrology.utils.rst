@@ -13,3 +13,4 @@ nh.utils
    neuralhydrology.utils.config
    neuralhydrology.utils.configutils
    neuralhydrology.utils.errors
+   neuralhydrology.utils.samplingutils

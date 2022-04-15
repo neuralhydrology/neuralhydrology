@@ -19,6 +19,7 @@ from tqdm import tqdm
 
 from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
+from neuralhydrology.utils import samplingutils
 
 LOGGER = logging.getLogger(__name__)
 
@@ -289,7 +290,15 @@ class BaseDataset(Dataset):
                     ]
                     raise KeyError("".join(msg))
 
-                # make end_date the last second of the specified day, such that the
+                # remove random portions of the timeseries of dynamic features
+                for holdout_variable,  holdout_dict in self.cfg.random_holdout_from_dynamic_features.items():
+                    df[holdout_variable] = samplingutils.bernoulli_subseries_sampler(
+                        data=df[holdout_variable].values,
+                        missing_fraction=holdout_dict['missing_fraction'], 
+                        mean_missing_length=holdout_dict['mean_missing_length'],
+                    )
+
+                # Make end_date the last second of the specified day, such that the
                 # dataset will include all hours of the last day, not just 00:00.
                 start_dates = self.dates[basin]["start_dates"]
                 end_dates = [date + pd.Timedelta(days=1, seconds=-1) for date in self.dates[basin]["end_dates"]]

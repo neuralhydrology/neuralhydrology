@@ -451,6 +451,18 @@ Data settings
    `pandas shift <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.shift.html>`__
    for details). If a list of integers is provided, only unique values are considered.
    We append ``_shiftN`` to each lagged feature, where `N` is the shift count.
+   
+-  ``random_holdout_from_dynamic_features``: Dictionary to define timeseries
+   features to remove random sections of data from. This allows for conducting
+   certain types of missing data analyses. Keys of this dictionary must match 
+   exact names of dynamic inputs as defined in the data set. Values are a dict
+   with keys "missing_fraction" and "mean_missing_length", and values that are 
+   float and float, respectively, representing ("missing_fraction") the long-term 
+   fraction of data to be randomly removed from a given feature, and (2) the
+   expected value of the length of continuous subsequences removed from the 
+   timeseries. These two distribution parameters do not consider whether there
+   are any NaN's in the original timeseries. Only works for timeseries features
+   (inputs and targets). Leave empty if none should be used. 
 
 -  ``custom_normalization``: Has to be a dictionary, mapping from
    time series feature names to ``centering`` and/or ``scaling``. Using
