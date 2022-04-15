@@ -109,7 +109,6 @@ class BaseDataset(Dataset):
         self.per_basin_target_stds = {}
         self.dates = {}
         self.num_samples = 0
-        self.one_hot = None
         self.period_starts = {}  # needed for restoring date index during evaluation
 
         # get the start and end date periods for each basin
@@ -123,9 +122,6 @@ class BaseDataset(Dataset):
             if self.is_train:
                 # creates lookup table for the number of basins in the training set
                 self._create_id_to_int()
-
-            # create empty tensor of the same length as basins in id to int lookup table
-            self.one_hot = torch.zeros(len(self.id_to_int), dtype=torch.float32)
 
         # load and preprocess data
         self._load_data()
@@ -165,10 +161,9 @@ class BaseDataset(Dataset):
 
         if self.per_basin_target_stds:
             sample['per_basin_target_stds'] = self.per_basin_target_stds[basin]
-        if self.one_hot is not None:
-            x_one_hot = self.one_hot.zero_()
-            x_one_hot[self.id_to_int[basin_id]] = 1
-            sample['x_one_hot'] = x_one_hot
+        if self.id_to_int:
+            sample['x_one_hot'] = torch.nn.functional.one_hot(torch.tensor(self.id_to_int[basin_id]),
+                                                              num_classes=len(self.id_to_int)).to(torch.float32)
 
         return sample
 
