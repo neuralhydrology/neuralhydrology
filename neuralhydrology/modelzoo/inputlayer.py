@@ -36,7 +36,14 @@ class InputLayer(nn.Module):
     def __init__(self, cfg: Config):
         super(InputLayer, self).__init__()
 
-        dynamics_input_size = len(cfg.dynamic_inputs)
+        if isinstance(cfg.dynamic_inputs, dict):
+            frequencies = list(cfg.dynamic_inputs.keys())
+            if len(frequencies) > 1:
+                raise ValueError('InputLayer only supports single-frequency data')
+            dynamics_input_size = len(cfg.dynamic_inputs[frequencies[0]])
+        else:
+            dynamics_input_size = len(cfg.dynamic_inputs)
+
         statics_input_size = len(cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
         if cfg.use_basin_id_encoding:
             statics_input_size += cfg.number_of_basins
