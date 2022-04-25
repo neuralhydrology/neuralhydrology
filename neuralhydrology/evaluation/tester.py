@@ -372,14 +372,13 @@ class BaseTester(object):
             pickle.dump(results, fp)
 
         if self.cfg.metrics:
-            df = self.metrics_to_dataframe(results)
+            df = self._metrics_to_dataframe(results)
             file_name = self.run_dir / self.period / weight_file.stem / f"{self.period}_metrics.csv"
             df.to_csv(file_name)
 
         LOGGER.info(f"Stored results at {result_file}")
 
-    @staticmethod
-    def metrics_to_dataframe(results: dict) -> pd.DataFrame:
+    def _metrics_to_dataframe(self, results: dict) -> pd.DataFrame:
         """Extract all metric values from result dictionary and convert to pandas.DataFrame
 
         Parameters
@@ -391,28 +390,11 @@ class BaseTester(object):
         -------
         A basin indexed DataFrame with one column per metric. In case of multi-frequency runs, the metric names contain
         the corresponding frequency as a suffix.
-
-        Raises
-        ------
-        RuntimeError
-            If not a singe metric is stored in the result dict.
         """
-        # List of all frequencies
-        frequencies = list(results[list(results.keys())[0]].keys())
-
-        # Dictionary mapping frequencies to available metrics
-        metrics_in_freq = {}
-        for freq in frequencies:
-            metrics_in_freq[freq] = [x for x in results[list(results.keys())[0]][freq].keys() if x != 'xr']
-
-        # Sanity check that the results dict contains at least one metric
-        if not bool([x for x in metrics_in_freq.values() if x != []]):
-            raise RuntimeError("No metrics found in result dict.")
-
         metrics_dict = defaultdict(dict)
         for basin, basin_data in results.items():
-            for freq, freq_results in basin_data.items():
-                for metric in metrics_in_freq[freq]:
+            for freq_results in basin_data.values():
+                for metric in self.cfg.metrics:
                     if metric in freq_results.keys():
                         metrics_dict[basin][metric] = freq_results[metric]
                     else:
