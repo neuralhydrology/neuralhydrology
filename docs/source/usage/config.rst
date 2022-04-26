@@ -452,6 +452,17 @@ Data settings
    for details). If a list of integers is provided, only unique values are considered.
    We append ``_shiftN`` to each lagged feature, where `N` is the shift count.
    
+   ``autoregressive_inputs``: Currently, only one autoregressive input is allowed, 
+   and only one output feature is allowed in an autoregressive model.
+   This is a list of target feature(s) to be used as model inputs. These 
+   will be lagged by some number of timesteps > 0, and therefore must appear in the list
+   of ``lagged_features``. Autoregressive inputs are appended to the end of the dynamic 
+   features list when building the dataset(s). Missing data is supported in autoregressive 
+   inputs. During runtime, autoregressive models append binary flags as inputs to indicate
+   missing data. Autoregressive inputs only work with models that support autoregression
+   and will throw an error if they are included in a config file for a model that does
+   not support autoregression. Leave empty if none should be used. 
+
 -  ``random_holdout_from_dynamic_features``: Dictionary to define timeseries
    features to remove random sections of data from. This allows for conducting
    certain types of missing data analyses. Keys of this dictionary must match 

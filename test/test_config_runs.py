@@ -63,6 +63,36 @@ def test_daily_regression_additional_features(get_config: Fixture[Callable[[str]
     _check_results(config, '01022500')
 
 
+def test_autoregression_daily_regression(get_config: Fixture[Callable[[str], dict]],
+                                         daily_dataset: Fixture[str], single_timescale_forcings: Fixture[str]):
+
+    """Tests training and testing with arlstm.
+
+    Parameters
+    ----------
+    get_config : Fixture[Callable[[str], dict]]
+        Method that returns a run configuration
+    daily_dataset : Fixture[str]
+        Daily dataset to use.
+    single_timescale_forcings : Fixture[str]
+        Daily forcings set to use.
+    """
+    config = get_config('autoregression_daily_regression')
+    config.update_config({
+        'model': 'arlstm',
+        'dataset': daily_dataset['dataset'],
+        'data_dir': config.data_dir / daily_dataset['dataset'],
+        'target_variables': daily_dataset['target'],
+        'forcings': single_timescale_forcings['forcings'],
+        'dynamic_inputs': single_timescale_forcings['variables']
+    })
+
+    start_training(config)
+    start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
+
+    _check_results(config, '01022500')
+
+
 def test_daily_regression_with_embedding(get_config: Fixture[Callable[[str], dict]],
                                          single_timescale_model: Fixture[str]):
     """Tests training and testing with static and dynamic embedding network.
@@ -141,6 +171,7 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
     assert not pd.isna(hourly_results['qobs_mm_per_hour_sim']).any()
     assert not pd.isna(daily_results['qobs_mm_per_hour_sim'].values).any()
 
+
 def test_daily_regression_nan_targets(get_config: Fixture[Callable[[str], dict]]):
     """Tests #112 (evaluation when target values are NaN).
 
@@ -160,6 +191,7 @@ def test_daily_regression_nan_targets(get_config: Fixture[Callable[[str], dict]]
     # as the test period is outside the part of the discharge time series that is stored on disk.
     discharge = pd.Series(float('nan'), index=pd.date_range(*_get_test_start_end_dates(config)))
     _check_results(config, '01022500', discharge=discharge)
+
 
 def _check_results(config: Config, basin: str, discharge: pd.Series = None):
     """Perform basic sanity checks of model predictions.
