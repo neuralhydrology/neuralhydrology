@@ -44,6 +44,10 @@ class InputLayer(nn.Module):
         else:
             dynamics_input_size = len(cfg.dynamic_inputs)
 
+        self._num_autoregression_inputs = 0
+        if cfg.autoregressive_inputs:
+            self._num_autoregression_inputs = len(cfg.autoregressive_inputs)
+
         statics_input_size = len(cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
         if cfg.use_basin_id_encoding:
             statics_input_size += cfg.number_of_basins
@@ -62,7 +66,7 @@ class InputLayer(nn.Module):
         else:
             self.dynamics_embedding_p_dropout = cfg.dynamics_embedding['dropout']
 
-        self.output_size = self.dynamics_output_size + self.statics_output_size
+        self.output_size = self.dynamics_output_size + self.statics_output_size + self._num_autoregression_inputs
         if cfg.head.lower() == "umal":
             self.output_size += 1
 
@@ -136,7 +140,12 @@ class InputLayer(nn.Module):
         else:
             x_s = None
 
-        dynamics_out = self.dynamics_embedding(x_d)
+        # Don't run autoregressive inputs through the embedding layer. This does not work with NaN's
+        if self._num_autoregression_inputs > 0:
+            dynamics_out = self.dynamics_embedding(x_d[:, :, :-self._num_autoregression_inputs])
+        else:
+            dynamics_out = self.dynamics_embedding(x_d)
+
         statics_out = None
         if x_s is not None:
             statics_out = self.statics_embedding(x_s)
@@ -149,6 +158,10 @@ class InputLayer(nn.Module):
                 ret_val = torch.cat([dynamics_out, statics_out], dim=-1)
             else:
                 ret_val = dynamics_out
+            
+            # Append autoregressive inputs to the end of the output.
+            if self._num_autoregression_inputs:
+                ret_val = torch.cat([ret_val, x_d[:, :, -self._num_autoregression_inputs:]], dim=-1)
 
         return ret_val
 

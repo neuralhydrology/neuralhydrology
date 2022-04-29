@@ -1,5 +1,6 @@
 import logging
 import pickle
+import re
 import sys
 import warnings
 from collections import defaultdict
@@ -19,6 +20,7 @@ from tqdm import tqdm
 
 from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
+from neuralhydrology.utils import samplingutils
 
 LOGGER = logging.getLogger(__name__)
 
@@ -236,6 +238,11 @@ class BaseDataset(Dataset):
         return df
 
     def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
+        
+        # check that all autoregressive inputs are contained in the list of shifted variables
+        self._check_autoregressive_inputs()
+
+        # create the shifted varaibles, as requested
         for feature, shift in self.cfg.lagged_features.items():
             if isinstance(shift, list):
                 # only consider unique shift values, otherwise we have columns with identical names
@@ -245,7 +252,22 @@ class BaseDataset(Dataset):
                 df[f"{feature}_shift{shift}"] = df[feature].shift(periods=shift, freq="infer")
             else:
                 raise ValueError("The value of the 'lagged_features' arg must be either an int or a list of ints")
+        
         return df
+
+    def _check_autoregressive_inputs(self):
+        # The dataset requires that AR inputs be lagged features, however in general when constructing the dataset
+        # we do not care whether these are lagged targets, specifically. The requirement that AR inputs be lagged
+        # targets, although typical for AR models, is not strictly required and depends on how these features are
+        # used in any particular model.
+        for input in self.cfg.autoregressive_inputs:
+            capture = re.compile(r'^(.*)_shift(\d+)$').search(input)
+            if not capture:
+                raise ValueError('Autoregressive inputs must be a shifted variable with form <variable>_shift<lag> ',
+                                f'where <lag> is an integer. Instead got: {input}.')
+            if capture[1] not in self.cfg.lagged_features or int(capture[2]) not in self.cfg.lagged_features[capture[1]]:
+                raise ValueError('Autoregressive inputs must be in the list of "lagged_inputs".')
+        return
 
     def _load_or_create_xarray_dataset(self) -> xarray.Dataset:
         # if no netCDF file is passed, data set is created from raw basin files
@@ -253,7 +275,7 @@ class BaseDataset(Dataset):
             data_list = []
 
             # list of columns to keep, everything else will be removed to reduce memory footprint
-            keep_cols = self.cfg.target_variables + self.cfg.evolving_attributes + self.cfg.mass_inputs
+            keep_cols = self.cfg.target_variables + self.cfg.evolving_attributes + self.cfg.mass_inputs + self.cfg.autoregressive_inputs
 
             if isinstance(self.cfg.dynamic_inputs, list):
                 keep_cols += self.cfg.dynamic_inputs
@@ -289,7 +311,15 @@ class BaseDataset(Dataset):
                     ]
                     raise KeyError("".join(msg))
 
-                # make end_date the last second of the specified day, such that the
+                # remove random portions of the timeseries of dynamic features
+                for holdout_variable,  holdout_dict in self.cfg.random_holdout_from_dynamic_features.items():
+                    df[holdout_variable] = samplingutils.bernoulli_subseries_sampler(
+                        data=df[holdout_variable].values,
+                        missing_fraction=holdout_dict['missing_fraction'], 
+                        mean_missing_length=holdout_dict['mean_missing_length'],
+                    )
+
+                # Make end_date the last second of the specified day, such that the
                 # dataset will include all hours of the last day, not just 00:00.
                 start_dates = self.dates[basin]["start_dates"]
                 end_dates = [date + pd.Timedelta(days=1, seconds=-1) for date in self.dates[basin]["end_dates"]]
@@ -427,8 +457,12 @@ class BaseDataset(Dataset):
                 else:
                     dynamic_cols = self.cfg.mass_inputs + self.cfg.dynamic_inputs[freq]
 
-                df_resampled = df_native[dynamic_cols + self.cfg.target_variables +
-                                         self.cfg.evolving_attributes].resample(freq).mean()
+                df_resampled = df_native[
+                    dynamic_cols + self.cfg.target_variables + 
+                    self.cfg.evolving_attributes + self.cfg.autoregressive_inputs
+                ].resample(freq).mean()
+
+                # pull all of the data that needs to be validated
                 x_d[freq] = df_resampled[dynamic_cols].values
                 y[freq] = df_resampled[self.cfg.target_variables].values
                 if self.cfg.evolving_attributes:
@@ -459,6 +493,14 @@ class BaseDataset(Dataset):
                                         frequency_maps=[frequency_maps[freq] for freq in self.frequencies],
                                         seq_length=self.seq_len,
                                         predict_last_n=self._predict_last_n)
+
+            # Concatenate autoregressive columns to dynamic inputs *after* validation, so as to not remove
+            # samples with missing autoregressive inputs. 
+            # AR inputs must go at the end of the df/array (this is assumed by the AR model).
+            if self.cfg.autoregressive_inputs:
+                for freq in self.frequencies:
+                    x_d[freq] = np.concatenate([x_d[freq], df_resampled[self.cfg.autoregressive_inputs].values], axis=1)
+
             valid_samples = np.argwhere(flag == 1)
             for f in valid_samples:
                 # store pointer to basin and the sample's index in each frequency

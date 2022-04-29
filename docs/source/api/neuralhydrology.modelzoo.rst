@@ -9,6 +9,7 @@ nh.modelzoo
 .. toctree::
    :maxdepth: 4
 
+   neuralhydrology.modelzoo.arlstm
    neuralhydrology.modelzoo.basemodel
    neuralhydrology.modelzoo.cudalstm
    neuralhydrology.modelzoo.customlstm
