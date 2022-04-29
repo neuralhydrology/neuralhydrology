@@ -41,6 +41,18 @@ BaseModel
 ^^^^^^^^^
 Abstract base class from which all models derive. Do not use this class for model training.
 
+ARLSTM
+^^^^^^
+:py:class:`neuralhydrology.modelzoo.arlstm.ARLSTM` is an autoregressive long short term memory network (LSTM)
+that assumes one input is a time-lagged version of the output. All features (``x_d``, ``x_s``, ``x_one_hot``) 
+are concatenated and passed to the timeseries network at each time step, along with a binary flag that indicates 
+whether the autoregressive input (i.e., lagged target data) is missing (False) or present (True). The length of
+the autoregressive lag can be specified in the config file by specifying the lag on the autoregressive input.
+Any missing data in the autoregressive inputs is imputed with appropriately lagged model output, and gradients are 
+calculated through this imputation during backpropagation. Only one autoregressive input is currently supported, 
+and it is assumed that this is the last variable in the ``x_d`` vector. This model uses a standard pytorch LSTM 
+cell, but only runs the optimized LSTM one timestep at a time, and is therefore significantly slower than the CudaLSTM.  
+
 CudaLSTM
 ^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.cudalstm.CudaLSTM` is a network using the standard PyTorch LSTM implementation.
