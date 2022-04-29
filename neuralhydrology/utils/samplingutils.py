@@ -1,6 +1,7 @@
 from typing import List, Dict, Callable
 
 import numpy as np
+from numba import njit
 import torch
 from torch.distributions import Categorical, Uniform
 
@@ -541,3 +542,86 @@ def sample_umal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
         freq_key = f'y_hat{freq_suffix}'
         samples.update({freq_key: sample_points})
     return samples
+
+
+@njit
+def bernoulli_subseries_sampler(
+    data: np.ndarray, 
+    missing_fraction: float, 
+    mean_missing_length: float,
+    start_sampling_on: bool = True,
+) -> np.ndarray:
+    """Samples a timeseries according to a pair of Bernoulli processes.
+
+    The objective is to sample subsequences of a given timeseries under two criteria:
+        1)  Expected long-term sample ratio (i.e., the total fraction of points in a time series 
+            that are not sampled): `missing_fraction`.
+        2)  Expected length of continuous subsequences sampled from the timeseries:
+            `mean_missing_length`.
+    
+    This is done by sampling two Bernoulli processes with different rate parameters. One
+    process samples on-shifts and one process samples off-shifts. An 'on-shift' occurs
+    when the state of the sampler transitions from 'off' (not sampling) to 'on' (sampling),
+    and vice-versa. The rate parameters for the on-shift and off-shift processes are
+    derived from the input parameters explained above.
+ 
+    Parameters
+    ----------
+    data : np.ndarray
+        Time series data to be sampled. Must be (N, 1) where N is the length of the timeseries.
+    missing_fraction : float
+        Expected total fraction of points in a time series that are not sampled.
+    mean_missing_length : float
+        Expected length of continuous subsequences of un-sampled data from the timeseries.
+    start_sampling_on: bool
+        Whether to start with the sampler turned "on" (True) or "off" (False) at the first
+        timestep of the timeseries.
+
+    Returns
+    -------
+    A copy of the timeseries with NaN's replacing elements that were not sampled.
+    """
+    # Check if sampling ratio is one or zero. Avoids a divide-by-zero error.
+    if missing_fraction == 0:
+        return data
+    if missing_fraction == 1:
+        return np.full(data.shape, np.nan)
+
+    # Check that the input data is a 1-d timeseries.
+    if not (data.ndim == 1 or (data.ndim == 2 and data.shape[-1] == 1)):
+        raise ValueError('Shape of timeseries data must be N or (N, 1).')
+
+    # Check that the distribution parameters make sense.
+    if mean_missing_length < missing_fraction / (1-missing_fraction):
+        raise ValueError('Incompatible distribution parameters in timeseries sampling. Must be: ',
+                         'mean_missing_length >= missing_fraction / (1-missing_fraction).')
+    if missing_fraction < 0 or missing_fraction > 1:
+        raise ValueError('Missing fraction must be in [0,1]')
+    
+    if mean_missing_length <= 0:
+        raise ValueError('Mean missing length must be > 0.')
+
+    # Derive Bernoulli rate parameters.
+    on_shift_rate = 1 / mean_missing_length
+    off_shift_rate = on_shift_rate * missing_fraction / (1-missing_fraction)
+
+    # Initialize storage for the samples.
+    sampled_data = np.full(data.shape, np.nan)
+    sampled_data[0] = data[0]
+    if not start_sampling_on:
+      sampled_data[0] = np.nan
+
+    # Bernoulli sampling.
+    up_switches = np.random.binomial(n=1, p=on_shift_rate, size=data.shape)
+    down_switches = np.random.binomial(n=1, p=off_shift_rate, size=data.shape)
+
+    # Sampling -> stochastic process.
+    for n in range(1, len(data)):
+        if np.isnan(sampled_data[n-1]):
+            if up_switches[n]:
+                sampled_data[n] = data[n]
+        else:
+            if not down_switches[n]:
+                sampled_data[n] = data[n]
+
+    return sampled_data

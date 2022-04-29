@@ -72,7 +72,8 @@ class GenericDataset(BaseDataset):
 
         return df
 
-    def _load_attributes(self):
+    def _load_attributes(self) -> pd.DataFrame:
+        """Load static catchment attributes."""
         return load_attributes(self.cfg.data_dir, basins=self.basins)
 
 

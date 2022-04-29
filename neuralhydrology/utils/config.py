@@ -198,6 +198,15 @@ class Config(object):
             else:
                 pass
 
+        # Check autoregressive inputs.
+        if 'autoregressive_inputs' in cfg:
+            if len(cfg['autoregressive_inputs']) > 1:
+                raise ValueError('Currently only one autoregressive input is supported.')
+            if cfg['autoregressive_inputs'] and len(cfg['target_variables']) > 1:
+                raise ValueError('Autoregressive models currently only support a single target variable.')
+            if not cfg['autoregressive_inputs'][0].startswith(cfg['target_variables'][0]):
+                raise ValueError('Autoregressive input must be a lagged version of the target variable.')
+
         # Add more config parsing if necessary
         return cfg
 
@@ -221,6 +230,10 @@ class Config(object):
     @property
     def allow_subsequent_nan_losses(self) -> int:
         return self._cfg.get("allow_subsequent_nan_losses", 0)
+
+    @property
+    def autoregressive_inputs(self) -> Union[List[str], Dict[str, List[str]]]:
+        return self._as_default_list(self._cfg.get("autoregressive_inputs", []))
 
     @property
     def base_run_dir(self) -> Path:
@@ -521,6 +534,10 @@ class Config(object):
     @property
     def predict_last_n(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("predict_last_n")
+
+    @property
+    def random_holdout_from_dynamic_features(self) -> Dict[str, float]:
+        return self._as_default_dict(self._cfg.get("random_holdout_from_dynamic_features", {}))
 
     @property
     def rating_curve_file(self) -> Path:

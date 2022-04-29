@@ -1,0 +1,78 @@
+# --- Experiment configurations --------------------------------------------------------------------
+experiment_name: test_run
+
+run_dir:
+
+train_basin_file: ./test/test_data/4_basins_test_set.txt
+validation_basin_file: ./test/test_data/4_basins_test_set.txt
+test_basin_file: ./test/test_data/4_basins_test_set.txt
+
+train_start_date: '01/01/2000'
+train_end_date: '31/12/2001'
+validation_start_date: '01/01/2001'
+validation_end_date: '31/12/2002'
+test_start_date: '01/01/2001'
+test_end_date: '31/12/2002'
+
+seed: 111
+device: cpu
+
+# --- Validation configuration ---------------------------------------------------------------------
+validate_every: 1
+validate_n_random_basins: 4
+cache_validation_data: True
+metrics:
+  - NSE
+  - KGE
+  - Alpha-NSE
+  - Beta-NSE
+
+# --- Model configuration --------------------------------------------------------------------------
+model: arlstm
+head: regression
+output_activation: linear
+
+hidden_size: 16
+initial_forget_bias: 3
+output_dropout: 0.4
+
+# --- Training configuration -----------------------------------------------------------------------
+optimizer: Adam
+loss: MSE
+learning_rate:
+  0: 1e-3
+  10: 5e-4
+  20: 1e-4
+batch_size: 256
+epochs: 1
+clip_gradient_norm: 1
+
+predict_last_n: 1
+seq_length: 30
+
+num_workers: 0
+log_interval: 5
+log_tensorboard: True
+log_n_figures: 2
+save_weights_every: 1
+save_validation_results: False
+
+# --- Data configurations --------------------------------------------------------------------------
+dataset: # will be filled by conftest
+data_dir: ./test/test_data
+forcings: # will be filled by conftest
+dynamic_inputs: # will be filled by conftest
+target_variables:
+  - QObs(mm/d)
+static_attributes:
+  - elev_mean
+  - slope_mean
+lagged_features:
+ QObs(mm/d): 
+   - 1
+autoregressive_inputs:
+  - QObs(mm/d)_shift1
+random_holdout_from_dynamic_features:
+  QObs(mm/d)_shift1:
+    missing_fraction: 0.1
+    mean_missing_length: 10

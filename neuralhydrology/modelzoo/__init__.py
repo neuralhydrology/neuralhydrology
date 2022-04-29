@@ -2,6 +2,7 @@ import warnings
 
 import torch.nn as nn
 
+from neuralhydrology.modelzoo.arlstm import ARLSTM
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
 from neuralhydrology.modelzoo.customlstm import CustomLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
@@ -13,7 +14,8 @@ from neuralhydrology.modelzoo.odelstm import ODELSTM
 from neuralhydrology.modelzoo.transformer import Transformer
 from neuralhydrology.utils.config import Config
 
-SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru", "transformer", "mclstm"]
+SINGLE_FREQ_MODELS = ["cudalstm", "ealstm", "customlstm", "embcudalstm", "gru", "transformer", "mclstm", "arlstm"]
+AUTOREGRESSIVE_MODELS = ['arlstm']
 
 
 def get_model(cfg: Config) -> nn.Module:
@@ -32,10 +34,15 @@ def get_model(cfg: Config) -> nn.Module:
     if cfg.model.lower() in SINGLE_FREQ_MODELS and len(cfg.use_frequencies) > 1:
         raise ValueError(f"Model {cfg.model} does not support multiple frequencies.")
 
+    if cfg.model.lower() not in AUTOREGRESSIVE_MODELS and cfg.autoregressive_inputs:
+        raise ValueError(f"Model {cfg.model} does not support autoregression.")
+
     if cfg.model.lower() != "mclstm" and cfg.mass_inputs:
         raise ValueError(f"The use of 'mass_inputs' with {cfg.model} is not supported.")
 
-    if cfg.model.lower() == "cudalstm":
+    if cfg.model.lower() == "arlstm":
+        model = ARLSTM(cfg=cfg)
+    elif cfg.model.lower() == "cudalstm":
         model = CudaLSTM(cfg=cfg)
     elif cfg.model.lower() == "ealstm":
         model = EALSTM(cfg=cfg)

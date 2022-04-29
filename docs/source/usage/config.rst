@@ -388,10 +388,16 @@ Data settings
 -------------
 
 -  ``dataset``: Defines which data set will be used. Currently supported
-   are ``camels_us`` (CAMELS data set by Newman et al.), ``CAMELS_GB``
-   (the GB version of CAMELS by Coxon et al.), ``CAMELS_CL`` (the CL
-   version of CAMELS by Alvarez-Garreton et al.), and 
-   ``hourly_camels_us`` (hourly data for 516 CAMELS basins).
+   are ``camels_us`` (`CAMELS (US) data set by Newman et al. <https://hess.copernicus.org/articles/19/209/2015/>`__), 
+   ``camels_gb`` (`CAMELS-GB by Coxon et al. <https://essd.copernicus.org/articles/12/2459/2020/>`__), 
+   ``camels_cl`` (`CAMELS-CL by Alvarez-Garreton et al. <https://hess.copernicus.org/articles/22/5817/2018/>`__), 
+   ``camels_br`` (`CAMELS-BR by Chagas et al. <https://essd.copernicus.org/articles/12/2075/2020>`__),
+   ``camels_aus`` (`CAMELS-AUS by Fowler et al. <https://essd.copernicus.org/articles/13/3847/2021/>`__),  
+   ``lamah_{a,b,c}`` (`LamaH-CE by Klingler et al. <https://essd.copernicus.org/articles/13/4529/2021/>`__), 
+   ``hourly_camels_us`` (hourly forcing and streamflow data for 516 CAMELS (US) basins, published 
+   by `Gauch et al. <https://hess.copernicus.org/articles/25/2045/2021/>`__), 
+   and ``generic`` (can be used with any dataset that is stored in a specific format, 
+   see :py:class:`documentation <neuralhydrology.datasetzoo.genericdataset>` for further informations).
 
 -  ``data_dir``: Full or relative path to the root directory of the data set.
 
@@ -451,6 +457,29 @@ Data settings
    `pandas shift <https://pandas.pydata.org/pandas-docs/stable/reference/api/pandas.DataFrame.shift.html>`__
    for details). If a list of integers is provided, only unique values are considered.
    We append ``_shiftN`` to each lagged feature, where `N` is the shift count.
+   
+   ``autoregressive_inputs``: Currently, only one autoregressive input is allowed, 
+   and only one output feature is allowed in an autoregressive model.
+   This is a list of target feature(s) to be used as model inputs. These 
+   will be lagged by some number of timesteps > 0, and therefore must appear in the list
+   of ``lagged_features``. Autoregressive inputs are appended to the end of the dynamic 
+   features list when building the dataset(s). Missing data is supported in autoregressive 
+   inputs. During runtime, autoregressive models append binary flags as inputs to indicate
+   missing data. Autoregressive inputs only work with models that support autoregression
+   and will throw an error if they are included in a config file for a model that does
+   not support autoregression. Leave empty if none should be used. 
+
+-  ``random_holdout_from_dynamic_features``: Dictionary to define timeseries
+   features to remove random sections of data from. This allows for conducting
+   certain types of missing data analyses. Keys of this dictionary must match 
+   exact names of dynamic inputs as defined in the data set. Values are a dict
+   with keys "missing_fraction" and "mean_missing_length", and values that are 
+   float and float, respectively, representing ("missing_fraction") the long-term 
+   fraction of data to be randomly removed from a given feature, and (2) the
+   expected value of the length of continuous subsequences removed from the 
+   timeseries. These two distribution parameters do not consider whether there
+   are any NaN's in the original timeseries. Only works for timeseries features
+   (inputs and targets). Leave empty if none should be used. 
 
 -  ``custom_normalization``: Has to be a dictionary, mapping from
    time series feature names to ``centering`` and/or ``scaling``. Using
