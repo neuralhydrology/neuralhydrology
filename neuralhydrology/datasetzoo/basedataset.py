@@ -637,7 +637,7 @@ class BaseDataset(Dataset):
                         self.scaler["xarray_feature_scale"][feature] = np.float32(1.0)
                     elif val == "minmax":
                         self.scaler["xarray_feature_scale"][feature] = xr[feature].max(skipna=True) - \
-                                                                       xr[feature].m(skipna=True)
+                                                                       xr[feature].min(skipna=True)
                     elif val == "std":
                         # Do nothing, since this is the default
                         pass
