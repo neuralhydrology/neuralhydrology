@@ -134,6 +134,11 @@ class BaseTrainer(object):
         tensorboard logging, and Tester class.
         If called in a ``continue_training`` context, this model will also restore the model and optimizer state.
         """
+        ds = self._get_dataset()
+        if len(ds) == 0:
+            raise ValueError("Dataset contains no samples.")
+        self.loader = self._get_data_loader(ds=ds)
+
         self.model = self._get_model().to(self.device)
         if self.cfg.checkpoint_path is not None:
             LOGGER.info(f"Starting training from Checkpoint {self.cfg.checkpoint_path}")
@@ -158,11 +163,6 @@ class BaseTrainer(object):
         # restore optimizer and model state if training is continued
         if self.cfg.is_continue_training:
             self._restore_training_state()
-
-        ds = self._get_dataset()
-        if len(ds) == 0:
-            raise ValueError("Dataset contains no samples.")
-        self.loader = self._get_data_loader(ds=ds)
 
         self.experiment_logger = Logger(cfg=self.cfg)
         if self.cfg.log_tensorboard:
