@@ -471,6 +471,12 @@ class BaseDataset(Dataset):
                 # number of frequency steps in one lowest-frequency step
                 frequency_factor = int(utils.get_frequency_factor(lowest_freq, freq))
                 # array position i is the last entry of this frequency that belongs to the lowest-frequency sample i.
+                if len(df_resampled) % frequency_factor != 0:
+                    raise ValueError(f'The length of the dataframe at frequency {freq} is {len(df_resampled)} '
+                                     f'(including warmup), which is not a multiple of {frequency_factor} (i.e., the '
+                                     f'factor between the lowest frequency {lowest_freq} and the frequency {freq}. '
+                                     f'To fix this, adjust the {self.period} start or end date such that the period '
+                                     f'(including warmup) has a length that is divisible by {frequency_factor}.')
                 frequency_maps[freq] = np.arange(len(df_resampled) // frequency_factor) \
                                        * frequency_factor + (frequency_factor - 1)
 
