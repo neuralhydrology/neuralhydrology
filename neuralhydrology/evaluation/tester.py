@@ -26,7 +26,7 @@ from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training import get_loss_obj
 from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
-from neuralhydrology.utils.errors import AllNaNError, NoTrainDataError
+from neuralhydrology.utils.errors import AllNaNError, NoEvaluationDataError
 
 LOGGER = logging.getLogger(__name__)
 
@@ -199,15 +199,15 @@ class BaseTester(object):
             else:
                 try:
                     ds = self._get_dataset(basin)
-                except NoTrainDataError as error:
+                except NoEvaluationDataError as error:
                     # skip basin
                     continue
                 if self.cfg.cache_validation_data and self.period == "validation":
                     self.cached_datasets[basin] = ds
 
-            loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=0)
+            loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=0, collate_fn=ds.collate_fn)
 
-            y_hat, y, loss = self._evaluate(model, loader, ds.frequencies)
+            y_hat, y, dates, loss = self._evaluate(model, loader, ds.frequencies)
 
             # log loss of this basin plus number of samples in the logger to compute epoch aggregates later
             if experiment_logger is not None:
@@ -241,39 +241,37 @@ class BaseTester(object):
                 else:
                     raise RuntimeError(f"Simulations have {y_hat[freq].ndim} dimension. Only 3 and 4 are supported.")
 
-                # create xarray
-                data = self._create_xarray(y_hat_freq, y_freq)
-
-                # get warmup-offsets across all frequencies
-                offsets = {
-                    freq: ds.get_period_start(basin) + (seq_length[freq] - 1) * to_offset(freq)
-                    for freq in ds.frequencies
-                }
-                max_offset_freq = max(offsets, key=offsets.get)
-                start_date = offsets[max_offset_freq]
-
-                # determine the end of the first sequence (first target in sequence-to-one)
-                # we use the end_date stored in the dataset, which also covers issues with per-basin different periods
-                end_date = ds.dates[basin]["end_dates"][0] + pd.Timedelta(days=1, seconds=-1)
-
-                # date range at the lowest frequency
-                date_range = pd.date_range(start=start_date, end=end_date, freq=lowest_freq)
-                if len(date_range) != data[f"{self.cfg.target_variables[0]}_obs"][1].shape[0]:
-                    raise ValueError("Evaluation date range does not match generated predictions.")
+                # Create data_vars dictionary for the xarray.Dataset
+                data_vars = self._create_xarray_data_vars(y_hat_freq, y_freq)
 
                 # freq_range are the steps of the current frequency at each lowest-frequency step
                 frequency_factor = int(get_frequency_factor(lowest_freq, freq))
-                freq_range = list(range(frequency_factor - predict_last_n[freq], frequency_factor))
+
+                # Create coords dictionary for the xarray.Dataset. 'date' can be directly infered from the dates
+                # dictionary. We index the sample by the date of the last timestep of the sequence. The 'time_step'
+                # index that specifies the position in the output sequence (relative to the end) can be inferred by
+                # computing the timedelta of the dates. To account for predict_last_n > 1 and multi-freq stuff, we
+                # need to add the frequency factor and remove 1 (to start at zero).
+                coords = {
+                    'date':
+                        dates[lowest_freq][:, -1],
+                    'time_step': ((dates[freq][0, :] - dates[freq][0, -1]) / pd.Timedelta(freq)).astype(np.int64) +
+                                 frequency_factor - 1
+                }
+                xr = xarray.Dataset(data_vars=data_vars, coords=coords)
+                xr = xr.reindex({
+                    'date':
+                        pd.DatetimeIndex(pd.date_range(xr["date"].values[0], xr["date"].values[-1], freq=lowest_freq),
+                                         name='date')
+                })
+                results[basin][freq]['xr'] = xr
 
                 # create datetime range at the current frequency
-                freq_date_range = pd.date_range(start=start_date, end=end_date, freq=freq)
+                freq_date_range = pd.date_range(start=dates[lowest_freq][0, -1], end=dates[freq][-1, -1], freq=freq)
                 # remove datetime steps that are not being predicted from the datetime range
                 mask = np.ones(frequency_factor).astype(bool)
                 mask[:-predict_last_n[freq]] = False
-                freq_date_range = freq_date_range[np.tile(mask, len(date_range))]
-
-                xr = xarray.Dataset(data_vars=data, coords={'date': date_range, 'time_step': freq_range})
-                results[basin][freq]['xr'] = xr
+                freq_date_range = freq_date_range[np.tile(mask, len(xr['date']))]
 
                 # only warn once per freq
                 if frequency_factor < predict_last_n[freq] and basin == basins[0]:
@@ -327,7 +325,8 @@ class BaseTester(object):
         # a non-existing basin
         results = dict(results)
 
-        if (self.period == "validation") and (self.cfg.log_n_figures > 0) and (experiment_logger is not None):
+        if (self.period == "validation") and (self.cfg.log_n_figures > 0) and (experiment_logger
+                                                                               is not None) and results:
             self._create_and_log_figures(results, experiment_logger, epoch)
 
         if save_results:
@@ -412,13 +411,14 @@ class BaseTester(object):
         if isinstance(predict_last_n, int):
             predict_last_n = {frequencies[0]: predict_last_n}  # if predict_last_n is int, there's only one frequency
 
-        preds, obs = {}, {}
+        preds, obs, dates = {}, {}, {}
         losses = []
         with torch.no_grad():
             for data in loader:
 
                 for key in data:
-                    data[key] = data[key].to(self.device)
+                    if not key.startswith('date'):
+                        data[key] = data[key].to(self.device)
                 predictions, loss = self._get_predictions_and_loss(model, data)
 
                 for freq in frequencies:
@@ -426,13 +426,17 @@ class BaseTester(object):
                         continue  # no predictions for this frequency
                     freq_key = '' if len(frequencies) == 1 else f'_{freq}'
                     y_hat_sub, y_sub = self._subset_targets(model, data, predictions, predict_last_n[freq], freq_key)
+                    # Date subsetting is universal across all models and thus happens here.
+                    date_sub = data[f'date{freq_key}'][:, -predict_last_n[freq]:]
 
                     if freq not in preds:
                         preds[freq] = y_hat_sub.detach().cpu()
                         obs[freq] = y_sub.cpu()
+                        dates[freq] = date_sub
                     else:
                         preds[freq] = torch.cat((preds[freq], y_hat_sub.detach().cpu()), 0)
                         obs[freq] = torch.cat((obs[freq], y_sub.detach().cpu()), 0)
+                        dates[freq] = np.concatenate((dates[freq], date_sub), axis=0)
 
                 losses.append(loss)
 
@@ -442,7 +446,7 @@ class BaseTester(object):
 
         # set to NaN explicitly if all losses are NaN to avoid RuntimeWarning
         mean_loss = np.nanmean(losses) if len(losses) > 0 and not all(np.isnan(l) for l in losses) else np.nan
-        return preds, obs, mean_loss
+        return preds, obs, dates, mean_loss
 
     def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
         predictions = model(data)
@@ -453,7 +457,7 @@ class BaseTester(object):
                         predict_last_n: int, freq: str):
         raise NotImplementedError
 
-    def _create_xarray(self, y_hat: np.ndarray, y: np.ndarray):
+    def _create_xarray_data_vars(self, y_hat: np.ndarray, y: np.ndarray):
         raise NotImplementedError
 
     def _get_plots(self, qobs: np.ndarray, qsim: np.ndarray, title: str):
@@ -486,7 +490,7 @@ class RegressionTester(BaseTester):
         y_sub = data[f'y{freq}'][:, -predict_last_n:, :]
         return y_hat_sub, y_sub
 
-    def _create_xarray(self, y_hat: np.ndarray, y: np.ndarray):
+    def _create_xarray_data_vars(self, y_hat: np.ndarray, y: np.ndarray):
         data = {}
         for i, var in enumerate(self.cfg.target_variables):
             data[f"{var}_obs"] = (('date', 'time_step'), y[:, :, i])
@@ -534,7 +538,7 @@ class UncertaintyTester(BaseTester):
         y_sub = data[f'y{freq}'][:, -predict_last_n:, :]
         return y_hat_sub, y_sub
 
-    def _create_xarray(self, y_hat: np.ndarray, y: np.ndarray):
+    def _create_xarray_data_vars(self, y_hat: np.ndarray, y: np.ndarray):
         data = {}
         for i, var in enumerate(self.cfg.target_variables):
             data[f"{var}_obs"] = (('date', 'time_step'), y[:, :, i])

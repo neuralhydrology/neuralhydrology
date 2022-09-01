@@ -94,7 +94,11 @@ class BaseTrainer(object):
         return get_tester(cfg=self.cfg, run_dir=self.cfg.run_dir, period="validation", init_model=False)
 
     def _get_data_loader(self, ds: BaseDataset) -> torch.utils.data.DataLoader:
-        return DataLoader(ds, batch_size=self.cfg.batch_size, shuffle=True, num_workers=self.cfg.num_workers)
+        return DataLoader(ds,
+                          batch_size=self.cfg.batch_size,
+                          shuffle=True,
+                          num_workers=self.cfg.num_workers,
+                          collate_fn=ds.collate_fn)
 
     def _freeze_model_parts(self):
         # freeze all model weights
@@ -272,7 +276,8 @@ class BaseTrainer(object):
         for data in pbar:
 
             for key in data.keys():
-                data[key] = data[key].to(self.device)
+                if not key.startswith('date'):
+                    data[key] = data[key].to(self.device)
 
             # apply possible subclass pre-processing
             data = self._pre_model_hook(data)
