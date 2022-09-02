@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import argparse
 import random
+import shutil
 import subprocess
 import sys
 import time
@@ -52,7 +53,10 @@ def schedule_runs(mode: str, directory: Path, gpu_ids: List[int], runs_per_gpu: 
     """
 
     if mode in ["train", "finetune"]:
-        processes = list(directory.glob('**/*.yml'))
+        processes = list(directory.glob('*.yml'))
+        processed_config_directory = directory / "processed"
+        if not processed_config_directory.is_dir():
+            processed_config_directory.mkdir()
     elif mode == "evaluate":
         processes = list(directory.glob('*'))
     else:
@@ -93,9 +97,9 @@ def schedule_runs(mode: str, directory: Path, gpu_ids: List[int], runs_per_gpu: 
             else:
                 run_command = f"python {script_path} evaluate --run-dir {process} --gpu {gpu_id}"
             print(f"Starting run {counter+1}/{len(processes)}: {run_command}")
-            running_processes[(run_command, node_id)] = subprocess.Popen(run_command,
-                                                                         stdout=subprocess.DEVNULL,
-                                                                         shell=True)
+            running_processes[(run_command, node_id, process)] = subprocess.Popen(run_command,
+                                                                                  stdout=subprocess.DEVNULL,
+                                                                                  shell=True)
 
             counter += 1
             time.sleep(2)
@@ -113,6 +117,15 @@ def schedule_runs(mode: str, directory: Path, gpu_ids: List[int], runs_per_gpu: 
                     print("WARNING: PROCESS {} COULD NOT BE REAPED!".format(key))
                     print('')
                 running_processes[key] = None
+                if mode in ["train", "finetune"]:
+                    dst = processed_config_directory / Path(key[2]).name
+                    try:
+                        shutil.move(src=key[2], dst=dst)
+                        print(f"Moved {key[2]} into directory of processed configs at {dst}.")
+                    except Exception as e:
+                        # We ignore any error that could happen when moving the file. In the worst case, we don't move 
+                        # anything but we don't want the scheduler to stop for that.
+                        print(f"Couldn't move {key[2]} because of {e}.")
 
         # delete possibly finished runs
         running_processes = {key: val for key, val in running_processes.items() if val is not None}
