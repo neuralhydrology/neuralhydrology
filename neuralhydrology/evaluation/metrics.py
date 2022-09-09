@@ -625,6 +625,45 @@ def mean_peak_timing(obs: DataArray,
     return np.mean(timing_errors) if len(timing_errors) > 0 else np.nan
 
 
+def peak_flow_bias(obs: DataArray,
+                   sim: DataArray) -> float:
+    """Calculate the percent bias of peak flows.
+
+    Uses scipy.find_peaks to find peaks in the observed time series. The observed peaks indices are used to subset
+    observed and simulated flows. Finally, the peak flow bias is calculated as the percent bias of observed peak flows
+    and corresponding simulated flows.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        Peak flow bias in percent.
+    """
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    # heuristic to get indices of peaks and their corresponding height.
+    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+
+    # subset data to only peak values
+    obs = obs[peaks]
+    sim = sim[peaks]
+
+    # calculate the peak error
+    peak_error = np.sum(sim - obs) / np.sum(obs)
+
+    return peak_error * 100
+
+
 def calculate_all_metrics(obs: DataArray,
                           sim: DataArray,
                           resolution: str = "1D",
@@ -666,7 +705,8 @@ def calculate_all_metrics(obs: DataArray,
         "FHV": fdc_fhv(obs, sim),
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
-        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord),
+        "Peak-Bias": peak_flow_bias(obs, sim)
     }
 
     return results
@@ -733,6 +773,8 @@ def calculate_metrics(obs: DataArray,
             values["FLV"] = fdc_flv(obs, sim)
         elif metric.lower() == "peak-timing":
             values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+        elif metric.lower() == "peak-bias":
+            values["Peak-Bias"] = peak_flow_bias(obs, sim)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 
