@@ -651,12 +651,20 @@ def peak_flow_bias(obs: DataArray,
     # get time series with only valid observations
     obs, sim = _mask_valid(obs, sim)
 
+    # return np.nan if there are no valid observed or simulated values
+    if obs.size == 0 or sim.size == 0:
+        return np.nan
+
     # heuristic to get indices of peaks and their corresponding height.
     peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
 
+    # check if any peaks exist, otherwise return np.nan
+    if peaks.size == 0:
+        return np.nan
+
     # subset data to only peak values
-    obs = obs[peaks]
-    sim = sim[peaks]
+    obs = obs[peaks].values
+    sim = sim[peaks].values
 
     # calculate the peak error
     peak_error = np.sum(sim - obs) / np.sum(obs)
