@@ -22,7 +22,7 @@ def get_available_metrics() -> List[str]:
     """
     metrics = [
         "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
-        "Peak-Timing"
+        "Peak-Timing", "Peak-MAPE"
     ]
     return metrics
 
@@ -625,6 +625,57 @@ def mean_peak_timing(obs: DataArray,
     return np.mean(timing_errors) if len(timing_errors) > 0 else np.nan
 
 
+def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float:
+    r"""Calculate the mean absolute percentage error (MAPE) for peaks
+
+    .. math:: \text{MAPE}_\text{peak} = \frac{1}{P}\sum_{p=1}^{P} \left |\frac{Q_{s,p} - Q_{o,p}}{Q_{o,p}} \right | \times 100,
+
+    where :math:`Q_{s,p}` are the simulated peaks (here, `sim`), :math:`Q_{o,p}` the observed peaks (here, `obs`) and
+    `P` is the number of peaks.
+
+    Uses scipy.find_peaks to find peaks in the observed time series. The observed peaks indices are used to subset
+    observed and simulated flows. Finally, the MAPE metric is calculated as the mean absolute percentage error
+    of observed peak flows and corresponding simulated flows.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated time series.
+
+    Returns
+    -------
+    float
+        Mean absolute percentage error (MAPE) for peaks.
+    """
+    # verify inputs
+    _validate_inputs(obs, sim)
+
+    # get time series with only valid observations
+    obs, sim = _mask_valid(obs, sim)
+
+    # return np.nan if there are no valid observed or simulated values
+    if obs.size == 0 or sim.size == 0:
+        return np.nan
+
+    # heuristic to get indices of peaks and their corresponding height.
+    peaks, _ = signal.find_peaks(obs.values, distance=100, prominence=np.std(obs.values))
+
+    # check if any peaks exist, otherwise return np.nan
+    if peaks.size == 0:
+        return np.nan
+
+    # subset data to only peak values
+    obs = obs[peaks].values
+    sim = sim[peaks].values
+
+    # calculate the mean absolute percentage peak error
+    peak_mape = np.sum(np.abs((sim - obs) / obs)) / peaks.size * 100
+
+    return peak_mape
+
+
 def calculate_all_metrics(obs: DataArray,
                           sim: DataArray,
                           resolution: str = "1D",
@@ -666,7 +717,8 @@ def calculate_all_metrics(obs: DataArray,
         "FHV": fdc_fhv(obs, sim),
         "FMS": fdc_fms(obs, sim),
         "FLV": fdc_flv(obs, sim),
-        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord),
+        "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim)
     }
 
     return results
@@ -733,6 +785,8 @@ def calculate_metrics(obs: DataArray,
             values["FLV"] = fdc_flv(obs, sim)
         elif metric.lower() == "peak-timing":
             values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+        elif metric.lower() == "peak-mape":
+            values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 
