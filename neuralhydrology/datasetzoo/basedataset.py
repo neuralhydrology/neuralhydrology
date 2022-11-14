@@ -20,6 +20,7 @@ from tqdm import tqdm
 
 from neuralhydrology.datautils import utils
 from neuralhydrology.utils.config import Config
+from neuralhydrology.utils.errors import NoTrainDataError, NoEvaluationDataError
 from neuralhydrology.utils import samplingutils
 
 LOGGER = logging.getLogger(__name__)
@@ -104,12 +105,13 @@ class BaseDataset(Dataset):
         self._disable_pbar = cfg.verbose == 0 or not self.is_train
 
         # initialize class attributes that are filled in the data loading functions
-        self.x_d = {}
-        self.x_s = {}
-        self.attributes = {}
-        self.y = {}
-        self.per_basin_target_stds = {}
-        self.dates = {}
+        self._x_d = {}
+        self._x_s = {}
+        self._attributes = {}
+        self._y = {}
+        self._per_basin_target_stds = {}
+        self._dates = {}
+        self.start_and_end_dates = {}
         self.num_samples = 0
         self.period_starts = {}  # needed for restoring date index during evaluation
 
@@ -137,34 +139,28 @@ class BaseDataset(Dataset):
     def __getitem__(self, item: int) -> Dict[str, torch.Tensor]:
         basin, indices = self.lookup_table[item]
 
-        # This check is for multiple periods per basin, where we add '_periodX' to the basin name
-        # For catchment attributes, one-hot-encoding we need the raw basin_id.
-        if basin.split('_')[-1].startswith('period'):
-            basin_id = "_".join(basin.split('_')[:-1])
-        else:
-            basin_id = basin
-
         sample = {}
         for freq, seq_len, idx in zip(self.frequencies, self.seq_len, indices):
             # if there's just one frequency, don't use suffixes.
             freq_suffix = '' if len(self.frequencies) == 1 else f'_{freq}'
             # slice until idx + 1 because slice-end is excluding
-            sample[f'x_d{freq_suffix}'] = self.x_d[basin][freq][idx - seq_len + 1:idx + 1]
-            sample[f'y{freq_suffix}'] = self.y[basin][freq][idx - seq_len + 1:idx + 1]
+            sample[f'x_d{freq_suffix}'] = self._x_d[basin][freq][idx - seq_len + 1:idx + 1]
+            sample[f'y{freq_suffix}'] = self._y[basin][freq][idx - seq_len + 1:idx + 1]
+            sample[f'date{freq_suffix}'] = self._dates[basin][freq][idx - seq_len + 1:idx + 1]
 
             # check for static inputs
             static_inputs = []
-            if self.attributes:
-                static_inputs.append(self.attributes[basin_id])
-            if self.x_s:
-                static_inputs.append(self.x_s[basin][freq][idx])
+            if self._attributes:
+                static_inputs.append(self._attributes[basin])
+            if self._x_s:
+                static_inputs.append(self._x_s[basin][freq][idx])
             if static_inputs:
                 sample[f'x_s{freq_suffix}'] = torch.cat(static_inputs, dim=-1)
 
-        if self.per_basin_target_stds:
-            sample['per_basin_target_stds'] = self.per_basin_target_stds[basin]
+        if self._per_basin_target_stds:
+            sample['per_basin_target_stds'] = self._per_basin_target_stds[basin]
         if self.id_to_int:
-            sample['x_one_hot'] = torch.nn.functional.one_hot(torch.tensor(self.id_to_int[basin_id]),
+            sample['x_one_hot'] = torch.nn.functional.one_hot(torch.tensor(self.id_to_int[basin]),
                                                               num_classes=len(self.id_to_int)).to(torch.float32)
 
         return sample
@@ -218,12 +214,12 @@ class BaseDataset(Dataset):
             else:
                 end_dates = [getattr(self.cfg, f'{self.period}_end_date')]
 
-            self.dates = {b: {'start_dates': start_dates, 'end_dates': end_dates} for b in self.basins}
+            self.start_and_end_dates = {b: {'start_dates': start_dates, 'end_dates': end_dates} for b in self.basins}
 
         # read periods from file
         else:
             with open(getattr(self.cfg, f"per_basin_{self.period}_periods_file"), 'rb') as fp:
-                self.dates = pickle.load(fp)
+                self.start_and_end_dates = pickle.load(fp)
 
     def _load_additional_features(self):
         for file in self.cfg.additional_feature_files:
@@ -238,7 +234,7 @@ class BaseDataset(Dataset):
         return df
 
     def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
-        
+
         # check that all autoregressive inputs are contained in the list of shifted variables
         self._check_autoregressive_inputs()
 
@@ -252,7 +248,7 @@ class BaseDataset(Dataset):
                 df[f"{feature}_shift{shift}"] = df[feature].shift(periods=shift, freq="infer")
             else:
                 raise ValueError("The value of the 'lagged_features' arg must be either an int or a list of ints")
-        
+
         return df
 
     def _check_autoregressive_inputs(self):
@@ -264,8 +260,9 @@ class BaseDataset(Dataset):
             capture = re.compile(r'^(.*)_shift(\d+)$').search(input)
             if not capture:
                 raise ValueError('Autoregressive inputs must be a shifted variable with form <variable>_shift<lag> ',
-                                f'where <lag> is an integer. Instead got: {input}.')
-            if capture[1] not in self.cfg.lagged_features or int(capture[2]) not in self.cfg.lagged_features[capture[1]]:
+                                 f'where <lag> is an integer. Instead got: {input}.')
+            if capture[1] not in self.cfg.lagged_features or int(
+                    capture[2]) not in self.cfg.lagged_features[capture[1]]:
                 raise ValueError('Autoregressive inputs must be in the list of "lagged_inputs".')
         return
 
@@ -312,17 +309,19 @@ class BaseDataset(Dataset):
                     raise KeyError("".join(msg))
 
                 # remove random portions of the timeseries of dynamic features
-                for holdout_variable,  holdout_dict in self.cfg.random_holdout_from_dynamic_features.items():
+                for holdout_variable, holdout_dict in self.cfg.random_holdout_from_dynamic_features.items():
                     df[holdout_variable] = samplingutils.bernoulli_subseries_sampler(
                         data=df[holdout_variable].values,
-                        missing_fraction=holdout_dict['missing_fraction'], 
+                        missing_fraction=holdout_dict['missing_fraction'],
                         mean_missing_length=holdout_dict['mean_missing_length'],
                     )
 
                 # Make end_date the last second of the specified day, such that the
                 # dataset will include all hours of the last day, not just 00:00.
-                start_dates = self.dates[basin]["start_dates"]
-                end_dates = [date + pd.Timedelta(days=1, seconds=-1) for date in self.dates[basin]["end_dates"]]
+                start_dates = self.start_and_end_dates[basin]["start_dates"]
+                end_dates = [
+                    date + pd.Timedelta(days=1, seconds=-1) for date in self.start_and_end_dates[basin]["end_dates"]
+                ]
 
                 native_frequency = utils.infer_frequency(df.index)
                 if not self.frequencies:
@@ -346,6 +345,7 @@ class BaseDataset(Dataset):
                 offsets = [(self.seq_len[i] - self._predict_last_n[i]) * to_offset(freq)
                            for i, freq in enumerate(self.frequencies)]
 
+                basin_data_list = []
                 # create xarray data set for each period slice of the specific basin
                 for i, (start_date, end_date) in enumerate(zip(start_dates, end_dates)):
                     # if the start date is not aligned with the frequency, the resulting datetime indices will be off
@@ -367,11 +367,59 @@ class BaseDataset(Dataset):
                     # as double check, set all targets before period start to NaN
                     df_sub.loc[df_sub.index < start_date, self.cfg.target_variables] = np.nan
 
-                    # For multiple slices per basin, a number is added to the basin string starting from the 2nd slice
-                    xr = xarray.Dataset.from_dataframe(df_sub)
-                    basin_str = basin if i == 0 else f"{basin}_period{i}"
-                    xr = xr.assign_coords({'basin': basin_str})
-                    data_list.append(xr.astype(np.float32))
+                    basin_data_list.append(df_sub)
+
+                if not basin_data_list:
+                    # Skip basin in case no start and end dates where defined.
+                    continue
+
+                # In case of multiple time slices per basin, stack the time slices in the time dimension.
+                df = pd.concat(basin_data_list, axis=0)
+
+                # Because of overlaps between warmup period of one slice and training period of another slice, there can
+                # be duplicated indices. The next block of code creates two subset dataframes. First, a subset with all
+                # non-duplicated indices. Second, a subset with duplicated indices, of which we keep the rows, where the
+                # target value is not NaN (because we remove the target variable during warmup periods but want to keep
+                # them if they are target in another temporal slice).
+                df_non_duplicated = df[~df.index.duplicated(keep=False)]
+                df_duplicated = df[df.index.duplicated(keep=False)]
+
+                filtered_duplicates = []
+                for _, grp in df_duplicated.groupby('date'):
+                    mask = ~grp[self.cfg.target_variables].isna().any(1)
+                    if not mask.any():
+                        # In case all duplicates have a NaN value for the targets, pick the first. This can happen, if
+                        # the day itself has a missing observation.
+                        filtered_duplicates.append(grp.head(1))
+                    else:
+                        # If at least one duplicate has values in the target columns, take the first of these rows.
+                        filtered_duplicates.append(grp[mask].head(1))
+
+                if filtered_duplicates:
+                    # Combine the filtered duplicates with the non-duplicates.
+                    df_filtered_duplicates = pd.concat(filtered_duplicates, axis=0)
+                    df = pd.concat([df_non_duplicated, df_filtered_duplicates], axis=0)
+                else:
+                    # Else, if no duplicates existed, continue with only the non-duplicate df.
+                    df = df_non_duplicated
+
+                # Sort by DatetimeIndex and reindex to fill gaps with NaNs.
+                df = df.sort_index(axis=0, ascending=True)
+                df = df.reindex(
+                    pd.DatetimeIndex(data=pd.date_range(df.index[0], df.index[-1], freq=native_frequency),
+                                     name=df.index.name))
+
+                # Convert to xarray Dataset and add basin string as additional coordinate
+                xr = xarray.Dataset.from_dataframe(df.astype(np.float32))
+                xr = xr.assign_coords({'basin': basin})
+                data_list.append(xr)
+
+            if not data_list:
+                # If no period for no basin has defined timeslices, raise error.
+                if self.is_train:
+                    raise NoTrainDataError
+                else:
+                    raise NoEvaluationDataError
 
             # create one large dataset that has two coordinates: datetime and basin
             xr = xarray.concat(data_list, dim="basin")
@@ -405,26 +453,16 @@ class BaseDataset(Dataset):
             LOGGER.info("Calculating target variable stds per basin")
         nan_basins = []
         for basin in tqdm(self.basins, file=sys.stdout, disable=self._disable_pbar):
-            coords = [b for b in basin_coordinates if b == basin or b.startswith(f"{basin}_period")]
-            if len(coords) > 0:
-                # gather all observations from different split periods and concatenate them into one array but
-                # take care of multi targets
-                obs = []
-                for coord in coords:
-                    # add arrays of shape [targets, time steps, 1]. Note, even with split periods of different length
-                    # the xarray data arrays are of same length (filled with NaNs), so concatenation later works.
-                    obs.append(xr.sel(basin=coord)[self.cfg.target_variables].to_array().values[:, :, np.newaxis])
-                # concat to shape [targets, time steps, periods], then reshape to [targets, time steps * periods]
-                obs = np.concatenate(obs, axis=-1).reshape(len(self.cfg.target_variables), -1)
-                if np.sum(~np.isnan(obs)) > 1:
-                    # calculate std for each target
-                    per_basin_target_stds = torch.tensor([np.nanstd(obs, axis=1)], dtype=torch.float32)
-                else:
-                    nan_basins.append(basin)
-                    per_basin_target_stds = torch.full((1, obs.shape[0]), np.nan, dtype=torch.float32)
-                # we store duplicates of the std for each coordinate of the same basin, so we are faster in getitem
-                for coord in coords:
-                    self.per_basin_target_stds[coord] = per_basin_target_stds
+
+            obs = xr.sel(basin=basin)[self.cfg.target_variables].to_array().values
+            if np.sum(~np.isnan(obs)) > 1:
+                # calculate std for each target
+                per_basin_target_stds = torch.tensor([np.nanstd(obs, axis=1)], dtype=torch.float32)
+            else:
+                nan_basins.append(basin)
+                per_basin_target_stds = torch.full((1, obs.shape[0]), np.nan, dtype=torch.float32)
+
+            self._per_basin_target_stds[basin] = per_basin_target_stds
 
         if len(nan_basins) > 0:
             LOGGER.warning("The following basins had not enough valid target values to calculate a standard deviation: "
@@ -440,8 +478,9 @@ class BaseDataset(Dataset):
         basin_coordinates = xr["basin"].values.tolist()
         for basin in tqdm(basin_coordinates, file=sys.stdout, disable=self._disable_pbar):
 
-            # store data of each frequency as numpy array of shape [time steps, features]
-            x_d, x_s, y = {}, {}, {}
+            # store data of each frequency as numpy array of shape [time steps, features] and dates as numpy array of
+            # shape (time steps,)
+            x_d, x_s, y, dates = {}, {}, {}, {}
 
             # keys: frequencies, values: array mapping each lowest-frequency
             # sample to its corresponding sample in this frequency
@@ -457,10 +496,8 @@ class BaseDataset(Dataset):
                 else:
                     dynamic_cols = self.cfg.mass_inputs + self.cfg.dynamic_inputs[freq]
 
-                df_resampled = df_native[
-                    dynamic_cols + self.cfg.target_variables + 
-                    self.cfg.evolving_attributes + self.cfg.autoregressive_inputs
-                ].resample(freq).mean()
+                df_resampled = df_native[dynamic_cols + self.cfg.target_variables + self.cfg.evolving_attributes +
+                                         self.cfg.autoregressive_inputs].resample(freq).mean()
 
                 # pull all of the data that needs to be validated
                 x_d[freq] = df_resampled[dynamic_cols].values
@@ -468,9 +505,18 @@ class BaseDataset(Dataset):
                 if self.cfg.evolving_attributes:
                     x_s[freq] = df_resampled[self.cfg.evolving_attributes].values
 
+                # Add dates of the (resampled) data to the dates dict
+                dates[freq] = df_resampled.index.to_numpy()
+
                 # number of frequency steps in one lowest-frequency step
                 frequency_factor = int(utils.get_frequency_factor(lowest_freq, freq))
                 # array position i is the last entry of this frequency that belongs to the lowest-frequency sample i.
+                if len(df_resampled) % frequency_factor != 0:
+                    raise ValueError(f'The length of the dataframe at frequency {freq} is {len(df_resampled)} '
+                                     f'(including warmup), which is not a multiple of {frequency_factor} (i.e., the '
+                                     f'factor between the lowest frequency {lowest_freq} and the frequency {freq}. '
+                                     f'To fix this, adjust the {self.period} start or end date such that the period '
+                                     f'(including warmup) has a length that is divisible by {frequency_factor}.')
                 frequency_maps[freq] = np.arange(len(df_resampled) // frequency_factor) \
                                        * frequency_factor + (frequency_factor - 1)
 
@@ -495,7 +541,7 @@ class BaseDataset(Dataset):
                                         predict_last_n=self._predict_last_n)
 
             # Concatenate autoregressive columns to dynamic inputs *after* validation, so as to not remove
-            # samples with missing autoregressive inputs. 
+            # samples with missing autoregressive inputs.
             # AR inputs must go at the end of the df/array (this is assumed by the AR model).
             if self.cfg.autoregressive_inputs:
                 for freq in self.frequencies:
@@ -508,10 +554,11 @@ class BaseDataset(Dataset):
 
             # only store data if this basin has at least one valid sample in the given period
             if valid_samples.size > 0:
-                self.x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
-                self.y[basin] = {freq: torch.from_numpy(_y.astype(np.float32)) for freq, _y in y.items()}
+                self._x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
+                self._y[basin] = {freq: torch.from_numpy(_y.astype(np.float32)) for freq, _y in y.items()}
                 if x_s:
-                    self.x_s[basin] = {freq: torch.from_numpy(_x_s.astype(np.float32)) for freq, _x_s in x_s.items()}
+                    self._x_s[basin] = {freq: torch.from_numpy(_x_s.astype(np.float32)) for freq, _x_s in x_s.items()}
+                self._dates[basin] = dates
             else:
                 basins_without_samples.append(basin)
 
@@ -520,6 +567,12 @@ class BaseDataset(Dataset):
                 f"These basins do not have a single valid sample in the {self.period} period: {basins_without_samples}")
         self.lookup_table = {i: elem for i, elem in enumerate(lookup)}
         self.num_samples = len(self.lookup_table)
+
+        if self.num_samples == 0:
+            if self.is_train:
+                raise NoTrainDataError
+            else:
+                raise NoEvaluationDataError
 
     def _load_hydroatlas_attributes(self):
         df = utils.load_hydroatlas_attributes(self.cfg.data_dir, basins=self.basins)
@@ -588,7 +641,7 @@ class BaseDataset(Dataset):
             # preprocess each basin feature vector as pytorch tensor
             for basin in self.basins:
                 attributes = df.loc[df.index == basin].values.flatten()
-                self.attributes[basin] = torch.from_numpy(attributes.astype(np.float32))
+                self._attributes[basin] = torch.from_numpy(attributes.astype(np.float32))
 
     def _load_data(self):
         # load attributes first to sanity-check those features before doing the compute expensive time series loading
@@ -637,7 +690,7 @@ class BaseDataset(Dataset):
                         self.scaler["xarray_feature_scale"][feature] = np.float32(1.0)
                     elif val == "minmax":
                         self.scaler["xarray_feature_scale"][feature] = xr[feature].max(skipna=True) - \
-                                                                       xr[feature].m(skipna=True)
+                                                                       xr[feature].min(skipna=True)
                     elif val == "std":
                         # Do nothing, since this is the default
                         pass
@@ -684,6 +737,22 @@ class BaseDataset(Dataset):
                 raise ValueError('seq_length and predict_last_n must be dictionaries with one key per frequency.')
             self.seq_len = [self.seq_len[freq] for freq in self.frequencies]
             self._predict_last_n = [self._predict_last_n[freq] for freq in self.frequencies]
+
+    @staticmethod
+    def collate_fn(
+            samples: List[Dict[str, Union[torch.Tensor, np.ndarray]]]) -> Dict[str, Union[torch.Tensor, np.ndarray]]:
+        batch = {}
+        if not samples:
+            return batch
+        features = list(samples[0].keys())
+        for feature in features:
+            if feature.startswith('date'):
+                # Dates are stored as a numpy array of datetime64, which we maintain as numpy array.
+                batch[feature] = np.stack([sample[feature] for sample in samples], axis=0)
+            else:
+                # Everything else is a torch.Tensor
+                batch[feature] = torch.stack([sample[feature] for sample in samples], dim=0)
+        return batch
 
 
 @njit()

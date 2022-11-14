@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Union
 
+import numpy as np
 import pandas as pd
 import xarray
 
@@ -207,6 +208,9 @@ def load_lamah_discharge(data_dir: Path,
     temporal_resolution_directory = 'daily' if temporal_resolution == '1D' else 'hourly'
     streamflow_dir = data_dir / 'D_gauges' / '2_timeseries' / temporal_resolution_directory
     df = _load_lamah_timeseries_csv_file(streamflow_dir / f"ID_{basin}.csv", temporal_resolution)
+
+    # Replace missing discharge values (indicated by -999) to NaN
+    df.loc[df["qobs"] < 0, "qobs"] = np.nan
 
     # If normalize_discharge is True, load attributes to extract upstream area.
     if normalize_discharge:

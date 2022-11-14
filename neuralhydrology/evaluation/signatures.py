@@ -56,7 +56,7 @@ def calculate_all_signatures(da: DataArray, prcp: DataArray, datetime_coord: str
         "q5": q5(da),
         "q_mean": q_mean(da),
         "hfd_mean": hfd_mean(da, datetime_coord=datetime_coord),
-        "baseflow_index": baseflow_index(da)[0],
+        "baseflow_index": baseflow_index(da, datetime_coord=datetime_coord)[0],
         "slope_fdc": slope_fdc(da),
         "stream_elas": stream_elas(da, prcp, datetime_coord=datetime_coord),
         "runoff_ratio": runoff_ratio(da, prcp, datetime_coord=datetime_coord)
