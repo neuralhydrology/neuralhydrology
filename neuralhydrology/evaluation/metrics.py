@@ -22,7 +22,11 @@ def get_available_metrics() -> List[str]:
     """
     metrics = [
         "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
+<<<<<<< HEAD
         "Peak-Timing", "Missed-Peaks", "Peak-MAPE"
+=======
+        "Peak-Timing", "Peak-MAPE"
+>>>>>>> publicrepo/master
     ]
     return metrics
 
@@ -625,6 +629,7 @@ def mean_peak_timing(obs: DataArray,
     return np.mean(timing_errors) if len(timing_errors) > 0 else np.nan
 
 
+<<<<<<< HEAD
 def missed_peaks(obs: DataArray,
                  sim: DataArray,
                  window: int = None,
@@ -704,6 +709,8 @@ def missed_peaks(obs: DataArray,
     return missed_events / len(peaks_obs_times)
 
 
+=======
+>>>>>>> publicrepo/master
 def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float:
     r"""Calculate the mean absolute percentage error (MAPE) for peaks
 
@@ -722,7 +729,11 @@ def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float
         Observed time series.
     sim : DataArray
         Simulated time series.
+<<<<<<< HEAD
         
+=======
+
+>>>>>>> publicrepo/master
     Returns
     -------
     float
@@ -864,8 +875,11 @@ def calculate_metrics(obs: DataArray,
             values["FLV"] = fdc_flv(obs, sim)
         elif metric.lower() == "peak-timing":
             values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+<<<<<<< HEAD
         elif metric.lower() == "missed-peaks":
             values["Missed-Peaks"] = missed_peaks(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
+=======
+>>>>>>> publicrepo/master
         elif metric.lower() == "peak-mape":
             values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim)
         else:
