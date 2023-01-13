@@ -4,6 +4,7 @@ from neuralhydrology.datasetzoo.camelsbr import CamelsBR
 from neuralhydrology.datasetzoo.camelscl import CamelsCL
 from neuralhydrology.datasetzoo.camelsgb import CamelsGB
 from neuralhydrology.datasetzoo.camelsus import CamelsUS
+from neuralhydrology.datasetzoo.caravan import Caravan
 from neuralhydrology.datasetzoo.genericdataset import GenericDataset
 from neuralhydrology.datasetzoo.hourlycamelsus import HourlyCamelsUS
 from neuralhydrology.datasetzoo.lamah import LamaH
@@ -19,7 +20,7 @@ def get_dataset(cfg: Config,
                 scaler: dict = {}) -> BaseDataset:
     """Get data set instance, depending on the run configuration.
 
-    Currently implemented datasets are 'camels_aus', 'camels_br', 'camels_cl', 'camels_gb', 'camels_us', and 
+    Currently implemented datasets are 'caravan', 'camels_aus', 'camels_br', 'camels_cl', 'camels_gb', 'camels_us', and 
     'hourly_camels_us', as well as the 'generic' dataset class that can be used for any kind of dataset as long as it is
     in the correct format.
 
@@ -74,6 +75,8 @@ def get_dataset(cfg: Config,
         Dataset = GenericDataset
     elif cfg.dataset.lower() in ["lamah_a", "lamah_b", "lamah_c"]:
         Dataset = LamaH
+    elif cfg.dataset.lower() == "caravan":
+        Dataset = Caravan
     else:
         raise NotImplementedError(f"No dataset class implemented for dataset {cfg.dataset}")
 
