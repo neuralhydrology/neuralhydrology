@@ -138,6 +138,11 @@ class BaseTrainer(object):
         tensorboard logging, and Tester class.
         If called in a ``continue_training`` context, this model will also restore the model and optimizer state.
         """
+        if self.cfg.is_finetuning:
+            # Load scaler from pre-trained model.
+            self._scaler = load_scaler(self.cfg.base_run_dir)
+
+        # Initialize dataset before the model is loaded.
         ds = self._get_dataset()
         if len(ds) == 0:
             raise ValueError("Dataset contains no samples.")
@@ -153,10 +158,9 @@ class BaseTrainer(object):
             LOGGER.info(f"Starting training from checkpoint {checkpoint_path}")
             self.model.load_state_dict(torch.load(str(checkpoint_path), map_location=self.device))
 
-        # freeze model parts and load scaler from pre-trained model
+        # Freeze model parts from pre-trained model.
         if self.cfg.is_finetuning:
             self._freeze_model_parts()
-            self._scaler = load_scaler(self.cfg.base_run_dir)
 
         self.optimizer = self._get_optimizer()
         self.loss_obj = self._get_loss_obj().to(self.device)
