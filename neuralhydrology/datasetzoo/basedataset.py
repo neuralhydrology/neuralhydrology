@@ -457,7 +457,7 @@ class BaseDataset(Dataset):
             obs = xr.sel(basin=basin)[self.cfg.target_variables].to_array().values
             if np.sum(~np.isnan(obs)) > 1:
                 # calculate std for each target
-                per_basin_target_stds = torch.tensor([np.nanstd(obs, axis=1)], dtype=torch.float32)
+                per_basin_target_stds = torch.tensor(np.expand_dims(np.nanstd(obs, axis=1), 0), dtype=torch.float32)
             else:
                 nan_basins.append(basin)
                 per_basin_target_stds = torch.full((1, obs.shape[0]), np.nan, dtype=torch.float32)

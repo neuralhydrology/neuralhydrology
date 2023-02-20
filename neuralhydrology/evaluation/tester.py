@@ -282,12 +282,14 @@ class BaseTester(object):
                     for target_variable in self.cfg.target_variables:
                         # stack dates and time_steps so we don't just evaluate every 24H when use_frequencies=[1D, 1H]
                         obs = xr.isel(time_step=slice(-frequency_factor, None)) \
-                            .stack(datetime=['date', 'time_step'])[f"{target_variable}_obs"]
+                            .stack(datetime=['date', 'time_step']) \
+                            .drop_vars({'datetime', 'date', 'time_step'})[f"{target_variable}_obs"]
                         obs['datetime'] = freq_date_range
                         # check if there are observations for this period
                         if not all(obs.isnull()):
                             sim = xr.isel(time_step=slice(-frequency_factor, None)) \
-                                .stack(datetime=['date', 'time_step'])[f"{target_variable}_sim"]
+                                .stack(datetime=['date', 'time_step']) \
+                                .drop_vars({'datetime', 'date', 'time_step'})[f"{target_variable}_sim"]
                             sim['datetime'] = freq_date_range
 
                             # clip negative predictions to zero, if variable is listed in config 'clip_target_to_zero'
