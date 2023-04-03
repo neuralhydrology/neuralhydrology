@@ -16,11 +16,17 @@ class BaseRegularization(torch.nn.Module):
     ----------
     cfg: Config
         The run configuration.
+    name: str
+        The name of the regularization term.
+    weight: float, optional.
+        The weight of the regularization term. Default: 1.
     """
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, name: str, weight: float = 1.0):
         super(BaseRegularization, self).__init__()
         self.cfg = cfg
+        self.name = name
+        self.weight = weight
 
     def forward(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor],
                 other_model_data: Dict[str, torch.Tensor]) -> torch.Tensor:
@@ -59,6 +65,8 @@ class TiedFrequencyMSERegularization(BaseRegularization):
     ----------
     cfg : Config
         The run configuration.
+    weight: float, optional.
+        Weight of the regularization term. Default: 1.
 
     Raises
     ------
@@ -66,8 +74,8 @@ class TiedFrequencyMSERegularization(BaseRegularization):
         If the run configuration only predicts one frequency.
     """
 
-    def __init__(self, cfg: Config):
-        super(TiedFrequencyMSERegularization, self).__init__(cfg)
+    def __init__(self, cfg: Config, weight: float = 1.0):
+        super(TiedFrequencyMSERegularization, self).__init__(cfg, name='tie_frequencies', weight=weight)
         self._frequencies = sort_frequencies(
             [f for f in cfg.use_frequencies if cfg.predict_last_n[f] > 0 and f not in cfg.no_loss_frequencies])
 
