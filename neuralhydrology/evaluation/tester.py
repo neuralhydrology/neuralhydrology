@@ -23,7 +23,7 @@ from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_
 from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
-from neuralhydrology.training import get_loss_obj
+from neuralhydrology.training import get_loss_obj, get_regularization_obj
 from neuralhydrology.training.logger import Logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError, NoEvaluationDataError
@@ -75,6 +75,7 @@ class BaseTester(object):
 
         # initialize loss object to compute the loss of the evaluation data
         self.loss_obj = get_loss_obj(cfg)
+        self.loss_obj.set_regularization_terms(get_regularization_obj(cfg=self.cfg))
 
         self._load_run_data()
 
@@ -207,11 +208,11 @@ class BaseTester(object):
 
             loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=0, collate_fn=ds.collate_fn)
 
-            y_hat, y, dates, loss = self._evaluate(model, loader, ds.frequencies)
+            y_hat, y, dates, all_losses = self._evaluate(model, loader, ds.frequencies)
 
             # log loss of this basin plus number of samples in the logger to compute epoch aggregates later
             if experiment_logger is not None:
-                experiment_logger.log_step(loss=(loss, len(loader)))
+                experiment_logger.log_step(**{k: (v, len(loader)) for k, v in all_losses.items()})
 
             predict_last_n = self.cfg.predict_last_n
             seq_length = self.cfg.seq_length
@@ -282,12 +283,14 @@ class BaseTester(object):
                     for target_variable in self.cfg.target_variables:
                         # stack dates and time_steps so we don't just evaluate every 24H when use_frequencies=[1D, 1H]
                         obs = xr.isel(time_step=slice(-frequency_factor, None)) \
-                            .stack(datetime=['date', 'time_step'])[f"{target_variable}_obs"]
+                            .stack(datetime=['date', 'time_step']) \
+                            .drop_vars({'datetime', 'date', 'time_step'})[f"{target_variable}_obs"]
                         obs['datetime'] = freq_date_range
                         # check if there are observations for this period
                         if not all(obs.isnull()):
                             sim = xr.isel(time_step=slice(-frequency_factor, None)) \
-                                .stack(datetime=['date', 'time_step'])[f"{target_variable}_sim"]
+                                .stack(datetime=['date', 'time_step']) \
+                                .drop_vars({'datetime', 'date', 'time_step'})[f"{target_variable}_sim"]
                             sim['datetime'] = freq_date_range
 
                             # clip negative predictions to zero, if variable is listed in config 'clip_target_to_zero'
@@ -445,13 +448,19 @@ class BaseTester(object):
                 obs[freq] = obs[freq].numpy()
 
         # set to NaN explicitly if all losses are NaN to avoid RuntimeWarning
-        mean_loss = np.nanmean(losses) if len(losses) > 0 and not all(np.isnan(l) for l in losses) else np.nan
-        return preds, obs, dates, mean_loss
+        mean_losses = {}
+        if len(losses) == 0:
+            mean_losses['loss'] = np.nan
+        else:
+            for loss_name in losses[0].keys():
+                loss_values = [loss[loss_name] for loss in losses]
+                mean_losses[loss_name] = np.nanmean(loss_values) if not np.all(np.isnan(loss_values)) else np.nan
+        return preds, obs, dates, mean_losses
 
     def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
         predictions = model(data)
-        loss = self.loss_obj(predictions, data)
-        return predictions, loss.item()
+        _, all_losses = self.loss_obj(predictions, data)
+        return predictions, {k: v.item() for k, v in all_losses.items()}
 
     def _subset_targets(self, model: BaseModel, data: Dict[str, torch.Tensor], predictions: np.ndarray,
                         predict_last_n: int, freq: str):
@@ -523,10 +532,10 @@ class UncertaintyTester(BaseTester):
 
     def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
         outputs = model(data)
-        loss = self.loss_obj(outputs, data)
+        _, all_losses = self.loss_obj(outputs, data)
         predictions = model.sample(data, self.cfg.n_samples)
         model.eval()
-        return predictions, loss.item()
+        return predictions, {k: v.item() for k, v in all_losses.items()}
 
     def _subset_targets(self,
                         model: BaseModel,

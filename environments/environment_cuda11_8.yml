@@ -1,11 +1,11 @@
 name: neuralhydrology
 channels:
   - pytorch
+  - nvidia
   - defaults
-  - anaconda
+  - conda-forge
 dependencies:
   - bokeh
-  - cudatoolkit=10.2
   - h5py
   - hdf5
   - jupyter
@@ -16,8 +16,9 @@ dependencies:
   - pip
   - pytest
   - pytest-cov
-  - python=3.7
+  - python=3.10
   - pytorch
+  - pytorch-cuda=11.8
   - ruamel.yaml
   - scipy
   - sphinx
