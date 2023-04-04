@@ -211,8 +211,9 @@ class BaseTrainer(object):
                     param_group["lr"] = self.cfg.learning_rate[epoch]
 
             self._train_epoch(epoch=epoch)
-            avg_loss = self.experiment_logger.summarise()
-            LOGGER.info(f"Epoch {epoch} average loss: {avg_loss}")
+            avg_losses = self.experiment_logger.summarise()
+            loss_str = ", ".join(f"{k}: {v:.5f}" for k, v in avg_losses.items())
+            LOGGER.info(f"Epoch {epoch} average loss: {loss_str}")
 
             if epoch % self.cfg.save_weights_every == 0:
                 self._save_weights_and_optimizer(epoch)
@@ -225,10 +226,10 @@ class BaseTrainer(object):
                                         experiment_logger=self.experiment_logger.valid())
 
                 valid_metrics = self.experiment_logger.summarise()
-                print_msg = f"Epoch {epoch} average validation loss: {valid_metrics['avg_loss']:.5f}"
+                print_msg = f"Epoch {epoch} average validation loss: {valid_metrics['avg_total_loss']:.5f}"
                 if self.cfg.metrics:
                     print_msg += f" -- Median validation metrics: "
-                    print_msg += ", ".join(f"{k}: {v:.5f}" for k, v in valid_metrics.items() if k != 'avg_loss')
+                    print_msg += ", ".join(f"{k}: {v:.5f}" for k, v in valid_metrics.items() if k != 'avg_total_loss')
                     LOGGER.info(print_msg)
 
         # make sure to close tensorboard to avoid losing the last epoch
@@ -295,7 +296,7 @@ class BaseTrainer(object):
                     # make sure we add near-zero noise to originally near-zero targets
                     data[key] += (data[key] + self._target_mean / self._target_std) * noise.to(self.device)
 
-            loss = self.loss_obj(predictions, data)
+            loss, all_losses = self.loss_obj(predictions, data)
 
             # early stop training if loss is NaN
             if torch.isnan(loss):
@@ -320,7 +321,7 @@ class BaseTrainer(object):
 
             pbar.set_postfix_str(f"Loss: {loss.item():.4f}")
 
-            self.experiment_logger.log_step(loss=loss.item())
+            self.experiment_logger.log_step(**{k: v.item() for k, v in all_losses.items()})
 
     def _set_random_seeds(self):
         if self.cfg.seed is None:

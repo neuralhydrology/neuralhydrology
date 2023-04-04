@@ -300,8 +300,9 @@ Training settings
    is ``1/n`` with ``n`` being the number of target variables. The order 
    of the weights corresponds to the order of the ``target_variables``.
 
--  ``regularization``: List of optional regularization terms. Currently
-   supported is ``tie_frequencies``, which couples the predictions of
+-  ``regularization``: List of strings or 2-tuples with regularization terms and corresponding weights.
+   If no weights are specified, they default to 1.
+   Currently supported is ``tie_frequencies``, which couples the predictions of
    all frequencies via an MSE term. New regularizations can be added
    :py:mod:`here <neuralhydrology.training.regularization>`.
 

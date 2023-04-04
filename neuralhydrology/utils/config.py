@@ -1,7 +1,7 @@
 import warnings
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List, Union, Any
+from typing import Dict, List, Tuple, Union, Any
 
 import pandas as pd
 from ruamel.yaml import YAML
@@ -544,7 +544,7 @@ class Config(object):
         return self._get_value_verbose("rating_curve_file")
 
     @property
-    def regularization(self) -> List[str]:
+    def regularization(self) -> List[Union[str, Tuple[str, float]]]:
         return self._as_default_list(self._cfg.get("regularization", []))
 
     @property

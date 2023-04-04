@@ -13,9 +13,9 @@ If you don't have a CUDA-capable GPU, use:
 
     conda env create -f environments/environment_cpu.yml
 
-If you do have a CUDA-capable GPU, use either ``environment_cuda10_2.yml`` or ``environment_cuda11_3.yml``, depending on your hardware.
+If you do have a CUDA-capable GPU, use ``environment_cuda11_8.yml``, depending on your hardware.
 
-If you prefer to not use Mini-/Anaconda, make sure you have a Python environment with Python >= 3.7 with all packages installed that are listed in 
+If you prefer to not use Mini-/Anaconda, make sure you have a Python environment with Python >= 3.10 with all packages installed that are listed in 
 these environment files. 
 The next steps should be executed from within this Python environment.
 

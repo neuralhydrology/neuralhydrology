@@ -23,20 +23,20 @@ jobs:
         uses: s-weigand/setup-conda@v1
         with:
           update-conda: true
-          python-version: 3.7
+          python-version: '3.10'
 
       # cache the conda installation to speedup the CI runs
       - uses: actions/cache@v2
         id: cache
         with:
           path: /usr/share/miniconda/envs/neuralhydrology
-          key: ${{ runner.os }}-conda-cache-${{ hashFiles('environments/environment_cuda10_2.yml') }}
+          key: ${{ runner.os }}-conda-cache-${{ hashFiles('environments/environment_cpu.yml') }}
 
       # on cache miss, create the env from scratch
       - name: Conda environment creation
         if: steps.cache.outputs.cache-hit != 'true'
         run: |
-          conda env create -f environments/environment_cuda10_2.yml
+          conda env create -f environments/environment_cpu.yml
           source activate neuralhydrology
 
       # Run the tests

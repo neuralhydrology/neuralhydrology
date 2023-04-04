@@ -132,19 +132,21 @@ class Logger(object):
         Union[float, Dict[str, float]]
             Average loss if training is summarized, else a dict mapping metric names to median metric values.
         """
+        value = {}
         # summarize statistics of training epoch
         if self._train:
             self.epoch += 1
 
             # summarize training
-            value = np.nanmean(self._metrics["loss"]) if self._metrics["loss"] else np.nan
+            for k, v in self._metrics.items():
+                mean = np.nanmean(v) if v else np.nan
+                value[f'avg_{k}'] = mean
 
-            if self.writer is not None:
-                self.writer.add_scalar('/'.join([self.tag, 'avg_loss']), value, self.epoch)
+                if self.writer is not None:
+                    self.writer.add_scalar('/'.join([self.tag, f'avg_{k}']), mean, self.epoch)
 
         # summarize validation
         else:
-            value = {}
             for k, v in self._metrics.items():
                 if v and isinstance(v[0], tuple):
                     # The only tuple that is passed is the per basin validation loss, which is a list of tuples, where
@@ -156,9 +158,9 @@ class Logger(object):
                         weighted_loss = sum(loss * samples / num_samples for loss, samples in v_not_nan)
                     else:
                         weighted_loss = np.nan
-                    value['avg_loss'] = weighted_loss
+                    value[f'avg_{k}'] = weighted_loss
                     if self.writer is not None:
-                        self.writer.add_scalar('/'.join([self.tag, 'avg_loss']), weighted_loss, self.epoch)
+                        self.writer.add_scalar('/'.join([self.tag, f'avg_{k}']), weighted_loss, self.epoch)
                 else:
                     # All other metrics are lists of float values
                     means = np.nanmean(v) if v else np.nan

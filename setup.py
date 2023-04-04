@@ -34,7 +34,7 @@ setup(name='neuralhydrology',
               'nh-results-ensemble=neuralhydrology.utils.nh_results_ensemble:_main'
           ]
       },
-      python_requires='>=3.7',
+      python_requires='>=3.8',
       install_requires=[
           'matplotlib',
           'numba',
