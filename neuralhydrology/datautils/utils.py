@@ -173,6 +173,12 @@ def infer_frequency(index: Union[pd.DatetimeIndex, np.ndarray]) -> str:
     if native_frequency[0] not in '0123456789':  # add a value to the unit so to_timedelta works
         native_frequency = f'1{native_frequency}'
 
+    # pd.Timedelta doesn't understand weekly (W) frequencies, so we convert them to the equivalent multiple of 7D.
+    weekly_freq = re.match('(\d+)W(-(MON|TUE|WED|THU|FRI|SAT|SUN))?$', native_frequency)
+    if weekly_freq is not None:
+        n = int(weekly_freq[1]) * 7
+        native_frequency = f'{n}D'
+
     # Assert that the frequency corresponds to a positive time delta. We first add one offset to the base datetime
     # to make sure it's aligned with the frequency. Otherwise, adding an offset of e.g. 0Y would round up to the
     # nearest year-end, so we'd incorrectly miss a frequency of zero.

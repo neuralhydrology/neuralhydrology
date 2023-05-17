@@ -20,7 +20,7 @@ def test_infer_frequency():
     """Test the logic to infer frequencies. """
     assert infer_frequency(pd.date_range('2000-01-01', '2000-01-10', freq='D')) == '1D'
     assert infer_frequency(pd.date_range('2000-01-01', '2000-01-10', freq='48H')) == '2D'
-    assert infer_frequency(pd.date_range('2000-01-01', '2000-03-01', freq='W-MON')) == '1W-MON'
+    assert infer_frequency(pd.date_range('2000-01-01', '2000-03-01', freq='W-MON')) == '7D'
 
     # just a single date
     pytest.raises(ValueError, infer_frequency, [pd.to_datetime('2000-01-01')])

@@ -360,15 +360,15 @@ class MaskedUMALLoss(BaseLoss):
     def __init__(self, cfg, eps: float = 1e-5):
         super(MaskedUMALLoss, self).__init__(cfg,
                                              prediction_keys=['mu', 'b'],
-                                             ground_truth_keys=['y', 'tau'],
+                                             ground_truth_keys=['y_extended', 'tau'],
                                              output_size_per_target=2)
         self.eps = eps
         self._n_taus_count = cfg.n_taus
         self._n_taus_log = torch.as_tensor(np.log(cfg.n_taus).astype('float32'))
 
     def _get_loss(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor], **kwargs):
-        mask = ~torch.isnan(ground_truth['y']).any(1).any(1)
-        y = ground_truth['y'][mask]
+        mask = ~torch.isnan(ground_truth['y_extended']).any(1).any(1)
+        y = ground_truth['y_extended'][mask]
         t = ground_truth['tau'][mask]
         m = prediction['mu'][mask]
         b = prediction['b'][mask]
