@@ -422,6 +422,7 @@ class BaseTester(object):
                 for key in data:
                     if not key.startswith('date'):
                         data[key] = data[key].to(self.device)
+                data = model.pre_model_hook(data, is_train=False)
                 predictions, loss = self._get_predictions_and_loss(model, data)
 
                 for freq in frequencies:
