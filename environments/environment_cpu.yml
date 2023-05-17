@@ -2,7 +2,7 @@ name: neuralhydrology
 channels:
   - pytorch
   - defaults
-  - anaconda
+  - conda-forge
 dependencies:
   - bokeh
   - cpuonly
