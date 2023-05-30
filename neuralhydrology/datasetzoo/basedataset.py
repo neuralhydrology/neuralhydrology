@@ -232,6 +232,13 @@ class BaseDataset(Dataset):
                 df[f"{feature}_copy{n}"] = df[feature]
 
         return df
+    
+    def _add_missing_targets(self, df: pd.DataFrame) -> pd.DataFrame:
+        for var in self.cfg.target_variables:
+            if var not in df.columns:
+                df[var] = np.nan
+
+        return df
 
     def _add_lagged_features(self, df: pd.DataFrame) -> pd.DataFrame:
 
@@ -290,6 +297,10 @@ class BaseDataset(Dataset):
 
                 # add columns from dataframes passed as additional data files
                 df = pd.concat([df, *[d[basin] for d in self.additional_features]], axis=1)
+
+                # if target variables are missing for basin, add empty column to still allow predictions to be made
+                if not self.is_train:
+                    df = self._add_missing_targets(df)
 
                 # check if any feature should be duplicated
                 df = self._duplicate_features(df)
