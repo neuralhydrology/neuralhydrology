@@ -299,7 +299,8 @@ class BaseDataset(Dataset):
                 df = pd.concat([df, *[d[basin] for d in self.additional_features]], axis=1)
 
                 # if target variables are missing for basin, add empty column to still allow predictions to be made
-                df = self._add_missing_targets(df)
+                if not self.is_train:
+                    df = self._add_missing_targets(df)
 
                 # check if any feature should be duplicated
                 df = self._duplicate_features(df)
