@@ -64,6 +64,8 @@ class BaseTester(object):
         if self.init_model:
             self.model = get_model(cfg).to(self.device)
 
+        self._disable_pbar = cfg.verbose == 0
+
         # pre-initialize variables, defined in class methods
         self.basins = None
         self.scaler = None
@@ -190,7 +192,7 @@ class BaseTester(object):
 
         results = defaultdict(dict)
 
-        pbar = tqdm(basins, file=sys.stdout)
+        pbar = tqdm(basins, file=sys.stdout, disable=self._disable_pbar)
         pbar.set_description('# Validation' if self.period == "validation" else "# Evaluation")
 
         for basin in pbar:
