@@ -4,7 +4,7 @@ import torch
 import torch.nn as nn
 
 from neuralhydrology.utils.config import Config
-from neuralhydrology.utils.samplingutils import sample_pointpredictions
+from neuralhydrology.utils.samplingutils import sample_pointpredictions, umal_extend_batch
 
 
 class BaseModel(nn.Module):
@@ -69,3 +69,27 @@ class BaseModel(nn.Module):
             Model output and potentially any intermediate states and activations as a dictionary.
         """
         raise NotImplementedError
+    
+    def pre_model_hook(self, data: Dict[str, torch.Tensor], is_train: bool) -> Dict[str, torch.Tensor]:
+        """A function to execute before the model in training, validaton and test. 
+        The beahvior can be adapted depending on the run configuration and the provided arguments.
+
+        Parameters
+        ----------
+        data : Dict[str, torch.Tensor]
+            Dictionary, containing input features as key-value pairs and labels y.
+        is_train : bool
+            Defines if the hook is executed in train mode or in validation/test mode.
+
+        Returns
+        -------
+        data : Dict[str, torch.Tensor]
+            The modified (or unmodified) data that are used for the training or evaluation.
+        """
+        if self.cfg.head.lower() == "umal":
+            data = umal_extend_batch(data, self.cfg, n_taus=self.cfg.n_taus, extend_y=True)
+        else:
+            # here one can implement additional pre model hooks
+            pass 
+
+        return data

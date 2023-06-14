@@ -102,7 +102,16 @@ Validation settings
 
 -  ``save_validation_results``: True/False, if True, stores the
    validation results to disk as a pickle file. Otherwise they are only
-   used for TensorBoard
+   used for TensorBoard. This is different than ``save_all_validation_output``
+   in that only the predictive outputs are saved, and not all of the
+   model output features.
+
+-  ``save_all_validation_output``: True/False, if True, stores all model
+   outputs from the validation runs to disk as a pickle file. 
+   Defaults to False. This differs from ``save_validation_results``, in 
+   that here all model output is saved. This can result in files that
+   are quite large. Predictions in this file will not be scaled. 
+   This is the raw output from the model.
 
 General model configuration
 ---------------------------

@@ -221,6 +221,7 @@ class BaseTrainer(object):
             if (self.validator is not None) and (epoch % self.cfg.validate_every == 0):
                 self.validator.evaluate(epoch=epoch,
                                         save_results=self.cfg.save_validation_results,
+                                        save_all_output=self.cfg.save_all_output,
                                         metrics=self.cfg.metrics,
                                         model=self.model,
                                         experiment_logger=self.experiment_logger.valid())
@@ -284,8 +285,8 @@ class BaseTrainer(object):
                 if not key.startswith('date'):
                     data[key] = data[key].to(self.device)
 
-            # apply possible subclass pre-processing
-            data = self._pre_model_hook(data)
+            # apply possible pre-processing to the batch before the forward pass
+            data = self.model.pre_model_hook(data, is_train=True)
 
             # get predictions
             predictions = self.model(data)
@@ -382,5 +383,3 @@ class BaseTrainer(object):
             self.cfg.img_log_dir = self.cfg.run_dir / "img_log"
             self.cfg.img_log_dir.mkdir(parents=True)
 
-    def _pre_model_hook(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
-        return data
