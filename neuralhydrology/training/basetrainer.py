@@ -221,6 +221,7 @@ class BaseTrainer(object):
             if (self.validator is not None) and (epoch % self.cfg.validate_every == 0):
                 self.validator.evaluate(epoch=epoch,
                                         save_results=self.cfg.save_validation_results,
+                                        save_all_output=self.cfg.save_all_output,
                                         metrics=self.cfg.metrics,
                                         model=self.model,
                                         experiment_logger=self.experiment_logger.valid())

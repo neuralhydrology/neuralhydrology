@@ -560,6 +560,10 @@ class Config(object):
         return self._cfg.get("save_train_data", False)
 
     @property
+    def save_all_output(self) -> bool:
+        return self._cfg.get('save_all_output', False)
+
+    @property
     def save_validation_results(self) -> bool:
         return self._cfg.get("save_validation_results", False)
 
