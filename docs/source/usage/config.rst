@@ -342,6 +342,17 @@ Training settings
    is used, this needs to be a dictionary mapping each frequency to a
    sequence length, else an int.
 
+-  ``forecast_seq_length``: Length of the forecast sequence. This is the
+   number of timesteps in the total ``seq_length`` that are part of the 
+   forecast rather than the hindcast. Note that this does not add to the
+   total ``seq_length``, and thus, the forecast sequence length must be
+   less than the total sequence length.
+
+-  ``forecast_overlap``: An integer number of timesteps where forecast
+   data overlaps with hindcast data. This does not add to the
+   ``forecast_sequence_length``, and must be no larger than the
+   ``forecast_sequence_length``.
+
 -  ``predict_last_n``: Defines which time steps are used to calculate
    the loss, counted backwards. Can't be larger than ``seq_length``.
    Sequence-to-one would be ``predict_last_n: 1`` and
@@ -440,6 +451,24 @@ Data settings
            - prcp(mm/day)_daymet
          1H:
            - total_precipitation_nldas_hourly
+
+-   ``forecast_inputs``: These are dynamic features (exactly like ``dyncamic_inputs``)
+   that are used as inputs to the forecasting portion of a forecast model. This allows
+   different features to be used for the forecast and hindcast portions of a model.
+   If ``forecast_inputs`` is present, then all features in this list must also appear
+   in the ``dynamic_inputs`` list, which will contain both forecast and hindcast features.
+
+   Note that this does not currently support a forecast rollout, meaning that because
+   forecast inputs behave the same way as dynamic inputs, the forecast input for two
+   timesteps ahead of time t will be the same as the forecast input for one day ahead
+   of time t+1. 
+
+   Note also that forecasting (and forecast inputs) is not supported for multi-timescale
+   models.
+
+-   ``hindcast_inputs``: These are the same as ``forecast_inputs`` except that they are for
+   the hindcast portion of a forecast model. As with ``forecast_inputs`` these dynamic inputs
+   must be included in the ``dynamic_inputs`` list.
 
 -  ``target_variables``: List of the target variable(s). Names must match
    the exact names as defined in the data set.

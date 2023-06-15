@@ -198,6 +198,14 @@ class Config(object):
             else:
                 pass
 
+        # Check forecast sequence length.
+        if cfg.get('forecast_seq_length'):
+            if cfg['forecast_seq_length'] >= cfg['seq_length']:
+                raise ValueError('Forecast sequence length must be < sequence length.')
+            if cfg.get('forecast_overlap'):
+                if cfg['forecast_overlap'] > cfg['forecast_seq_length']:
+                    raise ValueError('Forecast overlap must be <= forecast_seq_length.')
+
         # Check autoregressive inputs.
         if 'autoregressive_inputs' in cfg:
             if len(cfg['autoregressive_inputs']) > 1:
@@ -350,6 +358,18 @@ class Config(object):
             raise ValueError(f"Unknown data type {type(finetune_modules)} for 'finetune_modules' argument.")
 
     @property
+    def forecast_inputs(self) -> List[str]:
+        return self._cfg.get("forecast_inputs", [])
+
+    @property
+    def forecast_overlap(self) -> int:
+        return self._cfg.get("forecast_overlap", None)
+
+    @property
+    def forecast_seq_length(self) -> int:
+        return self._cfg.get("forecast_seq_length", None)
+
+    @property
     def forcings(self) -> List[str]:
         return self._as_default_list(self._get_value_verbose("forcings"))
 
@@ -363,6 +383,10 @@ class Config(object):
             return ''
         else:
             return self._get_value_verbose("head")
+
+    @property
+    def hindcast_inputs(self) -> List[str]:
+        return self._cfg.get("hindcast_inputs", [])
 
     @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:

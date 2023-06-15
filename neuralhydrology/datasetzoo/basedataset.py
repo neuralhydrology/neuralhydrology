@@ -106,6 +106,8 @@ class BaseDataset(Dataset):
 
         # initialize class attributes that are filled in the data loading functions
         self._x_d = {}
+        self._x_h = {}
+        self._x_f = {}
         self._x_s = {}
         self._attributes = {}
         self._y = {}
@@ -144,9 +146,22 @@ class BaseDataset(Dataset):
             # if there's just one frequency, don't use suffixes.
             freq_suffix = '' if len(self.frequencies) == 1 else f'_{freq}'
             # slice until idx + 1 because slice-end is excluding
-            sample[f'x_d{freq_suffix}'] = self._x_d[basin][freq][idx - seq_len + 1:idx + 1]
-            sample[f'y{freq_suffix}'] = self._y[basin][freq][idx - seq_len + 1:idx + 1]
-            sample[f'date{freq_suffix}'] = self._dates[basin][freq][idx - seq_len + 1:idx + 1]
+            hindcast_start_idx = idx + 1 - seq_len
+            global_end_idx = idx + 1
+            if self._x_d:
+                sample[f'x_d{freq_suffix}'] = self._x_d[basin][freq][hindcast_start_idx:global_end_idx]
+            elif self._x_h:
+                hindcast_end_idx = idx + 1 - self.cfg.forecast_seq_length
+                forecast_start_idx = idx + 1 - self.cfg.forecast_seq_length
+                if self.cfg.forecast_overlap and self.cfg.forecast_overlap > 0:
+                    hindcast_end_idx += self.cfg.forecast_overlap
+                sample[f'x_h{freq_suffix}'] = self._x_h[basin][freq][hindcast_start_idx:hindcast_end_idx]
+                sample[f'x_f{freq_suffix}'] = self._x_f[basin][freq][forecast_start_idx:global_end_idx]
+            else:
+                raise ValueError('Data must include x_d or x_h.')
+
+            sample[f'y{freq_suffix}'] = self._y[basin][freq][hindcast_start_idx:global_end_idx]
+            sample[f'date{freq_suffix}'] = self._dates[basin][freq][hindcast_start_idx:global_end_idx]
 
             # check for static inputs
             static_inputs = []
@@ -481,6 +496,7 @@ class BaseDataset(Dataset):
             # store data of each frequency as numpy array of shape [time steps, features] and dates as numpy array of
             # shape (time steps,)
             x_d, x_s, y, dates = {}, {}, {}, {}
+            x_d_column_names = []
 
             # keys: frequencies, values: array mapping each lowest-frequency
             # sample to its corresponding sample in this frequency
@@ -501,6 +517,7 @@ class BaseDataset(Dataset):
 
                 # pull all of the data that needs to be validated
                 x_d[freq] = df_resampled[dynamic_cols].values
+                x_d_column_names = dynamic_cols
                 y[freq] = df_resampled[self.cfg.target_variables].values
                 if self.cfg.evolving_attributes:
                     x_s[freq] = df_resampled[self.cfg.evolving_attributes].values
@@ -546,6 +563,7 @@ class BaseDataset(Dataset):
             if self.cfg.autoregressive_inputs:
                 for freq in self.frequencies:
                     x_d[freq] = np.concatenate([x_d[freq], df_resampled[self.cfg.autoregressive_inputs].values], axis=1)
+                x_d_column_names += self.cfg.autoregressive_inputs
 
             valid_samples = np.argwhere(flag == 1)
             for f in valid_samples:
@@ -554,7 +572,15 @@ class BaseDataset(Dataset):
 
             # only store data if this basin has at least one valid sample in the given period
             if valid_samples.size > 0:
-                self._x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
+                if self.cfg.forecast_inputs:
+                    if not self.cfg.hindcast_inputs:
+                        raise ValueError('Hindcast inputs must be provided if forecast inputs are provided.')
+                    hindcast_indexes = [idx for idx, variable in enumerate(x_d_column_names) if variable in self.cfg.hindcast_inputs]
+                    forecast_indexes = [idx for idx, variable in enumerate(x_d_column_names) if variable in self.cfg.forecast_inputs]
+                    self._x_h[basin] = {freq: torch.from_numpy(_x_d[:, hindcast_indexes].astype(np.float32)) for freq, _x_d in x_d.items()}
+                    self._x_f[basin] = {freq: torch.from_numpy(_x_d[:, forecast_indexes].astype(np.float32)) for freq, _x_d in x_d.items()}
+                else:
+                    self._x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
                 self._y[basin] = {freq: torch.from_numpy(_y.astype(np.float32)) for freq, _y in y.items()}
                 if x_s:
                     self._x_s[basin] = {freq: torch.from_numpy(_x_s.astype(np.float32)) for freq, _x_s in x_s.items()}
