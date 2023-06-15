@@ -699,6 +699,10 @@ class Config(object):
         return self._get_value_verbose("test_start_date")
 
     @property
+    def timestep_counter(self) -> bool:
+        return self._cfg.get("timestep_counter", False)
+        
+    @property
     def train_basin_file(self) -> Path:
         return self._get_value_verbose("train_basin_file")
 

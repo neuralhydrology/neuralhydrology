@@ -554,6 +554,12 @@ Data settings
    basin-one-hot encoding as a(n) (additional) static feature vector for
    each sample.
 
+   ``timestep_counter``: True/False. If True, creates a sequence of counting integers
+   over the forecast sequence length as a dynamic input. This input is used to signal
+   forecast lead time for an unrolling forecast. A similar dynamic input of constant
+   zeros is added to the hindcast inputs. If a forecast model is not used then setting
+   ``timestep_counter`` to True will return an error.
+
 -  ``static_attributes``: Which static attributes to use (e.g., from the static camels attributes for the CAMELS
    dataset). Leave empty if none should be used. For hydroatlas attributes, use ``hydroatlas_attributes`` instead.
    Names must match the exact names as defined in the data set.

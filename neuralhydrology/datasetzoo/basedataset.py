@@ -82,6 +82,18 @@ class BaseDataset(Dataset):
             if cfg.use_basin_id_encoding and not id_to_int:
                 raise ValueError("For basin id embedding, the id_to_int dictionary has to be passed anything but train")
 
+        if self.cfg.timestep_counter:
+            if not self.cfg.forecast_inputs:
+                raise ValueError('Timestep counter only works for forecast data.')
+            if cfg.forecast_overlap:
+                overlap_zeros = torch.zeros((cfg.forecast_overlap, 1))
+                forecast_counter = torch.Tensor(range(1, cfg.forecast_seq_length - cfg.forecast_overlap + 1)).unsqueeze(-1)
+                self.forecast_counter = torch.concatenate([overlap_zeros, forecast_counter], dim=0)
+                self.hindcast_counter = torch.zeros((cfg.seq_length - cfg.forecast_seq_length + cfg.forecast_overlap, 1))
+            else:
+                self.forecast_counter = torch.Tensor(range(1, cfg.forecast_seq_length + 1)).unsqueeze(-1)
+                self.hindcast_counter = torch.zeros((cfg.seq_length - cfg.forecast_seq_length, 1))
+            
         if basin is None:
             self.basins = utils.load_basin_file(getattr(cfg, f"{period}_basin_file"))
         else:
@@ -171,6 +183,13 @@ class BaseDataset(Dataset):
                 static_inputs.append(self._x_s[basin][freq][idx])
             if static_inputs:
                 sample[f'x_s{freq_suffix}'] = torch.cat(static_inputs, dim=-1)
+
+            if self.cfg.timestep_counter:
+                if self._x_d:
+                    torch.concatenate([sample[f'x_d{freq_suffix}'], self.hindcast_counter], dim=-1)
+                else:
+                    torch.concatenate([sample[f'x_h{freq_suffix}'], self.hindcast_counter], dim=-1)
+                    torch.concatenate([sample[f'x_f{freq_suffix}'], self.forecast_counter], dim=-1)
 
         if self._per_basin_target_stds:
             sample['per_basin_target_stds'] = self._per_basin_target_stds[basin]
