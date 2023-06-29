@@ -264,6 +264,36 @@ These are used if ``model == mclstm``.
    over time. Currently, the MC-LSTM configuration implemented here only supports a single mass input. Make sure to
    exclude this feature from the default normalization (see :ref:`MC-LSTM <MC-LSTM>` description).
 
+Handoff Forecast Model settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  ``forecast_hidden_size``: Integer hidden size for the forecast (decoder) LSTM. This will default to ``hidden_size``.
+
+-  ``hindcast_hidden_size``: Integer hidden size for the hindcast (encoder) LSTM. This will default to ``hidden_size``.
+
+-  ``state_handoff_network``: Embedding network that defines the handoff of the cell state and hidden state from the 
+   hindcast LSTM to the forecast LSTM.
+
+-  ``forecast_overlap``: An integer number of timesteps where forecast
+   data overlaps with hindcast data. This does not add to the
+   ``forecast_sequence_length``, and must be no larger than the
+   ``forecast_sequence_length``.
+
+Multihead Forecast Model settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  ``forecast_network``: Fully coupled network with one or multiple layers (this is an Embedding Network type, see documentation herein)
+   that defines the forecast (decoder) portion of the multi-head (non-rollout) forecast model.
+
+Stacked Forecast Model settings
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+-  ``bidirectional_stacked_forecast_lstm``: Whether or not the hindcast LSTM in a stacked forecast model should be bidirectional.
+
+-  ``forecast_hidden_size``: Integer hidden size for the forecast (decoder) LSTM. This will default to ``hidden_size``.
+
+-  ``hindcast_hidden_size``: Integer hidden size for the hindcast (encoder) LSTM. This will default to ``hidden_size``.
+
 Embedding network settings
 --------------------------
 
@@ -311,8 +341,11 @@ Training settings
 
 -  ``regularization``: List of strings or 2-tuples with regularization terms and corresponding weights.
    If no weights are specified, they default to 1.
-   Currently supported is ``tie_frequencies``, which couples the predictions of
-   all frequencies via an MSE term. New regularizations can be added
+   Currently, two reqularizations are supported:
+   (1) ``tie_frequencies``, which couples the predictions of
+   all frequencies via an MSE term, and (2) ``forecast_overlap``, which
+   couples overlapping sequences between hindcast and forecast models.
+   New regularizations can be added
    :py:mod:`here <neuralhydrology.training.regularization>`.
 
 -  ``learning_rate``: Learning rate. Can be either a single number (for
@@ -351,7 +384,8 @@ Training settings
 -  ``forecast_overlap``: An integer number of timesteps where forecast
    data overlaps with hindcast data. This does not add to the
    ``forecast_sequence_length``, and must be no larger than the
-   ``forecast_sequence_length``.
+   ``forecast_sequence_length``. This is used for 
+   ``ForecastOverlapMSERegularization`` in the ``handoff_forecast_model``.
 
 -  ``predict_last_n``: Defines which time steps are used to calculate
    the loss, counted backwards. Can't be larger than ``seq_length``.
@@ -452,7 +486,7 @@ Data settings
          1H:
            - total_precipitation_nldas_hourly
 
--   ``forecast_inputs``: These are dynamic features (exactly like ``dyncamic_inputs``)
+-  ``forecast_inputs``: These are dynamic features (exactly like ``dyncamic_inputs``)
    that are used as inputs to the forecasting portion of a forecast model. This allows
    different features to be used for the forecast and hindcast portions of a model.
    If ``forecast_inputs`` is present, then all features in this list must also appear
@@ -466,7 +500,7 @@ Data settings
    Note also that forecasting (and forecast inputs) is not supported for multi-timescale
    models.
 
--   ``hindcast_inputs``: These are the same as ``forecast_inputs`` except that they are for
+-  ``hindcast_inputs``: These are the same as ``forecast_inputs`` except that they are for
    the hindcast portion of a forecast model. As with ``forecast_inputs`` these dynamic inputs
    must be included in the ``dynamic_inputs`` list.
 

@@ -256,6 +256,10 @@ class Config(object):
         return self._get_value_verbose("batch_size")
 
     @property
+    def bidirectional_stacked_forecast_lstm(self) -> bool:
+        return self._cfg.get("bidirectional_stacked_forecast_lstm", False)
+
+    @property
     def cache_validation_data(self) -> bool:
         return self._cfg.get("cache_validation_data", True)
 
@@ -317,7 +321,7 @@ class Config(object):
         return self._get_value_verbose("dynamic_inputs")
 
     @property
-    def dynamics_embedding(self) -> bool:
+    def dynamics_embedding(self) -> dict:
         embedding_spec = self._cfg.get("dynamics_embedding", None)
 
         if embedding_spec is None:
@@ -358,6 +362,18 @@ class Config(object):
             raise ValueError(f"Unknown data type {type(finetune_modules)} for 'finetune_modules' argument.")
 
     @property
+    def forecast_network(self) -> dict:
+        embedding_spec = self._cfg.get("forecast_network", None)
+
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
+
+    @property
+    def forecast_hidden_size(self) -> int:
+        return self._cfg.get("forecast_hidden_size", self.hidden_size)
+
+    @property
     def forecast_inputs(self) -> List[str]:
         return self._cfg.get("forecast_inputs", [])
 
@@ -378,6 +394,14 @@ class Config(object):
         return self._cfg.get('save_git_diff', False)
 
     @property
+    def state_handoff_network(self) -> dict:
+        embedding_spec = self._cfg.get("state_handoff_network", None)
+
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
+
+    @property
     def head(self) -> str:
         if self.model == "mclstm":
             return ''
@@ -391,6 +415,10 @@ class Config(object):
     @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("hidden_size")
+
+    @property
+    def hindcast_hidden_size(self) -> Union[int, Dict[str, int]]:
+        return self._cfg.get("hindcast_hidden_size", self.hidden_size)
 
     @property
     def hydroatlas_attributes(self) -> List[str]:
@@ -650,7 +678,7 @@ class Config(object):
             return []
 
     @property
-    def statics_embedding(self) -> bool:
+    def statics_embedding(self) -> dict:
         embedding_spec = self._cfg.get("statics_embedding", None)
 
         if embedding_spec is None:
