@@ -198,6 +198,14 @@ class Config(object):
             else:
                 pass
 
+        # Check forecast sequence length.
+        if cfg.get('forecast_seq_length'):
+            if cfg['forecast_seq_length'] >= cfg['seq_length']:
+                raise ValueError('Forecast sequence length must be < sequence length.')
+            if cfg.get('forecast_overlap'):
+                if cfg['forecast_overlap'] > cfg['forecast_seq_length']:
+                    raise ValueError('Forecast overlap must be <= forecast_seq_length.')
+
         # Check autoregressive inputs.
         if 'autoregressive_inputs' in cfg:
             if len(cfg['autoregressive_inputs']) > 1:
@@ -246,6 +254,10 @@ class Config(object):
     @property
     def batch_size(self) -> int:
         return self._get_value_verbose("batch_size")
+
+    @property
+    def bidirectional_stacked_forecast_lstm(self) -> bool:
+        return self._cfg.get("bidirectional_stacked_forecast_lstm", False)
 
     @property
     def cache_validation_data(self) -> bool:
@@ -309,7 +321,7 @@ class Config(object):
         return self._get_value_verbose("dynamic_inputs")
 
     @property
-    def dynamics_embedding(self) -> bool:
+    def dynamics_embedding(self) -> dict:
         embedding_spec = self._cfg.get("dynamics_embedding", None)
 
         if embedding_spec is None:
@@ -350,12 +362,44 @@ class Config(object):
             raise ValueError(f"Unknown data type {type(finetune_modules)} for 'finetune_modules' argument.")
 
     @property
+    def forecast_network(self) -> dict:
+        embedding_spec = self._cfg.get("forecast_network", None)
+
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
+
+    @property
+    def forecast_hidden_size(self) -> int:
+        return self._cfg.get("forecast_hidden_size", self.hidden_size)
+
+    @property
+    def forecast_inputs(self) -> List[str]:
+        return self._cfg.get("forecast_inputs", [])
+
+    @property
+    def forecast_overlap(self) -> int:
+        return self._cfg.get("forecast_overlap", None)
+
+    @property
+    def forecast_seq_length(self) -> int:
+        return self._cfg.get("forecast_seq_length", None)
+
+    @property
     def forcings(self) -> List[str]:
         return self._as_default_list(self._get_value_verbose("forcings"))
 
     @property
     def save_git_diff(self) -> bool:
         return self._cfg.get('save_git_diff', False)
+
+    @property
+    def state_handoff_network(self) -> dict:
+        embedding_spec = self._cfg.get("state_handoff_network", None)
+
+        if embedding_spec is None:
+            return None
+        return self._get_embedding_spec(embedding_spec)
 
     @property
     def head(self) -> str:
@@ -365,8 +409,16 @@ class Config(object):
             return self._get_value_verbose("head")
 
     @property
+    def hindcast_inputs(self) -> List[str]:
+        return self._cfg.get("hindcast_inputs", [])
+
+    @property
     def hidden_size(self) -> Union[int, Dict[str, int]]:
         return self._get_value_verbose("hidden_size")
+
+    @property
+    def hindcast_hidden_size(self) -> Union[int, Dict[str, int]]:
+        return self._cfg.get("hindcast_hidden_size", self.hidden_size)
 
     @property
     def hydroatlas_attributes(self) -> List[str]:
@@ -560,6 +612,10 @@ class Config(object):
         return self._cfg.get("save_train_data", False)
 
     @property
+    def save_all_output(self) -> bool:
+        return self._cfg.get('save_all_output', False)
+
+    @property
     def save_validation_results(self) -> bool:
         return self._cfg.get("save_validation_results", False)
 
@@ -622,7 +678,7 @@ class Config(object):
             return []
 
     @property
-    def statics_embedding(self) -> bool:
+    def statics_embedding(self) -> dict:
         embedding_spec = self._cfg.get("statics_embedding", None)
 
         if embedding_spec is None:
@@ -670,6 +726,10 @@ class Config(object):
     def test_start_date(self) -> pd.Timestamp:
         return self._get_value_verbose("test_start_date")
 
+    @property
+    def timestep_counter(self) -> bool:
+        return self._cfg.get("timestep_counter", False)
+        
     @property
     def train_basin_file(self) -> Path:
         return self._get_value_verbose("train_basin_file")

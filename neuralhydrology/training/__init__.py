@@ -97,6 +97,8 @@ def get_regularization_obj(cfg: Config) -> List[regularization.BaseRegularizatio
             reg_name, reg_weight = reg_item
         if reg_name == "tie_frequencies":
             regularization_modules.append(regularization.TiedFrequencyMSERegularization(cfg=cfg, weight=reg_weight))
+        elif reg_name == "forecast_overlap":
+            regularization_modules.append(regularization.ForecastOverlapMSERegularization(cfg=cfg, weight=reg_weight))
         else:
             raise NotImplementedError(f"{reg_name} not implemented or not linked in `get_regularization_obj()`.")
 

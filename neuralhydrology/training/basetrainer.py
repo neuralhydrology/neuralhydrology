@@ -50,6 +50,7 @@ class BaseTrainer(object):
         self._target_std = None
         self._scaler = {}
         self._allow_subsequent_nan_losses = cfg.allow_subsequent_nan_losses
+        self._disable_pbar = cfg.verbose == 0
 
         # load train basin list and add number of basins to the config
         self.basins = load_basin_file(cfg.train_basin_file)
@@ -221,6 +222,7 @@ class BaseTrainer(object):
             if (self.validator is not None) and (epoch % self.cfg.validate_every == 0):
                 self.validator.evaluate(epoch=epoch,
                                         save_results=self.cfg.save_validation_results,
+                                        save_all_output=self.cfg.save_all_output,
                                         metrics=self.cfg.metrics,
                                         model=self.model,
                                         experiment_logger=self.experiment_logger.valid())
@@ -273,7 +275,7 @@ class BaseTrainer(object):
         self.experiment_logger.train()
 
         # process bar handle
-        pbar = tqdm(self.loader, file=sys.stdout)
+        pbar = tqdm(self.loader, file=sys.stdout, disable=self._disable_pbar)
         pbar.set_description(f'# Epoch {epoch}')
 
         # Iterate in batches over training set

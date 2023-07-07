@@ -64,7 +64,9 @@ def calculate_all_signatures(da: DataArray, prcp: DataArray, datetime_coord: str
     return results
 
 
-def calculate_signatures(da: DataArray, signatures: List[str], datetime_coord: str = None,
+def calculate_signatures(da: DataArray,
+                         signatures: List[str],
+                         datetime_coord: str = None,
                          prcp: DataArray = None) -> Dict[str, float]:
     """Calculate the specified signatures with default values.
 
@@ -599,8 +601,8 @@ def slope_fdc(da: DataArray, lower_quantile: float = 0.33, upper_quantile: float
     idx_lower = np.round(lower_quantile * len(fdc)).astype(int)
     idx_upper = np.round(upper_quantile * len(fdc)).astype(int)
 
-    value = (np.log(fdc[idx_lower].values +
-                    1e-8)) - np.log(fdc[idx_upper].values + 1e-8) / (upper_quantile - lower_quantile)
+    value = (np.log(fdc[idx_lower].values + 1e-8) - np.log(fdc[idx_upper].values + 1e-8)) / (upper_quantile -
+                                                                                             lower_quantile)
 
     return value
 

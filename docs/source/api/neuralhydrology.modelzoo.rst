@@ -17,10 +17,14 @@ nh.modelzoo
    neuralhydrology.modelzoo.embcudalstm
    neuralhydrology.modelzoo.fc
    neuralhydrology.modelzoo.gru
+   neuralhydrology.modelzoo.handoff_forecast_lstm
    neuralhydrology.modelzoo.head
    neuralhydrology.modelzoo.inputlayer
    neuralhydrology.modelzoo.mclstm
+   neuralhydrology.modelzoo.multihead_forecast_lstm
    neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
+   neuralhydrology.modelzoo.sequential_forecast_lstm
+   neuralhydrology.modelzoo.stacked_forecast_lstm
    neuralhydrology.modelzoo.template
    neuralhydrology.modelzoo.transformer

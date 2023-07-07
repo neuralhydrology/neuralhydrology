@@ -142,9 +142,17 @@ class _SamplingSetup():
 
         dropout_modules = [model.dropout.p]
 
-        # Multi-Timescale models don't have an embedding_net
+        # Certain models don't have embedding_net(s)
         implied_statics_embedding, implied_dynamics_embedding = None, None
-        if cfg.model.lower() not in ['mtslstm', 'odelstm']:
+        if hasattr(model, 'forecast_embedding_net'):
+            implied_forecast_statics_embedding = model.forecast_embedding_net.statics_embedding_p_dropout
+            implied_forecast_dynamics_embedding = model.forecast_embedding_net.dynamics_embedding_p_dropout
+            dropout_modules += [implied_forecast_statics_embedding, implied_forecast_dynamics_embedding]
+        if hasattr(model, 'hindcast_embedding_net'):
+            implied_hindcast_statics_embedding = model.hindcast_embedding_net.statics_embedding_p_dropout
+            implied_hindcast_dynamics_embedding = model.hindcast_embedding_net.dynamics_embedding_p_dropout
+            dropout_modules += [implied_hindcast_statics_embedding, implied_hindcast_dynamics_embedding]
+        if hasattr(model, 'embedding_net'):
             implied_statics_embedding = model.embedding_net.statics_embedding_p_dropout
             implied_dynamics_embedding = model.embedding_net.dynamics_embedding_p_dropout
             dropout_modules += [implied_statics_embedding, implied_dynamics_embedding]
@@ -162,6 +170,10 @@ class _SamplingSetup():
                                   - model: {cfg.output_dropout}
                                   - statics_embedding: {implied_statics_embedding}
                                   - dynamics_embedding: {implied_dynamics_embedding}
+                                  - statics_forecast_embedding: {implied_forecast_statics_embedding}
+                                  - dynamics_forecast_embedding: {implied_forecast_dynamics_embedding}
+                                  - statics_hindcast_embedding: {implied_hindcast_statics_embedding}
+                                  - dynamics_hindcast_embedding: {implied_hindcast_dynamics_embedding}
                                   - transformer: {implied_transformer_dropout}""")
         # check upper bound dropout:
         if cfg.mc_dropout and max_implied_dropout >= 1.0:
@@ -170,6 +182,10 @@ class _SamplingSetup():
                                   - model: {cfg.output_dropout}
                                   - statics_embedding: {implied_statics_embedding}
                                   - dynamics_embedding: {implied_dynamics_embedding}
+                                  - statics_forecast_embedding: {implied_forecast_statics_embedding}
+                                  - dynamics_forecast_embedding: {implied_forecast_dynamics_embedding}
+                                  - statics_hindcast_embedding: {implied_hindcast_statics_embedding}
+                                  - dynamics_hindcast_embedding: {implied_hindcast_dynamics_embedding}
                                   - transformer: {implied_transformer_dropout}""")
 
         # assign setup properties:

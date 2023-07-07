@@ -9,6 +9,7 @@ from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
 
+_EMBEDDING_TYPES = ['full_model', 'hindcast', 'forecast']
 
 class InputLayer(nn.Module):
     """Input layer to preprocess static and dynamic inputs.
@@ -33,16 +34,29 @@ class InputLayer(nn.Module):
         The run configuration
     """
 
-    def __init__(self, cfg: Config):
+    def __init__(self, cfg: Config, embedding_type: str = 'full_model'):
         super(InputLayer, self).__init__()
 
-        if isinstance(cfg.dynamic_inputs, dict):
-            frequencies = list(cfg.dynamic_inputs.keys())
+        if embedding_type not in _EMBEDDING_TYPES:
+            raise ValueError(
+                f'Embedding type {embedding_type} is not recognized. '
+                f'Must be one of: {_EMBEDDING_TYPES}.'
+            )
+        self.embedding_type = embedding_type
+        if embedding_type == 'full_model':
+            dynamic_inputs = cfg.dynamic_inputs
+        elif embedding_type == 'forecast':
+            dynamic_inputs = cfg.forecast_inputs
+        elif embedding_type == 'hindcast':
+            dynamic_inputs = cfg.hindcast_inputs
+            
+        if isinstance(dynamic_inputs, dict):
+            frequencies = list(dynamic_inputs.keys())
             if len(frequencies) > 1:
                 raise ValueError('InputLayer only supports single-frequency data')
-            dynamics_input_size = len(cfg.dynamic_inputs[frequencies[0]])
+            dynamics_input_size = len(dynamic_inputs[frequencies[0]])
         else:
-            dynamics_input_size = len(cfg.dynamic_inputs)
+            dynamics_input_size = len(dynamic_inputs)
 
         self._num_autoregression_inputs = 0
         if cfg.autoregressive_inputs:
@@ -129,7 +143,13 @@ class InputLayer(nn.Module):
             inputs and one tensor of static inputs.
         """
         # transpose to [seq_length, batch_size, n_features]
-        x_d = data['x_d'].transpose(0, 1)
+        if self.embedding_type == 'full_model':
+            data_type = 'x_d'
+        elif self.embedding_type == 'forecast':
+            data_type = 'x_f'
+        elif self.embedding_type == 'hindcast':
+            data_type = 'x_h'
+        x_d = data[data_type].transpose(0, 1)
 
         if 'x_s' in data and 'x_one_hot' in data:
             x_s = torch.cat([data['x_s'], data['x_one_hot']], dim=-1)
