@@ -50,6 +50,7 @@ class BaseTrainer(object):
         self._target_std = None
         self._scaler = {}
         self._allow_subsequent_nan_losses = cfg.allow_subsequent_nan_losses
+        self._disable_pbar = cfg.verbose == 0
 
         # load train basin list and add number of basins to the config
         self.basins = load_basin_file(cfg.train_basin_file)
@@ -274,7 +275,7 @@ class BaseTrainer(object):
         self.experiment_logger.train()
 
         # process bar handle
-        pbar = tqdm(self.loader, file=sys.stdout)
+        pbar = tqdm(self.loader, file=sys.stdout, disable=self._disable_pbar)
         pbar.set_description(f'# Epoch {epoch}')
 
         # Iterate in batches over training set
