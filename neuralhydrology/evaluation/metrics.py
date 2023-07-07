@@ -722,7 +722,7 @@ def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float
         Observed time series.
     sim : DataArray
         Simulated time series.
-        
+
     Returns
     -------
     float
