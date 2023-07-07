@@ -111,3 +111,45 @@ class TiedFrequencyMSERegularization(BaseRegularization):
             loss = loss + torch.mean((lower_freq_pred - mean_freq_pred)**2)
 
         return loss
+
+class ForecastOverlapMSERegularization(BaseRegularization):
+    """Squared error regularization for penalizing differences between hindcast and forecast models.
+
+    Parameters
+    ----------
+    cfg : Config
+        The run configuration.
+    """
+
+    def forward(self, prediction: Dict[str, torch.Tensor], ground_truth: Dict[str, torch.Tensor],
+                *args) -> torch.Tensor:
+        """Calculate the squared difference between hindcast and forecast model during overlap.
+
+        Does not work with multi-frequency models.
+
+        Parameters
+        ----------
+        prediction : Dict[str, torch.Tensor]
+            Dictionary containing ``y_hindcast_overlap}`` and ``y_forecast_overlap``.
+        ground_truth : Dict[str, torch.Tensor]
+            Dictionary continaing ``y_{frequency}`` for !one! frequency.
+
+        Returns
+        -------
+        torch.Tensor
+            The sum of mean squared deviations between overlapping portions of hindcast and forecast models.
+
+        Raises
+        ------
+        ValueError if y_hindcast_overlap or y_forecast_overlap is not present in model output.
+        """
+        loss = 0
+        if 'y_hindcast_overlap' not in prediction or not prediction['y_hindcast_overlap']:
+            raise ValueError('y_hindcast_overlap is not present in the model output.')
+        if 'y_forecast_overlap' not in prediction or not prediction['y_forecast_overlap']:
+            raise ValueError('y_forecast_overlap is not present in the model output.')
+        for key in prediction['y_hindcast_overlap']:
+            hindcast = prediction['y_hindcast_overlap'][key]
+            forecast = prediction['y_forecast_overlap'][key]
+            loss += torch.mean((hindcast - forecast)**2)
+        return loss
