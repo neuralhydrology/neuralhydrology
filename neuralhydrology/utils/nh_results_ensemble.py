@@ -14,7 +14,7 @@ from tqdm import tqdm
 sys.path.append(str(Path(__file__).parent.parent.parent))
 from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
-from neuralhydrology.evaluation.tester import BaseTester
+from neuralhydrology.evaluation.utils import metrics_to_dataframe
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError
 
@@ -113,8 +113,9 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
             mask[:-len(ensemble_xr.coords['time_step'])] = False
             freq_date_range = freq_date_range[np.tile(mask, len(ensemble_xr.coords['date']))]
 
-            ensemble_xr = ensemble_xr.isel(time_step=slice(-frequency_factor, None)).stack(
-                datetime=['date', 'time_step'])
+            ensemble_xr = ensemble_xr.isel(time_step=slice(-frequency_factor, None)) \
+                .stack(datetime=['date', 'time_step']) \
+                .drop_vars({'datetime', 'date', 'time_step'})
             ensemble_xr['datetime'] = freq_date_range
             for target_var in target_vars:
                 # average predictions
@@ -145,8 +146,11 @@ def _create_ensemble(results_files: List[Path], frequencies: List[str], config: 
                 # add variable identifier to metrics if needed
                 if len(target_vars) > 1:
                     ensemble_metrics = {f'{target_var}_{key}': val for key, val in ensemble_metrics.items()}
+                # add frequency identifier to metrics if needed
+                if len(frequencies) > 1:
+                    ensemble_metrics = {f'{key}_{freq}': val for key, val in ensemble_metrics.items()}
                 for metric, val in ensemble_metrics.items():
-                    ensemble[basin][freq][f'{metric}_{freq}'] = val
+                    ensemble[basin][freq][metric] = val
 
             ensemble[basin][freq]['xr'] = ensemble_xr
 
@@ -159,9 +163,7 @@ def _get_medians(results: dict, metric='NSE') -> dict:
     key = metric
     frequencies = list(results[list(results.keys())[0]].keys())
     for freq in frequencies:
-        # if the one freq was resampled, there still is a freq suffix
-        if len(frequencies) > 1 or (len(frequencies) == 1 and
-                                    f'{metric}_{freq}' in results[list(results.keys())[0]][freq]):
+        if len(frequencies) > 1:
             key = f'{metric}_{freq}'
         metric_values = [v[freq][key] for v in results.values() if freq in v.keys() and key in v[freq].keys()]
         medians[freq] = np.nanmedian(metric_values)
@@ -217,21 +219,25 @@ def _main():
                         help='If provided, will return results of this specific epoch otherwise of the last epoch')
     args = vars(parser.parse_args())
 
-    ensemble_results = create_results_ensemble([Path(f) for f in args['run_dirs']],
+    run_dirs = [Path(f) for f in args['run_dirs']]
+    ensemble_results = create_results_ensemble(run_dirs,
                                                args['best_k'],
                                                metrics=args['metrics'],
                                                period=args['period'],
                                                epoch=args['epoch'])
     output_dir = Path(args['output_dir']).absolute()
 
+    metrics = args['metrics']
+    if metrics is None:
+        metrics = Config(run_dirs[0] / 'config.yml').metrics
     try:
-        df = BaseTester.metrics_to_dataframe(ensemble_results)
+        df = metrics_to_dataframe(ensemble_results, metrics)
         file_name = output_dir / f"{args['period']}_ensemble_metrics.csv"
         df.to_csv(file_name)
         print(f"Stored metrics of ensemble run to {file_name}")
     except RuntimeError as err:
         # in case no metrics were computed
-        pass                                               
+        pass
 
     file_name = output_dir / f"{args['period']}_ensemble_results.p"
     pickle.dump(ensemble_results, open(file_name, 'wb'))
