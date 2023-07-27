@@ -9,7 +9,6 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import numpy as np
 import pandas as pd
-from pandas.tseries.frequencies import to_offset
 import torch
 import xarray
 from torch.utils.data import DataLoader
@@ -20,7 +19,7 @@ from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
-from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding
+from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding, metrics_to_dataframe
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training import get_loss_obj, get_regularization_obj
@@ -214,7 +213,8 @@ class BaseTester(object):
 
             loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=0, collate_fn=ds.collate_fn)
 
-            y_hat, y, dates, all_losses, all_output[basin] = self._evaluate(model, loader, ds.frequencies, save_all_output)
+            y_hat, y, dates, all_losses, all_output[basin] = self._evaluate(model, loader, ds.frequencies,
+                                                                            save_all_output)
 
             # log loss of this basin plus number of samples in the logger to compute epoch aggregates later
             if experiment_logger is not None:
@@ -346,11 +346,7 @@ class BaseTester(object):
         if save_all_output:
             states_to_save = all_output
         if save_results or save_all_output:
-            self._save_results(
-                results=results_to_save, 
-                states=states_to_save,
-                epoch=epoch
-            )
+            self._save_results(results=results_to_save, states=states_to_save, epoch=epoch)
 
         return results
 
@@ -390,7 +386,7 @@ class BaseTester(object):
 
         # save metrics any time this funciton is called, as long as they exist
         if self.cfg.metrics:
-            df = self._metrics_to_dataframe(results)
+            df = metrics_to_dataframe(results, self.cfg.metrics)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
             LOGGER.info(f"Stored metrics at {metrics_file}")
@@ -408,35 +404,6 @@ class BaseTester(object):
             with result_file.open("wb") as fp:
                 pickle.dump(states, fp)
             LOGGER.info(f"Stored states at {result_file}")
-
-
-    def _metrics_to_dataframe(self, results: dict) -> pd.DataFrame:
-        """Extract all metric values from result dictionary and convert to pandas.DataFrame
-
-        Parameters
-        ----------
-        results: dict
-            Dictionary, containing the results of the model evaluation as returned by the `Tester.evaluate()`.
-
-        Returns
-        -------
-        A basin indexed DataFrame with one column per metric. In case of multi-frequency runs, the metric names contain
-        the corresponding frequency as a suffix.
-        """
-        metrics_dict = defaultdict(dict)
-        for basin, basin_data in results.items():
-            for freq_results in basin_data.values():
-                for metric in self.cfg.metrics:
-                    if metric in freq_results.keys():
-                        metrics_dict[basin][metric] = freq_results[metric]
-                    else:
-                        # in case the current period has no valid samples, the result dict has no metric-key
-                        metrics_dict[basin][metric] = np.nan
-
-        df = pd.DataFrame.from_dict(metrics_dict, orient="index")
-        df.index.name = "basin"
-
-        return df
 
     def _evaluate(self, model: BaseModel, loader: DataLoader, frequencies: List[str], save_all_output: bool = False):
         """Evaluate model"""
@@ -458,9 +425,13 @@ class BaseTester(object):
                 if all_output:
                     for key, value in predictions.items():
                         if value is not None and type(value) != dict:
-                            all_output[key].append(value.detach().cpu().numpy()) 
+                            all_output[key].append(value.detach().cpu().numpy())
                 elif save_all_output:
-                    all_output = {key: [value.detach().cpu().numpy()] for key, value in predictions.items() if value is not None and type(value) != dict}
+                    all_output = {
+                        key: [value.detach().cpu().numpy()]
+                        for key, value in predictions.items()
+                        if value is not None and type(value) != dict
+                    }
 
                 for freq in frequencies:
                     if predict_last_n[freq] == 0:
@@ -488,7 +459,7 @@ class BaseTester(object):
         # concatenate all output variables (currently a dict-of-dicts) into a single-level dict
         for key, list_of_data in all_output.items():
             all_output[key] = np.concatenate(list_of_data, 0)
-            
+
         # set to NaN explicitly if all losses are NaN to avoid RuntimeWarning
         mean_losses = {}
         if len(losses) == 0:
@@ -497,7 +468,7 @@ class BaseTester(object):
             for loss_name in losses[0].keys():
                 loss_values = [loss[loss_name] for loss in losses]
                 mean_losses[loss_name] = np.nanmean(loss_values) if not np.all(np.isnan(loss_values)) else np.nan
-        
+
         return preds, obs, dates, mean_losses, all_output
 
     def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:
@@ -599,4 +570,3 @@ class UncertaintyTester(BaseTester):
 
     def _get_plots(self, qobs: np.ndarray, qsim: np.ndarray, title: str):
         return plots.uncertainty_plot(qobs, qsim, title)
-

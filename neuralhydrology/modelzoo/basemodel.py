@@ -1,8 +1,9 @@
-from typing import Dict, Optional, Callable
+from typing import Dict
 
 import torch
 import torch.nn as nn
 
+from neuralhydrology.evaluation.utils import load_scaler
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.samplingutils import sample_pointpredictions, umal_extend_batch
 
@@ -53,7 +54,8 @@ class BaseModel(nn.Module):
         Dict[str, torch.Tensor]
             Sampled point predictions 
         """
-        return sample_pointpredictions(self, data, n_samples)
+        scaler = load_scaler(self.cfg.run_dir)
+        return sample_pointpredictions(self, data, n_samples, scaler)
 
     def forward(self, data: Dict[str, torch.Tensor]) -> Dict[str, torch.Tensor]:
         """Perform a forward pass.
@@ -69,7 +71,7 @@ class BaseModel(nn.Module):
             Model output and potentially any intermediate states and activations as a dictionary.
         """
         raise NotImplementedError
-    
+
     def pre_model_hook(self, data: Dict[str, torch.Tensor], is_train: bool) -> Dict[str, torch.Tensor]:
         """A function to execute before the model in training, validaton and test. 
         The beahvior can be adapted depending on the run configuration and the provided arguments.
@@ -90,6 +92,6 @@ class BaseModel(nn.Module):
             data = umal_extend_batch(data, self.cfg, n_taus=self.cfg.n_taus, extend_y=True)
         else:
             # here one can implement additional pre model hooks
-            pass 
+            pass
 
         return data
