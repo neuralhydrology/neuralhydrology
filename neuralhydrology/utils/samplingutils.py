@@ -349,7 +349,7 @@ def sample_gmm(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
                 values = _sample_gaussian_mixtures(np.ones(s_sub.shape, dtype=bool), m_sub, s_sub, p_sub)
                 values = _handle_negative_values(
                     setup.cfg, values, sample_values=lambda ids: _sample_gaussian_mixtures(ids, m_sub, s_sub, p_sub))
-                values = values.view(-1, frequency_last_n, n_samples)
+                values = values.view(-1, n_samples, frequency_last_n).permute(0, 2, 1)
 
                 sample_points[mask_nan, :, nth_target, :] = values.detach().cpu()
 
@@ -449,7 +449,7 @@ def sample_cmal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
                         sample_values=lambda ids: _sample_asymmetric_laplacians(ids, m_sub, b_sub, t_sub))
 
             # add the values to the sample_points:
-            values = values.reshape(-1, frequency_last_n, n_samples)
+            values = values.permute(1, 0).reshape(frequency_last_n, -1, n_samples).permute(1, 0, 2)
             values = values.detach().cpu()
             sample_points.append(values)
 
