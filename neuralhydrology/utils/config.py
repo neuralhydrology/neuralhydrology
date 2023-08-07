@@ -1,7 +1,7 @@
 import warnings
 from collections import OrderedDict
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from ruamel.yaml import YAML
@@ -496,6 +496,10 @@ class Config(object):
         return self._as_default_list(self._cfg.get("mass_inputs", []))
 
     @property
+    def max_updates_per_epoch(self) -> Optional[int]:
+        return self._cfg.get("max_updates_per_epoch")
+
+    @property
     def mc_dropout(self) -> bool:
         return self._cfg.get("mc_dropout", False)
 
@@ -729,7 +733,7 @@ class Config(object):
     @property
     def timestep_counter(self) -> bool:
         return self._cfg.get("timestep_counter", False)
-        
+
     @property
     def train_basin_file(self) -> Path:
         return self._get_value_verbose("train_basin_file")
