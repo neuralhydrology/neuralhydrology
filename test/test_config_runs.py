@@ -1,6 +1,5 @@
 """Integration tests that perform full runs. """
 import pickle
-from datetime import datetime
 from pathlib import Path
 from typing import Dict, Tuple, Callable
 
@@ -161,7 +160,7 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
     daily_results = results['1D']['xr']
     assert (results['1D']['xr']['time_step'].values == [0]).all()
     assert pd.to_datetime(daily_results['date'].values[0]) == test_start_date
-    assert pd.to_datetime(daily_results['date'].values[-1]) == test_end_date.date()
+    assert pd.to_datetime(daily_results['date'].values[-1]) == test_end_date.floor('D')
     assert len(daily_results['qobs_mm_per_hour_obs']) == len(discharge) // 24
 
     assert len(discharge) == len(hourly_results)
@@ -213,8 +212,8 @@ def _check_results(config: Config, basin: str, discharge: pd.Series = None):
 
     results = _get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
 
-    assert pd.to_datetime(results['date'].values[0]) == test_start_date.date()
-    assert pd.to_datetime(results['date'].values[-1]) == test_end_date.date()
+    assert pd.to_datetime(results['date'].values[0]) == test_start_date.floor('D')
+    assert pd.to_datetime(results['date'].values[-1]) == test_end_date.floor('D')
 
     if discharge is None:
         discharge = _get_discharge(config, basin)
@@ -226,7 +225,7 @@ def _check_results(config: Config, basin: str, discharge: pd.Series = None):
     assert not pd.isna(results[f'{config.target_variables[0]}_sim']).any()
 
 
-def _get_test_start_end_dates(config: Config) -> Tuple[datetime, datetime]:
+def _get_test_start_end_dates(config: Config) -> Tuple[pd.Timestamp, pd.Timestamp]:
     test_start_date = pd.to_datetime(config.test_start_date, format='%d/%m/%Y')
     test_end_date = pd.to_datetime(config.test_end_date, format='%d/%m/%Y') + pd.Timedelta(days=1, seconds=-1)
 
