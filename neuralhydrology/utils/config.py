@@ -1,7 +1,10 @@
+import random
+import re
 import warnings
 from collections import OrderedDict
+from datetime import datetime
 from pathlib import Path
-from typing import Dict, List, Tuple, Union, Any
+from typing import Any, Dict, List, Optional, Tuple, Union
 
 import pandas as pd
 from ruamel.yaml import YAML
@@ -47,6 +50,32 @@ class Config(object):
 
         if not (self._cfg.get('dev_mode', False) or dev_mode):
             Config._check_cfg_keys(self._cfg)
+
+        # Adjust experiment name
+        if "experiment_name" in self._cfg and self._cfg["experiment_name"]:
+            # 1. Replace curly-bracketed entries
+            new_name = self._cfg["experiment_name"]
+            for key, val in self._cfg.items():
+                if key.endswith('_date'):
+                    if isinstance(val, list):
+                        date_string = '_'.join(elem.strftime('%Y-%m-%d') for elem in val)
+                    else:
+                        date_string = val.strftime('%Y-%m-%d')
+                    new_name = re.sub(f'{{{key}}}', date_string, new_name)
+            new_name = re.sub('{random_name}', create_random_name(), new_name)
+            try:
+                new_name = new_name.format(**self._cfg)
+            except KeyError as ex:
+                raise KeyError(f'Experiment name is {self._cfg["experiment_name"]} ' +
+                               f'but {{{ex}}} was not found in config.') from ex
+            # 2. Remove curly brackets and make sure experiment name can be used as folder in Linux and Windows
+            new_name = re.sub('{', "(", new_name)
+            new_name = re.sub('}', ")", new_name)
+            new_name = re.sub('"', "'", new_name)
+            new_name = re.sub('[<>:"/\\\\|?*]', "_", new_name)
+            new_name = re.sub(' ', '', new_name)
+
+            self._cfg["experiment_name"] = new_name
 
     def as_dict(self) -> dict:
         """Return run configuration as dictionary.
@@ -226,7 +255,6 @@ class Config(object):
                 cfg = yaml.load(fp)
         else:
             raise FileNotFoundError(yml_path)
-
         cfg = Config._parse_config(cfg)
 
         return cfg
@@ -496,6 +524,10 @@ class Config(object):
         return self._as_default_list(self._cfg.get("mass_inputs", []))
 
     @property
+    def max_updates_per_epoch(self) -> Optional[int]:
+        return self._cfg.get("max_updates_per_epoch")
+
+    @property
     def mc_dropout(self) -> bool:
         return self._cfg.get("mc_dropout", False)
 
@@ -729,7 +761,7 @@ class Config(object):
     @property
     def timestep_counter(self) -> bool:
         return self._cfg.get("timestep_counter", False)
-        
+
     @property
     def train_basin_file(self) -> Path:
         return self._get_value_verbose("train_basin_file")
@@ -835,3 +867,13 @@ class Config(object):
             'activation': embedding_spec.get('activation', 'tanh'),
             'dropout': embedding_spec.get('dropout', 0.0)
         }
+
+
+def create_random_name():
+    adjectives = ('white', 'black', 'green', 'golden', 'modern', 'lazy', 'great', 'meandering', 'nervous', 'demanding',
+                  'relaxed', 'dashing', 'clever', 'brave', 'charming')
+    nouns = ('mississippi', 'amazon', 'nile', 'yangtze', 'yellow', 'congo', 'mekong', 'otter', 'frog', 'trout',
+             'beaver', 'eel', 'catfish', 'salmon')
+
+    rng = random.Random(datetime.now().timestamp())  # use system time as random seed
+    return rng.choice(adjectives) + '-' + rng.choice(nouns)

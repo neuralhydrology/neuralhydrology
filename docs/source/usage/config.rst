@@ -9,7 +9,12 @@ General experiment configurations
 
 -  ``experiment_name``: Defines the name of your experiment that will be
    used as a folder name (+ date-time string), as well as the name in
-   TensorBoard.
+   TensorBoard. Curly brackets insert other configuration arguments into the 
+   experiment name. For example, the argument ``experiment_name: batch-size-is-{batch_size}`` 
+   will yield ``batch-size-is-42`` if the ``batch_size`` argument is set to
+   *42*. Furthermore, the special expression ``{random_name}`` (in the
+   experiment name) provides a randomly named string (e.g., ``yellow-frog``) 
+   that can make experimental runs easier to recognize. 
 
 -  ``run_dir``: Full or relative path to where the run directory is
    stored (if empty runs are stored in ${current\_working\_dir}/runs/)
@@ -356,7 +361,10 @@ Training settings
 
 -  ``batch_size``: Mini-batch size used for training.
 
--  ``epochs``: Number of training epochs
+-  ``epochs``: Number of training epochs.
+
+-  ``max_updates_per_epoch``: Maximum number of weight updates per training epoch.
+   Leave unspecified to go through all data in every epoch.
 
 -  ``use_frequencies``: Defines the time step frequencies to use (daily,
    hourly, ...). Use `pandas frequency
