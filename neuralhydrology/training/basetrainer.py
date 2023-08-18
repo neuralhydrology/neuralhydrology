@@ -51,6 +51,7 @@ class BaseTrainer(object):
         self._scaler = {}
         self._allow_subsequent_nan_losses = cfg.allow_subsequent_nan_losses
         self._disable_pbar = cfg.verbose == 0
+        self._max_updates_per_epoch = cfg.max_updates_per_epoch
 
         # load train basin list and add number of basins to the config
         self.basins = load_basin_file(cfg.train_basin_file)
@@ -275,12 +276,15 @@ class BaseTrainer(object):
         self.experiment_logger.train()
 
         # process bar handle
-        pbar = tqdm(self.loader, file=sys.stdout, disable=self._disable_pbar)
+        n_iter = min(self._max_updates_per_epoch, len(self.loader)) if self._max_updates_per_epoch is not None else None
+        pbar = tqdm(self.loader, file=sys.stdout, disable=self._disable_pbar, total=n_iter)
         pbar.set_description(f'# Epoch {epoch}')
 
         # Iterate in batches over training set
         nan_count = 0
-        for data in pbar:
+        for i, data in enumerate(pbar):
+            if self._max_updates_per_epoch is not None and i >= self._max_updates_per_epoch:
+                break
 
             for key in data.keys():
                 if not key.startswith('date'):
@@ -383,4 +387,3 @@ class BaseTrainer(object):
         if self.cfg.log_n_figures is not None:
             self.cfg.img_log_dir = self.cfg.run_dir / "img_log"
             self.cfg.img_log_dir.mkdir(parents=True)
-

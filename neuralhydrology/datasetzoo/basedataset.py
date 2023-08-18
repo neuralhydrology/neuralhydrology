@@ -431,7 +431,7 @@ class BaseDataset(Dataset):
 
                 filtered_duplicates = []
                 for _, grp in df_duplicated.groupby('date'):
-                    mask = ~grp[self.cfg.target_variables].isna().any(1)
+                    mask = ~grp[self.cfg.target_variables].isna().any(axis=1)
                     if not mask.any():
                         # In case all duplicates have a NaN value for the targets, pick the first. This can happen, if
                         # the day itself has a missing observation.
