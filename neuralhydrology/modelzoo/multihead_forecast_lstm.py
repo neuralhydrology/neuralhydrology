@@ -32,7 +32,7 @@ class MultiHeadForecastLSTM(BaseModel):
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
     module_parts = [
-        'forecast_mebedding_net'
+        'forecast_mebedding_net',
         'hindcast_embedding_net',
         'hindcast_lstm',
         'forecast_network',
