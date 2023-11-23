@@ -10,6 +10,5 @@ nh.datautils
    :maxdepth: 4
 
    neuralhydrology.datautils.climateindices
-   neuralhydrology.datautils.dischargeinput
    neuralhydrology.datautils.pet
    neuralhydrology.datautils.utils

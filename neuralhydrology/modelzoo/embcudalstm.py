@@ -4,7 +4,7 @@ from typing import Dict
 
 import torch
 
-from neuralhydrology.modelzoo import CudaLSTM
+from neuralhydrology.modelzoo.cudalstm import CudaLSTM
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.utils.config import Config
 
