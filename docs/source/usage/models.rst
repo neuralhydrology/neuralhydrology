@@ -99,6 +99,32 @@ All features (``x_d``, ``x_s``, ``x_one_hot``) are concatenated and passed to th
 If ``statics/dynamics_embedding`` are used, the static/dynamic inputs will be passed through embedding networks before
 being concatenated.
 
+Hybrid-Model
+^^^^^^^^^^^^
+:py:class:`neuralhydrology.modelzoo.hybridmodel.HybridModel` is a wrapper class to combine data-driven methods with
+conceptual hydrological models. Specifically, an LSTM network is used to produce a dynamic parameterization for a
+conceptual hydrological model. The inputs for the model are split into two groups: i) the inputs going into the LSTM
+``dynamic_inputs``, ``static_attributes``, etc. and ii) the inputs going into the conceptual model ```dynamic_conceptual_inputs``. If the features
+used in the data-driven part are also used into the conceptual model, one should use the ``duplicate_features``
+configuration argument. One also has to add the input features of the conceptual model and the target variable into
+``custom_normalization``, due to the mass-conservative structure of the conceptual part.
+
+.. code-block:: yaml
+
+    dynamic_inputs:
+        prcp(mm/day)
+    duplicate_features:
+        prcp(mm/day)
+    dynamic_conceptual_inputs:
+        prcp(mm/day)_copy1
+    custom_normalization:
+        prcp(mm/day)_copy1:
+            centering: None
+            scaling: None
+        QObs(mm/d):
+            centering: None
+            scaling: None
+
 .. _MC-LSTM:
 
 MC-LSTM

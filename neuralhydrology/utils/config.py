@@ -345,6 +345,14 @@ class Config(object):
             raise RuntimeError(f"Unsupported type {type(duplicate_features)} for 'duplicate_features' argument.")
 
     @property
+    def dynamic_conceptual_inputs(self) -> List[str]:
+        return self._as_default_list(self._cfg.get("dynamic_conceptual_inputs", []))
+
+    @property
+    def warmup_period(self) -> int:
+        return self._cfg.get("warmup_period", 0)
+
+    @property
     def dynamic_inputs(self) -> Union[List[str], Dict[str, List[str]]]:
         return self._get_value_verbose("dynamic_inputs")
 
@@ -542,6 +550,10 @@ class Config(object):
     @property
     def model(self) -> str:
         return self._get_value_verbose("model")
+
+    @property
+    def conceptual_model(self) -> str:
+        return self._cfg.get("conceptual_model", "SHM")
 
     @property
     def n_distributions(self) -> int:
