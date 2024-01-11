@@ -312,6 +312,14 @@ class Config(object):
         return self._as_default_dict(self._cfg.get("custom_normalization", {}))
 
     @property
+    def d_conv(self) -> dict:
+        return self._as_default_dict(self._cfg.get("d_conv", {}))
+
+    @property
+    def d_state(self) -> dict:
+        return self._as_default_dict(self._cfg.get("d_state", {}))
+
+    @property
     def data_dir(self) -> Path:
         return self._get_value_verbose("data_dir")
 
@@ -369,6 +377,10 @@ class Config(object):
             return self._as_default_list(self._cfg["static_inputs"])
         else:
             return []
+
+    @property
+    def expand(self) -> dict:
+        return self._as_default_dict(self._cfg.get("expand", {}))
 
     @property
     def experiment_name(self) -> str:
