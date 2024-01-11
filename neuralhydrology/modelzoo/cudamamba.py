@@ -11,15 +11,15 @@ from neuralhydrology.utils.config import Config
 
 
 class CudaMamba(BaseModel):
-    """LSTM model class, which relies on PyTorch's CUDA LSTM class.
+    """Mamba model class, which relies on https://github.com/state-spaces/mamba/tree/main.
 
-    This class implements the standard LSTM combined with a model head, as specified in the config. Depending on the
+    This class implements the Mamba model combined with a model head, as specified in the config. Depending on the
     embedding settings, static and/or dynamic features may or may not be fed through embedding networks before being
-    concatenated and passed through the LSTM.
+    concatenated and passed through the Mamba layer.
     To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set
     this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
     the gradient flow.
-    The `CudaLSTM` class only supports single-timescale predictions. Use `MTSLSTM` to train a model and get
+    The `CudaMamba` class only supports single-timescale predictions. Use `???` to train a model and get
     predictions on multiple temporal resolutions at the same time.
 
     Parameters
@@ -28,7 +28,7 @@ class CudaMamba(BaseModel):
         The run configuration.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-    module_parts = ['embedding_net', 'lstm', 'head']
+    module_parts = ['embedding_net', 'mamba', 'head']
 
     def __init__(self, cfg: Config):
         super(CudaMamba, self).__init__(cfg=cfg)
