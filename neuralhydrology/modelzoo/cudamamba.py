@@ -64,8 +64,11 @@ class CudaMamba(BaseModel):
         """
         # possibly pass dynamic and static inputs through embedding layers, then concatenate them
         x_d = self.embedding_net(data)
-        y_hat = self.mamba(x_d)
-        pred = {'y_hat': y_hat}
-        pred.update(self.head(self.dropout(y_hat)))
+        mamba_output = self.mamba(x_d)
 
+        # reshape to [batch_size, seq, n_hiddens]
+        mamba_output = mamba_output.transpose(0, 1)
+
+        pred = {'y_hat': mamba_output}
+        pred.update(self.head(self.dropout(mamba_output)))
         return pred
