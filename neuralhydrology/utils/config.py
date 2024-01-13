@@ -313,11 +313,11 @@ class Config(object):
 
     @property
     def d_conv(self) -> dict:
-        return self._as_default_dict(self._cfg.get("d_conv", {}))
+        return self._cfg.get("d_conv", 4)
 
     @property
     def d_state(self) -> dict:
-        return self._as_default_dict(self._cfg.get("d_state", {}))
+        return self._cfg.get("d_state", 16)
 
     @property
     def data_dir(self) -> Path:
@@ -380,7 +380,7 @@ class Config(object):
 
     @property
     def expand(self) -> dict:
-        return self._as_default_dict(self._cfg.get("expand", {}))
+        return self._cfg.get("expand", 2)
 
     @property
     def experiment_name(self) -> str:
