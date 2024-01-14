@@ -64,7 +64,13 @@ class CudaMamba(BaseModel):
         """
         # possibly pass dynamic and static inputs through embedding layers, then concatenate them
         x_d = self.embedding_net(data)
+
+        # mamba expects:
+        # hidden_states: (B, L, D)
+        # batch, seqlen, dim = hidden_states.shape
+        x_d = x_d.transpose(1, 2)
         mamba_output = self.mamba(x_d)
+        mamba_output = mamba_output.transpose(1, 2)
 
         # reshape to [batch_size, seq, n_hiddens]
         mamba_output = mamba_output.transpose(0, 1)
