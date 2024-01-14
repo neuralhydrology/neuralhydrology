@@ -28,12 +28,14 @@ class CudaMamba(BaseModel):
         The run configuration.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-    module_parts = ['embedding_net', 'mamba', 'head']
+    module_parts = ['embedding_net', 'transition_layer', 'mamba', 'head']
 
     def __init__(self, cfg: Config):
         super(CudaMamba, self).__init__(cfg=cfg)
 
         self.embedding_net = InputLayer(cfg)
+
+        self.transition_layer = nn.Linear(self.embedding_net.output_size, self.cfg.hidden_size)
 
         self.mamba = Mamba(
             d_model=self.cfg.hidden_size,
@@ -68,9 +70,10 @@ class CudaMamba(BaseModel):
         # mamba expects:
         # hidden_states: (B, L, D)
         # batch, seqlen, dim = hidden_states.shape
-        x_d = x_d.transpose(1, 2)
-        mamba_output = self.mamba(x_d)
-        mamba_output = mamba_output.transpose(1, 2)
+        # using a linear layer to move from the emdedded_layer state
+        # to the hidden size as this can't be done in Mamba
+        x_d_transition = self.transition_layer(x_d)
+        mamba_output = self.mamba(x_d_transition)
 
         # reshape to [batch_size, seq, n_hiddens]
         mamba_output = mamba_output.transpose(0, 1)
