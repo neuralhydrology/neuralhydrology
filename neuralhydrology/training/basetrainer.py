@@ -14,10 +14,9 @@ from tqdm import tqdm
 import neuralhydrology.training.loss as loss
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import load_basin_file
+from neuralhydrology.datautils.utils import load_basin_file, load_scaler
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
-from neuralhydrology.evaluation.utils import load_scaler
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
 from neuralhydrology.training.logger import Logger
