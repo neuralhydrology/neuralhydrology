@@ -385,7 +385,7 @@ class BaseTester(object):
         parent_directory.mkdir(parents=True, exist_ok=True)
 
         # save metrics any time this function is called, as long as they exist
-        if self.cfg.metrics:
+        if self.cfg.metrics and results is not None:
             df = metrics_to_dataframe(results, self.cfg.metrics)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
