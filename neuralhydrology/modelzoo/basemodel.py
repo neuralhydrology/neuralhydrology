@@ -3,7 +3,7 @@ from typing import Dict
 import torch
 import torch.nn as nn
 
-from neuralhydrology.evaluation.utils import load_scaler
+from neuralhydrology.datautils.utils import load_scaler
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.samplingutils import sample_pointpredictions, umal_extend_batch
 

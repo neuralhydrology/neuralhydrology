@@ -364,7 +364,7 @@ def sample_gmm(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
                 p_sub = torch.repeat_interleave(p_target[mask_nan, :, :], n_samples, dim=0)
 
                 # sample values, handle negatives and add to sample points:
-                values = _sample_gaussian_mixtures(np.ones(s_sub.shape, dtype=bool), m_sub, s_sub, p_sub)
+                values = _sample_gaussian_mixtures(torch.ones(s_sub.shape, dtype=bool), m_sub, s_sub, p_sub)
                 values = _handle_negative_values(
                     setup.cfg,
                     values,
@@ -466,7 +466,7 @@ def sample_cmal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
                     m_sub = m_target[mask_nan, nth_timestep, :].gather(1, sub_choices)
                     b_sub = b_target[mask_nan, nth_timestep, :].gather(1, sub_choices)
 
-                    ids = np.ones(b_sub.shape, dtype=bool)
+                    ids = torch.ones(b_sub.shape, dtype=bool)
                     values_unbound = _sample_asymmetric_laplacians(ids, m_sub, b_sub, t_sub)
                     values[mask_nan, nth_timestep] = _handle_negative_values(
                         setup.cfg,
@@ -573,7 +573,7 @@ def sample_umal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
                     b_sub = b_target[mask_nan, :, sub_choice]
                     t_sub = t_target[mask_nan, :, sub_choice]
 
-                    ids = np.ones(b_sub.shape, dtype=bool)
+                    ids = torch.ones(b_sub.shape, dtype=bool)
                     values_unbound = _sample_asymmetric_laplacians(ids, m_sub, b_sub, t_sub)
                     values = _handle_negative_values(
                         setup.cfg,
