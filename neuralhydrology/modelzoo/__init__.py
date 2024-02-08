@@ -8,6 +8,7 @@ from neuralhydrology.modelzoo.customlstm import CustomLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
 from neuralhydrology.modelzoo.handoff_forecast_lstm import HandoffForecastLSTM
+from neuralhydrology.modelzoo.hybridmodel import HybridModel
 from neuralhydrology.modelzoo.gru import GRU
 from neuralhydrology.modelzoo.mclstm import MCLSTM
 from neuralhydrology.modelzoo.mtslstm import MTSLSTM
@@ -90,6 +91,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = SequentialForecastLSTM(cfg=cfg)
     elif cfg.model.lower() == "stacked_forecast_lstm":
         model = StackedForecastLSTM(cfg=cfg)
+    elif cfg.model.lower() == "hybrid_model":
+        model = HybridModel(cfg=cfg)
     else:
         raise NotImplementedError(f"{cfg.model} not implemented or not linked in `get_model()`")
 

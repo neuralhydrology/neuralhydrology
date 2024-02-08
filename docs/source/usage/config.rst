@@ -269,6 +269,20 @@ These are used if ``model == mclstm``.
    over time. Currently, the MC-LSTM configuration implemented here only supports a single mass input. Make sure to
    exclude this feature from the default normalization (see :ref:`MC-LSTM <MC-LSTM>` description).
 
+Hybrid-Model settings
+~~~~~~~~~~~~~~~~~~~~~
+
+These are used if ``model == hybrid_model``.
+
+- ``conceptual_model``: Name of the hydrological conceptual model that is used together with a data-driven method to
+  create the hybrid model e.g., [``SHM``].
+
+-  ``dynamic_conceptual_inputs``: List of features that are used as input in the conceptual part of the hybrid
+   model.
+
+-  ``warmup_period``: Number of time steps (e.g. days) before the information produced by the data-driven part is used
+   in the conceptual model.
+
 Handoff Forecast Model settings
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 

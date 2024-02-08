@@ -118,6 +118,7 @@ class BaseDataset(Dataset):
 
         # initialize class attributes that are filled in the data loading functions
         self._x_d = {}
+        self._x_d_c = {}  # dynamic inputs of conceptual model
         self._x_h = {}
         self._x_f = {}
         self._x_s = {}
@@ -162,6 +163,8 @@ class BaseDataset(Dataset):
             global_end_idx = idx + 1
             if self._x_d:
                 sample[f'x_d{freq_suffix}'] = self._x_d[basin][freq][hindcast_start_idx:global_end_idx]
+                if self._x_d_c:
+                    sample[f'x_d_c{freq_suffix}'] = self._x_d_c[basin][freq][hindcast_start_idx:global_end_idx]
             elif self._x_h:
                 hindcast_end_idx = idx + 1 - self.cfg.forecast_seq_length
                 forecast_start_idx = idx + 1 - self.cfg.forecast_seq_length
@@ -320,8 +323,11 @@ class BaseDataset(Dataset):
             else:
                 # keep all frequencies' dynamic inputs
                 keep_cols += [i for inputs in self.cfg.dynamic_inputs.values() for i in inputs]
-            # make sure that even inputs that are used in multiple frequencies occur only once in the df
 
+            # Keep the dynamic_conceptual_inputs
+            keep_cols += self.cfg.dynamic_conceptual_inputs
+
+            # make sure that even inputs that are used in multiple frequencies occur only once in the df
             keep_cols = list(sorted(set(keep_cols)))
 
             if not self._disable_pbar:
@@ -542,6 +548,9 @@ class BaseDataset(Dataset):
                 else:
                     dynamic_cols = self.cfg.mass_inputs + self.cfg.dynamic_inputs[freq]
 
+                # add the dynamic_conceptual columns
+                dynamic_cols += self.cfg.dynamic_conceptual_inputs
+
                 df_resampled = df_native[dynamic_cols + self.cfg.target_variables + self.cfg.evolving_attributes +
                                          self.cfg.autoregressive_inputs].resample(freq).mean()
 
@@ -609,6 +618,11 @@ class BaseDataset(Dataset):
                     forecast_indexes = [idx for idx, variable in enumerate(x_d_column_names) if variable in self.cfg.forecast_inputs]
                     self._x_h[basin] = {freq: torch.from_numpy(_x_d[:, hindcast_indexes].astype(np.float32)) for freq, _x_d in x_d.items()}
                     self._x_f[basin] = {freq: torch.from_numpy(_x_d[:, forecast_indexes].astype(np.float32)) for freq, _x_d in x_d.items()}
+                elif self.cfg.dynamic_conceptual_inputs:
+                    conceptual_indexes = [idx for idx, variable in enumerate(x_d_column_names) if variable in self.cfg.dynamic_inputs]
+                    dynamic_conceptual_indexes = [idx for idx, variable in enumerate(x_d_column_names) if variable in self.cfg.dynamic_conceptual_inputs]
+                    self._x_d[basin] = {freq: torch.from_numpy(_x_d[:, conceptual_indexes].astype(np.float32)) for freq, _x_d in x_d.items()}
+                    self._x_d_c[basin] = {freq: torch.from_numpy(_x_d[:, dynamic_conceptual_indexes].astype(np.float32)) for freq, _x_d in x_d.items()}
                 else:
                     self._x_d[basin] = {freq: torch.from_numpy(_x_d.astype(np.float32)) for freq, _x_d in x_d.items()}
                 self._y[basin] = {freq: torch.from_numpy(_y.astype(np.float32)) for freq, _y in y.items()}

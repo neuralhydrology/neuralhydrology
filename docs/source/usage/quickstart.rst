@@ -54,7 +54,7 @@ Next, we'll go to that directory and install a local, editable copy of the packa
     pip install -e .
 
 The installation procedure (both the editable and the non-editable version) adds the package to your Python environment and installs three bash scripts:
-`nh-run`, `nh-run-scheduler` and `nh-results-ensemble`. For details, see below.
+`nh-run`, `nh-schedule-runs` and `nh-results-ensemble`. For details, see below.
 
 Data
 ----
@@ -70,10 +70,10 @@ To train a model, prepare a configuration file, then run::
 
     nh-run train --config-file /path/to/config.yml
 
-If you want to train multiple models, you can make use of the ``nh-run-scheduler`` command.
+If you want to train multiple models, you can make use of the ``nh-schedule-runs`` command.
 Place all configs in a folder, then run::
 
-    nh-run-scheduler train --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
+    nh-schedule-runs train --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
 
 With X, you can specify how many models should be trained on parallel on a single GPU.
 With Y, you can specify which GPUs to use for training (use the id as specified in ``nvidia-smi``).
@@ -90,7 +90,7 @@ the weights of the last epoch are used.
 
 To evaluate all runs in a specific directory you can, similarly to training, run::
 
-    nh-run-scheduler evaluate --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
+    nh-schedule-runs evaluate --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
 
 
 To merge the predictons of a number of runs (stored in ``$DIR1``, ...) into one averaged ensemble,

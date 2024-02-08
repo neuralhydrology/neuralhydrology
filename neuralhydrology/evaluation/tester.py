@@ -16,10 +16,10 @@ from tqdm import tqdm
 
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, load_scaler, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
-from neuralhydrology.evaluation.utils import load_scaler, load_basin_id_encoding, metrics_to_dataframe
+from neuralhydrology.evaluation.utils import load_basin_id_encoding, metrics_to_dataframe
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training import get_loss_obj, get_regularization_obj
@@ -385,7 +385,7 @@ class BaseTester(object):
         parent_directory.mkdir(parents=True, exist_ok=True)
 
         # save metrics any time this function is called, as long as they exist
-        if self.cfg.metrics:
+        if self.cfg.metrics and results is not None:
             df = metrics_to_dataframe(results, self.cfg.metrics)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
