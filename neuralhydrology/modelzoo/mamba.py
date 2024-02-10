@@ -1,6 +1,11 @@
 from typing import Dict
 
-from mamba_ssm import Mamba
+try:
+    from mamba_ssm import Mamba as Mamba_SSM
+except ModuleNotFoundError:
+    raise ModuleNotFoundError(
+        f"mamba_ssm and dependencies required. Please run: pip install mamba_ssm causal-conv1d>=1.1.0"
+    )
 import torch
 import torch.nn as nn
 
@@ -10,17 +15,16 @@ from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.utils.config import Config
 
 
-class CudaMamba(BaseModel):
+class Mamba(BaseModel):
     """Mamba model class, which relies on https://github.com/state-spaces/mamba/tree/main.
 
-    This class implements the Mamba model combined with a model head, as specified in the config. Depending on the
-    embedding settings, static and/or dynamic features may or may not be fed through embedding networks before being
-    concatenated and passed through the Mamba layer.
+    This class implements the Mamba SSM with a combined model head, as specified in the config file, and a transition
+    layer to ensure the input dimensions match the mamba_ssm specifications. Please read the mamba
+    documentation to better learn about required hyperparameters.
+
     To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set
     this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
     the gradient flow.
-    The `CudaMamba` class only supports single-timescale predictions. Use `???` to train a model and get
-    predictions on multiple temporal resolutions at the same time.
 
     Parameters
     ----------
@@ -31,17 +35,18 @@ class CudaMamba(BaseModel):
     module_parts = ['embedding_net', 'transition_layer', 'mamba', 'head']
 
     def __init__(self, cfg: Config):
-        super(CudaMamba, self).__init__(cfg=cfg)
+        super(Mamba, self).__init__(cfg=cfg)
 
         self.embedding_net = InputLayer(cfg)
 
+        # using a linear layer to move from the emdedded_layer dims to the specified hidden size
         self.transition_layer = nn.Linear(self.embedding_net.output_size, self.cfg.hidden_size)
 
-        self.mamba = Mamba(
+        self.mamba = Mamba_SSM(
             d_model=self.cfg.hidden_size,
-            d_state=self.cfg.d_state,
-            d_conv=self.cfg.d_conv,
-            expand=self.cfg.expand,
+            d_state=self.cfg.mamba_d_state,
+            d_conv=self.cfg.mamba_d_conv,
+            expand=self.cfg.mamba_expand,
         )
 
         self.dropout = nn.Dropout(p=cfg.output_dropout)
@@ -67,12 +72,9 @@ class CudaMamba(BaseModel):
         # possibly pass dynamic and static inputs through embedding layers, then concatenate them
         x_d = self.embedding_net(data)
 
-        # mamba expects:
-        # hidden_states: (B, L, D)
-        # batch, seqlen, dim = hidden_states.shape
-        # using a linear layer to move from the emdedded_layer state
-        # to the hidden size as this can't be done in Mamba
+        # reshaping dimensions to what mamba expects:
         x_d_transition = self.transition_layer(x_d)
+
         mamba_output = self.mamba(x_d_transition)
 
         # reshape to [batch_size, seq, n_hiddens]

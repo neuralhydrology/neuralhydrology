@@ -312,14 +312,6 @@ class Config(object):
         return self._as_default_dict(self._cfg.get("custom_normalization", {}))
 
     @property
-    def d_conv(self) -> dict:
-        return self._cfg.get("d_conv", 4)
-
-    @property
-    def d_state(self) -> dict:
-        return self._cfg.get("d_state", 16)
-
-    @property
     def data_dir(self) -> Path:
         return self._get_value_verbose("data_dir")
 
@@ -377,10 +369,6 @@ class Config(object):
             return self._as_default_list(self._cfg["static_inputs"])
         else:
             return []
-
-    @property
-    def expand(self) -> dict:
-        return self._cfg.get("expand", 2)
 
     @property
     def experiment_name(self) -> str:
@@ -530,6 +518,18 @@ class Config(object):
     @loss.setter
     def loss(self, loss: str):
         self._cfg["loss"] = loss
+
+    @property
+    def mamba_d_conv(self) -> int:
+        return self._cfg.get("d_conv", 4)
+
+    @property
+    def mamba_d_state(self) -> int:
+        return self._cfg.get("d_state", 16)
+
+    @property
+    def mamba_expand(self) -> int:
+        return self._cfg.get("expand", 2)
 
     @property
     def mass_inputs(self) -> List[str]:

@@ -4,7 +4,7 @@ import torch.nn as nn
 
 from neuralhydrology.modelzoo.arlstm import ARLSTM
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
-from neuralhydrology.modelzoo.cudamamba import CudaMamba
+from neuralhydrology.modelzoo.mamba import CudaMamba
 from neuralhydrology.modelzoo.customlstm import CustomLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
@@ -63,8 +63,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = ARLSTM(cfg=cfg)
     elif cfg.model.lower() == "cudalstm":
         model = CudaLSTM(cfg=cfg)
-    elif cfg.model.lower() == "cudamamba":
-        model = CudaMamba(cfg=cfg)
+    elif cfg.model.lower() == "mamba":
+        model = Mamba(cfg=cfg)
     elif cfg.model.lower() == "ealstm":
         model = EALSTM(cfg=cfg)
     elif cfg.model.lower() == "customlstm":
