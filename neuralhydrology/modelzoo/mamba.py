@@ -4,7 +4,7 @@ try:
     from mamba_ssm import Mamba as Mamba_SSM
 except ModuleNotFoundError:
     raise ModuleNotFoundError(
-        f"mamba_ssm and dependencies required. Please run: pip install mamba_ssm causal-conv1d>=1.1.0"
+        f"mamba_ssm, and dependencies, required. Please run: pip install mamba_ssm causal-conv1d>=1.1.0"
     )
 import torch
 import torch.nn as nn
