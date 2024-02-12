@@ -3,9 +3,7 @@ from typing import Dict
 try:
     from mamba_ssm import Mamba as Mamba_SSM
 except ModuleNotFoundError:
-    raise ModuleNotFoundError(
-        f"mamba_ssm, and dependencies, required. Please run: pip install mamba_ssm causal-conv1d>=1.1.0"
-    )
+    Mamba_SSM = None
 import torch
 import torch.nn as nn
 
@@ -42,12 +40,17 @@ class Mamba(BaseModel):
         # using a linear layer to move from the emdedded_layer dims to the specified hidden size
         self.transition_layer = nn.Linear(self.embedding_net.output_size, self.cfg.hidden_size)
 
-        self.mamba = Mamba_SSM(
-            d_model=self.cfg.hidden_size,
-            d_state=self.cfg.mamba_d_state,
-            d_conv=self.cfg.mamba_d_conv,
-            expand=self.cfg.mamba_expand,
-        )
+        if Mamba_SSM is None:
+            raise ModuleNotFoundError(
+                f"mamba_ssm, and dependencies, required. Please run: pip install mamba_ssm causal-conv1d>=1.1.0"
+            )
+        else:
+            self.mamba = Mamba_SSM(
+                d_model=self.cfg.hidden_size,
+                d_state=self.cfg.mamba_d_state,
+                d_conv=self.cfg.mamba_d_conv,
+                expand=self.cfg.mamba_expand,
+            )
 
         self.dropout = nn.Dropout(p=cfg.output_dropout)
 
