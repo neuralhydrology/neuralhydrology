@@ -150,7 +150,7 @@ def attributes_sanity_check(df: pd.DataFrame):
     # Check for NaNs in standard deviation of attributes.
     attributes = []
     if any(df.std() == 0.0) or any(df.std().isnull()):
-        for k, v in df.std().iteritems():
+        for k, v in df.std().items():
             if (v == 0) or (np.isnan(v)):
                 attributes.append(k)
     if attributes:
@@ -166,7 +166,7 @@ def attributes_sanity_check(df: pd.DataFrame):
     if len(nan_df) > 0:
         failure_cases = defaultdict(list)
         for basin, row in nan_df.iterrows():
-            for feature, value in row.iteritems():
+            for feature, value in row.items():
                 if np.isnan(value):
                     failure_cases[basin].append(feature)
         # create verbose error message
