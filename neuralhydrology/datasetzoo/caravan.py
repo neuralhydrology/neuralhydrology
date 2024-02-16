@@ -195,4 +195,4 @@ def _load_attribute_files_of_subdataset(subdataset_dir: Path) -> pd.DataFrame:
     dfs = []
     for csv_file in subdataset_dir.glob("*.csv"):
         dfs.append(pd.read_csv(csv_file, index_col="gauge_id"))
-    return pd.concat(dfs, axis=1, join='inner')
+    return pd.concat(dfs, axis=1, join="inner")
