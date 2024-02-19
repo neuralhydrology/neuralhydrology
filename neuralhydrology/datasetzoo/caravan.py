@@ -67,7 +67,7 @@ class Caravan(BaseDataset):
 
     def _load_attributes(self) -> pd.DataFrame:
         """Load input and output data from text files."""
-        return load_caravan_attributes(data_dir=self.cfg.data_dir)
+        return load_caravan_attributes(data_dir=self.cfg.data_dir, basins=self.basins)
 
 
 def load_caravan_attributes(data_dir: Path,
