@@ -1,5 +1,5 @@
 Mamba
-===
+=====
 
 .. automodule:: neuralhydrology.modelzoo.mamba
    :members:
