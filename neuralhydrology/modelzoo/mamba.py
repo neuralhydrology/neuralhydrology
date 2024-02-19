@@ -20,10 +20,6 @@ class Mamba(BaseModel):
     layer to ensure the input dimensions match the mamba_ssm specifications. Please read the mamba
     documentation to better learn about required hyperparameters.
 
-    To control the initial forget gate bias, use the config argument `initial_forget_bias`. Often it is useful to set
-    this value to a positive value at the start of the model training, to keep the forget gate closed and to facilitate
-    the gradient flow.
-
     Parameters
     ----------
     cfg : Config
