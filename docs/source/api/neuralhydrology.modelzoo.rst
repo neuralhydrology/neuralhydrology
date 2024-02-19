@@ -20,6 +20,7 @@ nh.modelzoo
    neuralhydrology.modelzoo.handoff_forecast_lstm
    neuralhydrology.modelzoo.head
    neuralhydrology.modelzoo.inputlayer
+   neuralhydrology.modelzoo.mamba
    neuralhydrology.modelzoo.mclstm
    neuralhydrology.modelzoo.multihead_forecast_lstm
    neuralhydrology.modelzoo.mtslstm

@@ -127,6 +127,19 @@ configuration argument. One also has to add the input features of the conceptual
 
 .. _MC-LSTM:
 
+Mamba
+^^^^^
+:py:class:`neuralhydrology.modelzoo.mamba.Mamba` is a state space model (SSM) using the PyTorch implementation
+https://github.com/state-spaces/mamba/tree/main from `Gu and Dao (2023) <https://arxiv.org/abs/2312.00752>`_.
+
+There are two required dependencies for Mamba: ``mamba_ssm`` and ``causal-conv1d``, which are the mamba ssm layer and
+implementation of a simple causal Conv1d layer used inside the Mamba block, respectively. Note the version here: ``causal-conv1d>=1.1.0``
+
+There are three hyperparameters which can be set in the config file:
+- ``mamba_d_conv``: Local convolution width (Default is set to 4)
+- ``mamba_d_state``: SSM state expansion factor (Default is set to 16)
+- ``mamba_expand``: Block expansion factor (Default is set to 2)
+
 MC-LSTM
 ^^^^^^^
 :py:class:`neuralhydrology.modelzoo.mclstm.MCLSTM` is a concept for a mass-conserving model architecture inspired by the
