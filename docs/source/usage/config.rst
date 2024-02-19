@@ -226,7 +226,7 @@ These are used if ``model == mtslstm``.
    can be used to configure hidden and cell state transfer.
 
 Mamba settings
-~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~
 These are used if ``model == mamba``.
 
 -  ``mamba_d_conv``: Local convolution width
