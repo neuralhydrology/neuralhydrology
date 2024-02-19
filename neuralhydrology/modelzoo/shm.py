@@ -90,7 +90,7 @@ class SHM(BaseConceptualModel):
                           device=x_conceptual.device).repeat(x_conceptual.shape[0])
         si = torch.tensor(self.initial_states['si'], dtype=torch.float32,
                           device=x_conceptual.device).repeat(x_conceptual.shape[0])
-        sb = torch.tensor(self.initial_states['ss'], dtype=torch.float32,
+        sb = torch.tensor(self.initial_states['sb'], dtype=torch.float32,
                           device=x_conceptual.device).repeat(x_conceptual.shape[0])
 
         # run hydrological model for each time step
@@ -137,6 +137,7 @@ class SHM(BaseConceptualModel):
             states['ss'][:, j] = ss
             states['sf'][:, j] = sf
             states['su'][:, j] = su
+            states['si'][:, j] = si
             states['sb'][:, j] = sb
 
             # total outflow
