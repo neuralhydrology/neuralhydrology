@@ -334,7 +334,8 @@ the EA-LSTM model. For multi-timescale models, these settings can be ignored.
    - ``type`` (default 'fc'): Type of the embedding net. Currently, only 'fc' for fully-connected net is supported.
    - ``hiddens``: List of integers that define the number of neurons per layer in the fully connected network.
      The last number is the number of output neurons. Must have at least length one.
-   - ``activation`` (default 'tanh'): activation function of the network. Supported values are 'tanh', 'sigmoid', 'linear'.
+   - ``activation`` (default 'tanh'): activation function of the network. Supported values are:
+     'tanh', 'sigmoid', 'linear', and 'relu'.
      The activation function is not applied to the output neurons, which always have a linear activation function.
      An activation function for the output neurons has to be applied in the main model class.
    - ``dropout`` (default 0.0): Dropout rate applied to the embedding network.
@@ -349,7 +350,7 @@ Training settings
 -----------------
 
 -  ``optimizer``: Specify which optimizer to use. Currently supported
-   is Adam (standard). New optimizers can be added
+   are Adam (default) and AdamW. New optimizers can be added
    :py:func:`here <neuralhydrology.training.get_optimizer>`.
 
 -  ``loss``: Which loss to use. Currently supported are ``MSE``,
