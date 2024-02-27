@@ -350,7 +350,7 @@ Training settings
 -----------------
 
 -  ``optimizer``: Specify which optimizer to use. Currently supported
-   are Adam (default) and AdamW. New optimizers can be added
+   are Adam and AdamW. New optimizers can be added
    :py:func:`here <neuralhydrology.training.get_optimizer>`.
 
 -  ``loss``: Which loss to use. Currently supported are ``MSE``,
