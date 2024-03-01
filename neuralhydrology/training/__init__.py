@@ -14,7 +14,7 @@ LOGGER = logging.getLogger(__name__)
 def get_optimizer(model: torch.nn.Module, cfg: Config) -> torch.optim.Optimizer:
     """Get specific optimizer object, depending on the run configuration.
     
-    Currently only 'Adam' is supported.
+    Currently only 'Adam' and 'AdamW' are supported.
     
     Parameters
     ----------
@@ -30,6 +30,8 @@ def get_optimizer(model: torch.nn.Module, cfg: Config) -> torch.optim.Optimizer:
     """
     if cfg.optimizer.lower() == "adam":
         optimizer = torch.optim.Adam(model.parameters(), lr=cfg.learning_rate[0])
+    elif cfg.optimizer.lower() == "adamw":
+        optimizer = torch.optim.AdamW(model.parameters(), lr=cfg.learning_rate[0])
     else:
         raise NotImplementedError(f"{cfg.optimizer} not implemented or not linked in `get_optimizer()`")
 
