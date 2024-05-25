@@ -61,6 +61,7 @@ class BaseTrainer(object):
         self._epoch = self._get_start_epoch_number()
 
         self._create_folder_structure()
+        LOGGER.info(f"### RUN DIR: {self.cfg.run_dir}")
         setup_logging(str(self.cfg.run_dir / "output.log"))
         LOGGER.info(f"### Folder structure created at {self.cfg.run_dir}")
 
