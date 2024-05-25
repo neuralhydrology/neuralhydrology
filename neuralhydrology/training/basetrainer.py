@@ -62,7 +62,7 @@ class BaseTrainer(object):
 
         self._create_folder_structure()
         print(f"### RUN DIR: {self.cfg.run_dir}")
-        setup_logging(str(self.cfg.run_dir / "output.log"))
+        # setup_logging(str(self.cfg.run_dir / "output.log"))
         LOGGER.info(f"### Folder structure created at {self.cfg.run_dir}")
 
         if self.cfg.is_continue_training:
