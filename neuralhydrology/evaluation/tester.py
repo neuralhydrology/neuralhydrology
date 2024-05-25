@@ -7,6 +7,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import torch
@@ -48,7 +49,7 @@ class BaseTester(object):
         If True, the model weights will be initialized with the checkpoint from the last available epoch in `run_dir`.
     """
 
-    def __init__(self, cfg: Config, run_dir: Path, period: str = "test", init_model: bool = True):
+    def __init__(self, cfg: Config, run_dir: Union[Path, AnyPath], period: str = "test", init_model: bool = True):
         self.cfg = cfg
         self.run_dir = run_dir
         self.init_model = init_model
@@ -504,7 +505,7 @@ class RegressionTester(BaseTester):
         If True, the model weights will be initialized with the checkpoint from the last available epoch in `run_dir`.
     """
 
-    def __init__(self, cfg: Config, run_dir: Path, period: str = "test", init_model: bool = True):
+    def __init__(self, cfg: Config, run_dir: Union[Path, AnyPath], period: str = "test", init_model: bool = True):
         super(RegressionTester, self).__init__(cfg, run_dir, period, init_model)
 
     def _subset_targets(self, model: BaseModel, data: Dict[str, torch.Tensor], predictions: np.ndarray,
@@ -541,7 +542,7 @@ class UncertaintyTester(BaseTester):
         If True, the model weights will be initialized with the checkpoint from the last available epoch in `run_dir`.
     """
 
-    def __init__(self, cfg: Config, run_dir: Path, period: str = "test", init_model: bool = True):
+    def __init__(self, cfg: Config, run_dir: Union[Path, AnyPath], period: str = "test", init_model: bool = True):
         super(UncertaintyTester, self).__init__(cfg, run_dir, period, init_model)
 
     def _get_predictions_and_loss(self, model: BaseModel, data: Dict[str, torch.Tensor]) -> Tuple[torch.Tensor, float]:

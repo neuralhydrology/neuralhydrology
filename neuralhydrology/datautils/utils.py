@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, List, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
@@ -14,7 +15,7 @@ from xarray.core.dataarray import DataArray
 from xarray.core.dataset import Dataset
 
 
-def load_scaler(run_dir: Path) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
+def load_scaler(run_dir: Union[Path, AnyPath]) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
     """Load feature scaler from run directory.
 
     Checks run directory for scaler file in yaml format (new) or pickle format (old).
@@ -64,7 +65,7 @@ def load_scaler(run_dir: Path) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
                                     "Looked for (new) yaml file or (old) pickle file")
 
 
-def load_hydroatlas_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+def load_hydroatlas_attributes(data_dir: Union[Path, AnyPath], basins: List[str] = []) -> pd.DataFrame:
     """Load HydroATLAS attributes into a pandas DataFrame
 
     Parameters
@@ -95,7 +96,7 @@ def load_hydroatlas_attributes(data_dir: Path, basins: List[str] = []) -> pd.Dat
     return df
 
 
-def load_basin_file(basin_file: Path) -> List[str]:
+def load_basin_file(basin_file: Union[Path, AnyPath]) -> List[str]:
     """Load list of basins from text file.
     
     Note: Basins names are not allowed to end with '_period*'

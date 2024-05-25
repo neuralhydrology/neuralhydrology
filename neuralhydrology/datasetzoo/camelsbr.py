@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Union
 
+from cloudpathlib import AnyPath
 import pandas as pd
 import xarray
 from tqdm import tqdm
@@ -87,7 +88,7 @@ class CamelsBR(BaseDataset):
         return load_camels_br_attributes(self.cfg.data_dir, basins=self.basins)
 
 
-def load_camels_br_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
+def load_camels_br_timeseries(data_dir: Union[Path, AnyPath], basin: str) -> pd.DataFrame:
     """Load the time series data for one basin of the CAMELS-BR data set.
 
     Parameters
@@ -120,7 +121,7 @@ def load_camels_br_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
     return df
 
 
-def load_camels_br_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+def load_camels_br_attributes(data_dir: Union[Path, AnyPath], basins: List[str] = []) -> pd.DataFrame:
     """Load CAMELS-BR attributes.
 
     Parameters
@@ -137,7 +138,7 @@ def load_camels_br_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     pd.DataFrame
         Basin-indexed DataFrame, containing the attributes as columns.
     """
-    attributes_path = Path(data_dir) / '01_CAMELS_BR_attributes'
+    attributes_path = AnyPath(data_dir) / '01_CAMELS_BR_attributes'
 
     if not attributes_path.exists():
         raise RuntimeError(f"Attribute folder not found at {attributes_path}")
@@ -162,7 +163,7 @@ def load_camels_br_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     return df
 
 
-def preprocess_camels_br_dataset(data_dir: Path):
+def preprocess_camels_br_dataset(data_dir: Union[Path, AnyPath]):
     """Preprocess CAMELS-BR data set and create per-basin files for more flexible and faster data loading.
     
     This function will read-in all time series text files and create per-basin csv files containing all timeseries 

@@ -1,7 +1,9 @@
 import logging
 import pickle
 from pathlib import Path
+from typing import Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
@@ -160,7 +162,7 @@ class HourlyCamelsUS(camelsus.CamelsUS):
         return df
 
 
-def load_hourly_us_forcings(data_dir: Path, basin: str, forcings: str) -> pd.DataFrame:
+def load_hourly_us_forcings(data_dir: Union[Path, AnyPath], basin: str, forcings: str) -> pd.DataFrame:
     """Load the hourly forcing data for a basin of the CAMELS US data set.
 
     The hourly forcings are not included in the original data set by Newman et al. (2017).
@@ -195,7 +197,7 @@ def load_hourly_us_forcings(data_dir: Path, basin: str, forcings: str) -> pd.Dat
     return pd.read_csv(file_path, index_col=['date'], parse_dates=['date'])
 
 
-def load_hourly_us_discharge(data_dir: Path, basin: str) -> pd.DataFrame:
+def load_hourly_us_discharge(data_dir: Union[Path, AnyPath], basin: str) -> pd.DataFrame:
     """Load the hourly discharge data for a basin of the CAMELS US data set.
 
     Parameters
@@ -231,7 +233,7 @@ def load_hourly_us_discharge(data_dir: Path, basin: str) -> pd.DataFrame:
     return pd.read_csv(file_path, index_col=['date'], parse_dates=['date'])
 
 
-def load_hourly_us_stage(data_dir: Path, basin: str) -> pd.Series:
+def load_hourly_us_stage(data_dir: Union[Path, AnyPath], basin: str) -> pd.Series:
     """Load the hourly stage data for a basin of the CAMELS US data set.
 
     Parameters
@@ -266,7 +268,7 @@ def load_hourly_us_stage(data_dir: Path, basin: str) -> pd.Series:
     return df["gauge_height_m"]
 
 
-def load_hourly_us_netcdf(data_dir: Path, forcings: str) -> xarray.Dataset:
+def load_hourly_us_netcdf(data_dir: Union[Path, AnyPath], forcings: str) -> xarray.Dataset:
     """Load hourly forcing and discharge data from preprocessed netCDF file.
 
     Parameters

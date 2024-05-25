@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict
 
+from cloudpathlib import AnyPath
 import numpy as np
 import torch
 from torch.utils.data import DataLoader
@@ -373,7 +374,7 @@ class BaseTrainer(object):
 
             # if no directory for the runs is specified, a 'runs' folder will be created in the current working dir
             if self.cfg.run_dir is None:
-                self.cfg.run_dir = Path().cwd() / "runs" / run_name
+                self.cfg.run_dir = AnyPath().cwd() / "runs" / run_name
             else:
                 self.cfg.run_dir = self.cfg.run_dir / run_name
 

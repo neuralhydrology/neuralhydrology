@@ -3,6 +3,8 @@ import argparse
 import sys
 from pathlib import Path
 
+from cloudpathlib import AnyPath
+
 # make sure code directory is in path, even if the package is not installed using the setup.py
 sys.path.append(str(Path(__file__).parent.parent))
 from neuralhydrology.evaluation.evaluate import start_evaluation
@@ -37,23 +39,23 @@ def _get_args() -> dict:
 def _main():
     args = _get_args()
     if (args["run_dir"] is not None) and (args["mode"] == "evaluate"):
-        setup_logging(str(Path(args["run_dir"]) / "output.log"))
+        setup_logging(str(AnyPath(args["run_dir"]) / "output.log"))
 
     if args["mode"] == "train":
-        start_run(config_file=Path(args["config_file"]), gpu=args["gpu"])
+        start_run(config_file=AnyPath(args["config_file"]), gpu=args["gpu"])
     elif args["mode"] == "continue_training":
-        continue_run(run_dir=Path(args["run_dir"]),
-                     config_file=Path(args["config_file"]) if args["config_file"] is not None else None,
+        continue_run(run_dir=AnyPath(args["run_dir"]),
+                     config_file=AnyPath(args["config_file"]) if args["config_file"] is not None else None,
                      gpu=args["gpu"])
     elif args["mode"] == "finetune":
-        finetune(config_file=Path(args["config_file"]), gpu=args["gpu"])
+        finetune(config_file=AnyPath(args["config_file"]), gpu=args["gpu"])
     elif args["mode"] == "evaluate":
-        eval_run(run_dir=Path(args["run_dir"]), period=args["period"], epoch=args["epoch"], gpu=args["gpu"])
+        eval_run(run_dir=AnyPath(args["run_dir"]), period=args["period"], epoch=args["epoch"], gpu=args["gpu"])
     else:
         raise RuntimeError(f"Unknown mode {args['mode']}")
 
 
-def start_run(config_file: Path, gpu: int = None):
+def start_run(config_file: AnyPath, gpu: int = None):
     """Start training a model.
     
     Parameters
@@ -76,7 +78,7 @@ def start_run(config_file: Path, gpu: int = None):
     start_training(config)
 
 
-def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
+def continue_run(run_dir: AnyPath, config_file: AnyPath = None, gpu: int = None):
     """Continue model training.
     
     Parameters
@@ -106,7 +108,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
     start_training(base_config)
 
 
-def finetune(config_file: Path = None, gpu: int = None):
+def finetune(config_file: AnyPath = None, gpu: int = None):
     """Finetune a pre-trained model.
 
     Parameters
@@ -143,7 +145,7 @@ def finetune(config_file: Path = None, gpu: int = None):
     start_training(config)
 
 
-def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
+def eval_run(run_dir: AnyPath, period: str, epoch: int = None, gpu: int = None):
     """Start evaluating a trained model.
     
     Parameters
