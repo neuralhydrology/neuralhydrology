@@ -61,7 +61,7 @@ class BaseTrainer(object):
         self._epoch = self._get_start_epoch_number()
 
         self._create_folder_structure()
-        LOGGER.info(f"### RUN DIR: {self.cfg.run_dir}")
+        print(f"### RUN DIR: {self.cfg.run_dir}")
         setup_logging(str(self.cfg.run_dir / "output.log"))
         LOGGER.info(f"### Folder structure created at {self.cfg.run_dir}")
 
@@ -373,7 +373,7 @@ class BaseTrainer(object):
             second = f"{now.second}".zfill(2)
             run_name = f'{self.cfg.experiment_name}_{day}{month}_{hour}{minute}{second}'
 
-            LOGGER.info(f"### RUN DIR: {self.cfg.run_dir}")
+            print(f"### RUN DIR: {self.cfg.run_dir}")
 
             # if no directory for the runs is specified, a 'runs' folder will be created in the current working dir
             if self.cfg.run_dir is None:
@@ -381,7 +381,7 @@ class BaseTrainer(object):
             else:
                 self.cfg.run_dir = self.cfg.run_dir / run_name
 
-            LOGGER.info(f"### RUN DIR: {self.cfg.run_dir}")
+            print(f"### RUN DIR: {self.cfg.run_dir}")
 
         # create folder + necessary subfolder
         if not self.cfg.run_dir.is_dir():
