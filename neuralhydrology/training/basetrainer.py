@@ -372,11 +372,15 @@ class BaseTrainer(object):
             second = f"{now.second}".zfill(2)
             run_name = f'{self.cfg.experiment_name}_{day}{month}_{hour}{minute}{second}'
 
+            LOGGER.info(f"### RUN DIR: {self.cfg.run_dir}")
+
             # if no directory for the runs is specified, a 'runs' folder will be created in the current working dir
             if self.cfg.run_dir is None:
                 self.cfg.run_dir = Path().cwd() / "runs" / run_name
             else:
                 self.cfg.run_dir = self.cfg.run_dir / run_name
+
+            LOGGER.info(f"### RUN DIR: {self.cfg.run_dir}")
 
         # create folder + necessary subfolder
         if not self.cfg.run_dir.is_dir():
