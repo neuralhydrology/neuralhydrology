@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from neuralhydrology.modelzoo.arlstm import ARLSTM
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
+from neuralhydrology.modelzoo.mamba import Mamba
 from neuralhydrology.modelzoo.customlstm import CustomLSTM
 from neuralhydrology.modelzoo.ealstm import EALSTM
 from neuralhydrology.modelzoo.embcudalstm import EmbCudaLSTM
@@ -20,12 +21,13 @@ from neuralhydrology.modelzoo.transformer import Transformer
 from neuralhydrology.utils.config import Config
 
 SINGLE_FREQ_MODELS = [
-    "cudalstm", 
+    "cudalstm",
     "ealstm", 
     "customlstm", 
     "embcudalstm", 
     "gru", 
-    "transformer", 
+    "transformer",
+    "mamba",
     "mclstm", 
     "arlstm",
     "handoff_forecast_lstm",
@@ -83,6 +85,8 @@ def get_model(cfg: Config) -> nn.Module:
         model = MCLSTM(cfg=cfg)
     elif cfg.model.lower() == "transformer":
         model = Transformer(cfg=cfg)
+    elif cfg.model.lower() == "mamba":
+        model = Mamba(cfg=cfg)
     elif cfg.model.lower() == "handoff_forecast_lstm":
         model = HandoffForecastLSTM(cfg=cfg)
     elif cfg.model.lower() == "multihead_forecast_lstm":

@@ -59,6 +59,8 @@ class FC(nn.Module):
             activation = nn.Tanh()
         elif name.lower() == "sigmoid":
             activation = nn.Sigmoid()
+        elif name.lower() == "relu":
+            activation = nn.ReLU()
         elif name.lower() == "linear":
             activation = nn.Identity()
         else:
