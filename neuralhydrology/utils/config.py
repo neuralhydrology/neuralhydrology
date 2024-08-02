@@ -528,6 +528,18 @@ class Config(object):
         self._cfg["loss"] = loss
 
     @property
+    def mamba_d_conv(self) -> int:
+        return self._cfg.get("d_conv", 4)
+
+    @property
+    def mamba_d_state(self) -> int:
+        return self._cfg.get("d_state", 16)
+
+    @property
+    def mamba_expand(self) -> int:
+        return self._cfg.get("expand", 2)
+
+    @property
     def mass_inputs(self) -> List[str]:
         return self._as_default_list(self._cfg.get("mass_inputs", []))
 
