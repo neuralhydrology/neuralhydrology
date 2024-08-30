@@ -14,6 +14,18 @@ from ruamel.yaml import YAML
 from xarray.core.dataarray import DataArray
 from xarray.core.dataset import Dataset
 
+# Pandas switched from "Y" to "YE" and similar identifiers in 2.2.0. This snippet checks which one is correct for the
+# current pandas installation.
+_YE_FREQ = 'YE'
+_ME_FREQ = 'ME'
+_QE_FREQ = 'QE'
+try:
+    to_offset(_YE_FREQ)
+except ValueError:
+    _YE_FREQ = 'Y'
+    _ME_FREQ = 'M'
+    _QE_FREQ = 'Q'
+
 
 def load_scaler(run_dir: Union[Path, AnyPath]) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
     """Load feature scaler from run directory.
@@ -346,11 +358,11 @@ def get_frequency_factor(freq_one: str, freq_two: str) -> float:
         # the offset anchor is irrelevant for the ratio between the frequencies, so we remove it from the string
         name_one = re.sub(regex_month_or_day, '', one.name)
         name_two = re.sub(regex_month_or_day, '', two.name)
-        if (name_one in ['A', 'Y'] and name_two == 'M') or (name_one in ['AS', 'YS'] and name_two == 'MS'):
+        if (name_one in ['A', _YE_FREQ] and name_two == _ME_FREQ) or (name_one in ['AS', 'YS'] and name_two == 'MS'):
             factor = 12 * one.n / two.n
-        if (name_one in ['A', 'Y'] and name_two == 'Q') or (name_one in ['AS', 'YS'] and name_two == 'QS'):
+        if (name_one in ['A', _YE_FREQ] and name_two == _QE_FREQ) or (name_one in ['AS', 'YS'] and name_two == 'QS'):
             factor = 4 * one.n / two.n
-        if (name_one == 'Q' and name_two == 'M') or (name_one == 'QS' and name_two == 'MS'):
+        if (name_one == _QE_FREQ and name_two == _ME_FREQ) or (name_one == 'QS' and name_two == 'MS'):
             factor = 3 * one.n / two.n
         if name_one == 'W' and name_two == 'D':
             factor = 7 * one.n / two.n
@@ -363,7 +375,9 @@ def get_frequency_factor(freq_one: str, freq_two: str) -> float:
     # If all other checks didn't match, we try to convert the frequencies to timedeltas. However, we first need to avoid
     # two cases: (1) pd.to_timedelta currently interprets 'M' as minutes, while it means months in to_offset.
     # (2) Using 'M', 'Y', and 'y' in pd.to_timedelta is deprecated and won't work in the future, so we don't allow it.
-    if any(re.sub(regex_month_or_day, '', offset.name) in ['M', 'Y', 'A', 'y'] for offset in [offset_one, offset_two]):
+    if any(
+            re.sub(regex_month_or_day, '', offset.name) in ['M', 'Y', 'A', 'y', 'ME', 'YE']
+            for offset in [offset_one, offset_two]):
         raise ValueError(f'Frequencies {freq_one} and/or {freq_two} are not comparable.')
     try:
         factor = pd.to_timedelta(freq_one) / pd.to_timedelta(freq_two)

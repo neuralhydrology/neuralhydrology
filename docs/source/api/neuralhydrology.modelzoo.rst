@@ -10,6 +10,7 @@ nh.modelzoo
    :maxdepth: 4
 
    neuralhydrology.modelzoo.arlstm
+   neuralhydrology.modelzoo.baseconceptualmodel
    neuralhydrology.modelzoo.basemodel
    neuralhydrology.modelzoo.cudalstm
    neuralhydrology.modelzoo.customlstm
@@ -19,6 +20,7 @@ nh.modelzoo
    neuralhydrology.modelzoo.gru
    neuralhydrology.modelzoo.handoff_forecast_lstm
    neuralhydrology.modelzoo.head
+   neuralhydrology.modelzoo.hybridmodel
    neuralhydrology.modelzoo.inputlayer
    neuralhydrology.modelzoo.mamba
    neuralhydrology.modelzoo.mclstm
@@ -26,6 +28,7 @@ nh.modelzoo
    neuralhydrology.modelzoo.mtslstm
    neuralhydrology.modelzoo.odelstm
    neuralhydrology.modelzoo.sequential_forecast_lstm
+   neuralhydrology.modelzoo.shm
    neuralhydrology.modelzoo.stacked_forecast_lstm
    neuralhydrology.modelzoo.template
    neuralhydrology.modelzoo.transformer
