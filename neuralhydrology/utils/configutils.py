@@ -1,23 +1,25 @@
 """Utility script to generate config files from a base config and a defined set of variations"""
 import itertools
 from pathlib import Path
-from typing import Dict
+from typing import Dict, Union
+
+from cloudpathlib import AnyPath
 
 from neuralhydrology.utils.config import Config
 
 
-def create_config_files(base_config_path: Path, modify_dict: Dict[str, list], output_dir: Path):
+def create_config_files(base_config_path: Union[Path, AnyPath], modify_dict: Dict[str, list], output_dir: Union[Path, AnyPath]):
     """Create configs, given a base config and a dictionary of parameters to modify.
     
     This function will create one config file for each combination of parameters defined in the modify_dict.
     
     Parameters
     ----------
-    base_config_path : Path
+    base_config_path : Union[Path, AnyPath]
         Path to a base config file (.yml)
     modify_dict : dict
         Dictionary, mapping from parameter names to lists of possible parameter values.
-    output_dir : Path 
+    output_dir : Union[Path, AnyPath] 
         Path to a folder where the generated configs will be stored
     """
     if not output_dir.is_dir():

@@ -6,6 +6,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import List
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray as xr
@@ -19,7 +20,7 @@ from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError
 
 
-def create_results_ensemble(run_dirs: List[Path],
+def create_results_ensemble(run_dirs: List[Union[Path, AnyPath]],
                             best_k: int = None,
                             metrics: List[str] = None,
                             period: str = 'test',
@@ -30,7 +31,7 @@ def create_results_ensemble(run_dirs: List[Path],
     
     Parameters
     ----------
-    run_dirs : List[Path]
+    run_dirs : List[Union[Path, AnyPath]]
         List of directories of the runs to be merged
     best_k : int, optional
         If provided, will only merge the k best runs based on validation NSE.
@@ -74,7 +75,7 @@ def create_results_ensemble(run_dirs: List[Path],
     return _create_ensemble(best_runs, frequencies, config)
 
 
-def _create_ensemble(results_files: List[Path], frequencies: List[str], config: Config) -> dict:
+def _create_ensemble(results_files: List[Union[Path, AnyPath]], frequencies: List[str], config: Config) -> dict:
     """Averages the predictions of the passed runs and re-calculates metrics. """
     lowest_freq = sort_frequencies(frequencies)[0]
     ensemble_sum = defaultdict(dict)
@@ -171,7 +172,7 @@ def _get_medians(results: dict, metric='NSE') -> dict:
     return medians
 
 
-def _get_best_validation_runs(run_dirs: List[Path], k: int, epoch: int = None) -> List[Path]:
+def _get_best_validation_runs(run_dirs: List[Union[Path, AnyPath]], k: int, epoch: int = None) -> List[AnyPath]:
     """Returns the k run directories with the best median validation metrics. """
     val_files = list(zip(run_dirs, [_get_results_file(run_dir, 'validation', epoch) for run_dir in run_dirs]))
 
@@ -188,12 +189,12 @@ def _get_best_validation_runs(run_dirs: List[Path], k: int, epoch: int = None) -
     return sorted(median_sums, key=median_sums.get, reverse=True)[:k]
 
 
-def _get_results_file(run_dir: Path, period: str = 'test', epoch: int = None) -> Path:
+def _get_results_file(run_dir: Union[Path, AnyPath], period: str = 'test', epoch: int = None) -> AnyPath:
     """Returns the path of the results file in the given run directory. """
     if epoch is not None:
-        dir_results_files = list(Path(run_dir).glob(f'{period}/model_epoch{str(epoch).zfill(3)}/{period}_results.p'))
+        dir_results_files = list(AnyPath(run_dir).glob(f'{period}/model_epoch{str(epoch).zfill(3)}/{period}_results.p'))
     else:
-        dir_results_files = list(Path(run_dir).glob(f'{period}/model_epoch*/{period}_results.p'))
+        dir_results_files = list(AnyPath(run_dir).glob(f'{period}/model_epoch*/{period}_results.p'))
     if len(dir_results_files) == 0:
         raise ValueError(f'{run_dir} is missing {period} results.')
     return sorted(dir_results_files)[-1]
@@ -219,13 +220,13 @@ def _main():
                         help='If provided, will return results of this specific epoch otherwise of the last epoch')
     args = vars(parser.parse_args())
 
-    run_dirs = [Path(f) for f in args['run_dirs']]
+    run_dirs = [AnyPath(f) for f in args['run_dirs']]
     ensemble_results = create_results_ensemble(run_dirs,
                                                args['best_k'],
                                                metrics=args['metrics'],
                                                period=args['period'],
                                                epoch=args['epoch'])
-    output_dir = Path(args['output_dir']).absolute()
+    output_dir = AnyPath(args['output_dir']).absolute()
 
     metrics = args['metrics']
     if metrics is None:

@@ -6,6 +6,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple, Union
 
+from cloudpathlib import AnyPath
 import pandas as pd
 from ruamel.yaml import YAML
 
@@ -18,7 +19,7 @@ class Config(object):
 
     Parameters
     ----------
-    yml_path_or_dict : Union[Path, dict]
+    yml_path_or_dict : Union[Path, AnyPath, dict]
         Either a path to the config file or a dictionary of configuration values.
     dev_mode : bool, optional
         If dev_mode is off, the config creation will fail if there are unrecognized keys in the passed config
@@ -40,8 +41,10 @@ class Config(object):
     ]
     _metadata_keys = ['package_version', 'commit_hash']
 
-    def __init__(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
+    def __init__(self, yml_path_or_dict: Union[Path, AnyPath, dict], dev_mode: bool = False):
         if isinstance(yml_path_or_dict, Path):
+            self._cfg = Config._read_and_parse_config(yml_path=yml_path_or_dict)
+        elif isinstance(yml_path_or_dict, AnyPath):
             self._cfg = Config._read_and_parse_config(yml_path=yml_path_or_dict)
         elif isinstance(yml_path_or_dict, dict):
             self._cfg = Config._parse_config(yml_path_or_dict)
@@ -87,12 +90,12 @@ class Config(object):
         """
         return self._cfg
 
-    def dump_config(self, folder: Path, filename: str = 'config.yml'):
+    def dump_config(self, folder: Union[Path, AnyPath], filename: str = 'config.yml'):
         """Save the run configuration as a .yml file to disk.
 
         Parameters
         ----------
-        folder : Path
+        folder : Union[Path, AnyPath]
             Folder in which the configuration will be stored.
         filename : str, optional
             Name of the file that will be stored. Default: 'config.yml'.
@@ -133,7 +136,7 @@ class Config(object):
         else:
             raise FileExistsError(yml_path)
 
-    def update_config(self, yml_path_or_dict: Union[Path, dict], dev_mode: bool = False):
+    def update_config(self, yml_path_or_dict: Union[Path, AnyPath, dict], dev_mode: bool = False):
         """Update config arguments.
         
         Useful e.g. in the context of fine-tuning or when continuing to train from a checkpoint to adapt for example the
@@ -141,7 +144,7 @@ class Config(object):
         
         Parameters
         ----------
-        yml_path_or_dict : Union[Path, dict]
+        yml_path_or_dict : Union[Path, AnyPath, dict]
             Either a path to the new config file or a dictionary of configuration values. Each argument specified in
             this file will overwrite the existing config argument.
         dev_mode : bool, optional
@@ -152,14 +155,14 @@ class Config(object):
         Raises
         ------
         ValueError
-            If the passed configuration specification is neither a Path nor a dict, or if `dev_mode` is off (default)
+            If the passed configuration specification is neither a AnyPath nor a dict, or if `dev_mode` is off (default)
             and the config file or dict contain unrecognized keys.
         """
         new_config = Config(yml_path_or_dict, dev_mode=dev_mode)
 
         self._cfg.update(new_config.as_dict())
 
-    def _get_value_verbose(self, key: str) -> Union[float, int, str, list, dict, Path, pd.Timestamp]:
+    def _get_value_verbose(self, key: str) -> Union[float, int, str, list, dict, AnyPath, pd.Timestamp]:
         """Use this function internally to return attributes of the config that are mandatory"""
         if key not in self._cfg.keys():
             raise ValueError(f"{key} is not specified in the config (.yml).")
@@ -207,10 +210,10 @@ class Config(object):
                     if isinstance(val, list):
                         temp_list = []
                         for element in val:
-                            temp_list.append(Path(element))
+                            temp_list.append(AnyPath(element))
                         cfg[key] = temp_list
                     else:
-                        cfg[key] = Path(val)
+                        cfg[key] = AnyPath(val)
                 else:
                     cfg[key] = None
 
@@ -248,7 +251,7 @@ class Config(object):
         return cfg
 
     @staticmethod
-    def _read_and_parse_config(yml_path: Path):
+    def _read_and_parse_config(yml_path: AnyPath):
         if yml_path.exists():
             with yml_path.open('r') as fp:
                 yaml = YAML(typ="safe")
@@ -260,7 +263,7 @@ class Config(object):
         return cfg
 
     @property
-    def additional_feature_files(self) -> List[Path]:
+    def additional_feature_files(self) -> List[Union[Path, AnyPath]]:
         return self._as_default_list(self._cfg.get("additional_feature_files", None))
 
     @property
@@ -272,11 +275,11 @@ class Config(object):
         return self._as_default_list(self._cfg.get("autoregressive_inputs", []))
 
     @property
-    def base_run_dir(self) -> Path:
+    def base_run_dir(self) -> AnyPath:
         return self._get_value_verbose("base_run_dir")
 
     @base_run_dir.setter
-    def base_run_dir(self, folder: Path):
+    def base_run_dir(self, folder: Union[Path, AnyPath]):
         self._cfg["base_run_dir"] = folder
 
     @property
@@ -292,7 +295,7 @@ class Config(object):
         return self._cfg.get("cache_validation_data", True)
 
     @property
-    def checkpoint_path(self) -> Path:
+    def checkpoint_path(self) -> AnyPath:
         return self._cfg.get("checkpoint_path", None)
 
     @property
@@ -312,7 +315,7 @@ class Config(object):
         return self._as_default_dict(self._cfg.get("custom_normalization", {}))
 
     @property
-    def data_dir(self) -> Path:
+    def data_dir(self) -> AnyPath:
         return self._get_value_verbose("data_dir")
 
     @property
@@ -461,11 +464,11 @@ class Config(object):
         return self._as_default_list(self._cfg.get("hydroatlas_attributes", []))
 
     @property
-    def img_log_dir(self) -> Path:
+    def img_log_dir(self) -> AnyPath:
         return self._cfg.get("img_log_dir", None)
 
     @img_log_dir.setter
-    def img_log_dir(self, folder: Path):
+    def img_log_dir(self, folder: Union[Path, AnyPath]):
         self._cfg["img_log_dir"] = folder
 
     @property
@@ -628,15 +631,15 @@ class Config(object):
         return self._cfg.get("output_dropout", 0.0)
 
     @property
-    def per_basin_test_periods_file(self) -> Path:
+    def per_basin_test_periods_file(self) -> AnyPath:
         return self._cfg.get("per_basin_test_periods_file", None)
 
     @property
-    def per_basin_train_periods_file(self) -> Path:
+    def per_basin_train_periods_file(self) -> AnyPath:
         return self._cfg.get("per_basin_train_periods_file", None)
 
     @property
-    def per_basin_validation_periods_file(self) -> Path:
+    def per_basin_validation_periods_file(self) -> AnyPath:
         return self._cfg.get("per_basin_validation_periods_file", None)
 
     @property
@@ -648,7 +651,7 @@ class Config(object):
         return self._as_default_dict(self._cfg.get("random_holdout_from_dynamic_features", {}))
 
     @property
-    def rating_curve_file(self) -> Path:
+    def rating_curve_file(self) -> AnyPath:
         return self._get_value_verbose("rating_curve_file")
 
     @property
@@ -656,11 +659,11 @@ class Config(object):
         return self._as_default_list(self._cfg.get("regularization", []))
 
     @property
-    def run_dir(self) -> Path:
+    def run_dir(self) -> AnyPath:
         return self._cfg.get("run_dir", None)
 
     @run_dir.setter
-    def run_dir(self, folder: Path):
+    def run_dir(self, folder: Union[Path, AnyPath]):
         self._cfg["run_dir"] = folder
 
     @property
@@ -771,7 +774,7 @@ class Config(object):
         return self._get_value_verbose("tau_up")
 
     @property
-    def test_basin_file(self) -> Path:
+    def test_basin_file(self) -> AnyPath:
         return self._get_value_verbose("test_basin_file")
 
     @property
@@ -787,19 +790,19 @@ class Config(object):
         return self._cfg.get("timestep_counter", False)
 
     @property
-    def train_basin_file(self) -> Path:
+    def train_basin_file(self) -> AnyPath:
         return self._get_value_verbose("train_basin_file")
 
     @property
-    def train_data_file(self) -> Path:
+    def train_data_file(self) -> AnyPath:
         return self._cfg.get("train_data_file", None)
 
     @property
-    def train_dir(self) -> Path:
+    def train_dir(self) -> AnyPath:
         return self._cfg.get("train_dir", None)
 
     @train_dir.setter
-    def train_dir(self, folder: Path):
+    def train_dir(self, folder: Union[Path, AnyPath]):
         self._cfg["train_dir"] = folder
 
     @property
@@ -845,7 +848,7 @@ class Config(object):
         self._cfg["validate_n_random_basins"] = n_basins
 
     @property
-    def validation_basin_file(self) -> Path:
+    def validation_basin_file(self) -> AnyPath:
         return self._get_value_verbose("validation_basin_file")
 
     @property

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
@@ -132,7 +133,7 @@ class LamaH(BaseDataset):
         return load_lamah_attributes(self.cfg.data_dir, sub_dataset=self.cfg.dataset, basins=self.basins)
 
 
-def load_lamah_forcing(data_dir: Path, basin: str, sub_dataset: str, temporal_resolution: str = '1D') -> pd.DataFrame:
+def load_lamah_forcing(data_dir: Union[Path, AnyPath], basin: str, sub_dataset: str, temporal_resolution: str = '1D') -> pd.DataFrame:
     """Load forcing data of the LamaH data set.
 
     Parameters
@@ -174,7 +175,7 @@ def load_lamah_forcing(data_dir: Path, basin: str, sub_dataset: str, temporal_re
     return _load_lamah_timeseries_csv_file(forcing_dir / f"ID_{basin}.csv", temporal_resolution)
 
 
-def load_lamah_discharge(data_dir: Path,
+def load_lamah_discharge(data_dir: Union[Path, AnyPath],
                          basin: str,
                          temporal_resolution: str = '1D',
                          normalize_discharge: bool = False) -> pd.DataFrame:
@@ -221,7 +222,7 @@ def load_lamah_discharge(data_dir: Path,
     return df
 
 
-def load_lamah_attributes(data_dir: Path, sub_dataset: str, basins: List[str] = []) -> pd.DataFrame:
+def load_lamah_attributes(data_dir: Union[Path, AnyPath], sub_dataset: str, basins: List[str] = []) -> pd.DataFrame:
     """Load LamaH catchment attributes.
 
     Parameters
@@ -264,7 +265,7 @@ def load_lamah_attributes(data_dir: Path, sub_dataset: str, basins: List[str] = 
     return df
 
 
-def _load_lamah_timeseries_csv_file(filepath: Path, temporal_resolution: str) -> pd.DataFrame:
+def _load_lamah_timeseries_csv_file(filepath: Union[Path, AnyPath], temporal_resolution: str) -> pd.DataFrame:
     """Helper function to load lamah data into time indexed dataframe."""
     df = pd.read_csv(filepath, sep=';', dtype={'YYYY': str, 'MM': str, 'DD': str})
     df["date"] = pd.to_datetime(df.YYYY.map(str) + "/" + df.MM.map(str) + "/" + df.DD.map(str), format="%Y/%m/%d")
@@ -276,7 +277,7 @@ def _load_lamah_timeseries_csv_file(filepath: Path, temporal_resolution: str) ->
     return df.set_index('date')
 
 
-def _load_lamah_attribute_csv_file(file_path: Path) -> pd.DataFrame:
+def _load_lamah_attribute_csv_file(file_path: Union[Path, AnyPath]) -> pd.DataFrame:
     """Helper function to load lamah attribute files into basin indexed dataframes."""
     df = pd.read_csv(file_path, sep=";", dtype={'ID': str})
     df = df.set_index("ID")

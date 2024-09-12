@@ -2,8 +2,9 @@ import logging
 import pickle
 import sys
 from pathlib import Path
-from typing import List, Dict
+from typing import List, Dict, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 from numba import njit
@@ -15,12 +16,12 @@ from neuralhydrology.datautils import pet
 LOGGER = logging.getLogger(__name__)
 
 
-def calculate_camels_us_dyn_climate_indices(data_dir: Path,
+def calculate_camels_us_dyn_climate_indices(data_dir: Union[Path, AnyPath],
                                          basins: List[str],
                                          window_length: int,
                                          forcings: str,
                                          variable_names: Dict[str, str] = None,
-                                         output_file: Path = None) -> Dict[str, pd.DataFrame]:
+                                         output_file: Union[Path, AnyPath] = None) -> Dict[str, pd.DataFrame]:
     """Calculate dynamic climate indices for the CAMELS US dataset.
     
     Compared to the long-term static climate indices included in the CAMELS US data set, this function computes the same

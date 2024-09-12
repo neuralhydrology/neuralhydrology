@@ -1,17 +1,20 @@
 from pathlib import Path
+from typing import Union
+
+from cloudpathlib import AnyPath
 
 from neuralhydrology.evaluation.tester import BaseTester, RegressionTester, UncertaintyTester
 from neuralhydrology.utils.config import Config
 
 
-def get_tester(cfg: Config, run_dir: Path, period: str, init_model: bool) -> BaseTester:
+def get_tester(cfg: Config, run_dir: Union[Path, AnyPath], period: str, init_model: bool) -> BaseTester:
     """Get specific tester class objects depending on the model (head) type.
     
     Parameters
     ----------
     cfg : Config
         The run configuration.
-    run_dir : Path
+    run_dir : Union[Path, AnyPath]
         Path to the run directory.
     period : {'train', 'validation', 'test'}
         The period to evaluate.

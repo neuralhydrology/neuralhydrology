@@ -2,6 +2,7 @@ from functools import reduce
 from pathlib import Path
 from typing import Dict, List, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
@@ -77,7 +78,7 @@ class GenericDataset(BaseDataset):
         return load_attributes(self.cfg.data_dir, basins=self.basins)
 
 
-def load_attributes(data_dir: Path, basins: List[str] = None) -> pd.DataFrame:
+def load_attributes(data_dir: Union[Path, AnyPath], basins: List[str] = None) -> pd.DataFrame:
     """Load static attributes.
 
     Parameters
@@ -152,7 +153,7 @@ def load_attributes(data_dir: Path, basins: List[str] = None) -> pd.DataFrame:
     return df
 
 
-def load_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
+def load_timeseries(data_dir: Union[Path, AnyPath], basin: str) -> pd.DataFrame:
     """Load time series data from netCDF files into pandas DataFrame.
 
     Parameters

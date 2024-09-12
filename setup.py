@@ -36,6 +36,7 @@ setup(name='neuralhydrology',
       },
       python_requires='>=3.8',
       install_requires=[
+          'cloudpathlib',
           'matplotlib',
           'numba',
           'numpy',
