@@ -37,15 +37,15 @@ class UCB_trainer:
         """
         pass
 
-    def results(self):
+    def results(self) -> dict:
         """
-        Public method to return metrics and data visualizations of model preformance.
+        Public method to return metrics and plot data visualizations of model preformance.
         """
         pass
 
-    def _train_model(self):
+    def _train_model(self) -> Path:
         """
-        Private method to train an individual model.
+        Private method to train an individual model. Returns the path to the model results.
         """
         pass
 
@@ -55,7 +55,7 @@ class UCB_trainer:
         """
         pass
 
-    def _train_ensemble(self):
+    def _train_ensemble(self) -> dict:
         """
         Private method to train an ensemble of models.
         """
@@ -64,6 +64,12 @@ class UCB_trainer:
     def _create_config(self) -> Config:
         """
         Private method to create Configuration object for training from user specifications.
+        """
+        pass
+
+    def _get_metrics(self) -> dict:
+        """
+        Private method to get and return metrics after training and evaluation.
         """
         pass
 
@@ -76,11 +82,5 @@ class UCB_trainer:
     def _generate_plot2(self):
         """
         Private method to generate a plot for the results.
-        """
-        pass
-
-    def _get_metrics(self):
-        """
-        Private method to get and return metrics after training and evaluation.
         """
         pass
