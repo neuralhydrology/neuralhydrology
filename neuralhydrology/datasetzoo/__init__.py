@@ -9,6 +9,7 @@ from neuralhydrology.datasetzoo.genericdataset import GenericDataset
 from neuralhydrology.datasetzoo.hourlycamelsus import HourlyCamelsUS
 from neuralhydrology.datasetzoo.lamah import LamaH
 from neuralhydrology.datasetzoo.russianriver import RussianRiver
+from neuralhydrology.datasetzoo.tuler import Tuler
 from neuralhydrology.utils.config import Config
 
 
@@ -62,6 +63,8 @@ def get_dataset(cfg: Config,
     """
     if cfg.dataset.lower() == "russian_river":
         Dataset = RussianRiver
+    elif cfg.dataset.lower() == "tuler":
+        Dataset = Tuler
     elif cfg.dataset.lower() == "camels_us":
         Dataset = CamelsUS
     elif cfg.dataset.lower() == "camels_gb":
