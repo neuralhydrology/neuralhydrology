@@ -1,12 +1,12 @@
 # --- Experiment configurations --------------------------------------------------------------------
 
 # experiment name, used as folder name
-experiment_name: first_run
+experiment_name: testing_run
 
 # files to specify training, validation and test basins (relative to code root or absolute path)
-train_basin_file: ../initial_exploration/exploration_tuler
-validation_basin_file: ../initial_exploration/exploration_tuler
-test_basin_file: ../initial_exploration/exploration_tuler
+train_basin_file: ./train_basin_file_template
+validation_basin_file: ./train_basin_file_template
+test_basin_file: ./train_basin_file_template
 
 # training, validation and test time periods (format = 'dd/mm/yyyy')
 train_start_date: "01/10/1981"
@@ -106,7 +106,7 @@ save_weights_every: 4
 # --- Data configurations --------------------------------------------------------------------------
 
 # which data set to use [camels_us, camels_gb, global, hourly_camels_us]
-dataset: usace
+dataset: tuler
 
 # Path to data set root
 data_dir: None
