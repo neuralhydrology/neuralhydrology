@@ -65,10 +65,7 @@ class UCB_trainer:
         Public method to return metrics and plot data visualizations of model preformance.
         """
         self._get_predictions()
-        if self.num_ensemble_members == 1:
-            self.metrics = calculate_all_metrics(self.test_observed.sel(time_step=0), self.test_predictions.sel(time_step=0))
-        else: 
-            self.metrics = calculate_all_metrics(self.test_observed, self.test_predictions)
+        self.metrics = calculate_all_metrics(self.test_observed, self.test_predictions)
         
         self._generate_obs_sim_plt()
         return self.metrics
@@ -119,8 +116,8 @@ class UCB_trainer:
         if self.num_ensemble_members == 1:
             with open(self.model / "test" / f"model_epoch{str(self.config.epochs).zfill(3)}" / "test_results.p", "rb") as fp:
                 results = pickle.load(fp)
-                self.test_observed = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs']
-                self.test_predictions = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_sim']
+                self.test_observed = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs'].sel(time_step=0)
+                self.test_predictions = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_sim'].sel(time_step=0)
 
         else:
             self.test_observed = self.model['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs']
