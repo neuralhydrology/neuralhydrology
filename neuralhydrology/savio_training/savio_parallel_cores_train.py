@@ -60,8 +60,8 @@ def ESDL_ensemble(params):
             results = pickle.load(fp)
             ensemble_nse = results['Tuler']['1D']['NSE'] 
 
-    # ensemble_run = create_results_ensemble(paths, period='validation')
-    # ensemble_nse = ensemble_run['Tuler']['1D']['NSE']
+    ensemble_run = create_results_ensemble(paths, period='validation')
+    ensemble_nse = ensemble_run['Tuler']['1D']['NSE']
     return (params, ensemble_nse)
 
 dview.execute('from neuralhydrology.utils.config import Config')
