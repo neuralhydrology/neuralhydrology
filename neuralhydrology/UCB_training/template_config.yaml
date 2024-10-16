@@ -1,0 +1,172 @@
+# --- Experiment configurations --------------------------------------------------------------------
+
+# experiment name, used as folder name
+experiment_name: testing_run
+
+# files to specify training, validation and test basins (relative to code root or absolute path)
+train_basin_file: ./train_basin_file_template
+validation_basin_file: ./train_basin_file_template
+test_basin_file: ./train_basin_file_template
+
+# training, validation and test time periods (format = 'dd/mm/yyyy')
+train_start_date: "01/10/1981"
+train_end_date: "30/09/1997"
+validation_start_date: "01/10/1997"
+validation_end_date: "30/09/2000"
+test_start_date: "01/10/2000"
+test_end_date: "30/09/2005"
+
+# which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu or None]
+device: cuda:0
+
+# --- Validation configuration ---------------------------------------------------------------------
+
+# specify after how many epochs to perform validation
+validate_every: 5
+
+# specify how many random basins to use for validation
+validate_n_random_basins: 1
+
+# specify which metrics to calculate during validation (see neuralhydrology.evaluation.metrics)
+# this can either be a list or a dictionary. If a dictionary is used, the inner keys must match the name of the
+# target_variable specified below. Using dicts allows for different metrics per target variable.
+metrics:
+  - NSE
+  - MSE
+
+# --- Model configuration --------------------------------------------------------------------------
+
+# base model type [lstm, ealstm, cudalstm, embcudalstm, mtslstm]
+# (has to match the if statement in modelzoo/__init__.py)
+model: cudalstm
+
+# prediction head [regression]. Define the head specific parameters below
+head: regression
+
+# ----> Regression settings <----
+output_activation: linear
+
+# ----> General settings <----
+
+# Number of cell states of the LSTM
+hidden_size: 64
+
+# Initial bias value of the forget gate
+initial_forget_bias: 3
+
+# Dropout applied to the output of the LSTM
+output_dropout: 0.5
+
+# --- Training configuration -----------------------------------------------------------------------
+
+# specify optimizer [Adam]
+optimizer: Adam
+
+# specify loss [MSE, NSE, RMSE]
+loss: MSE
+
+# specify learning rates to use starting at specific epochs (0 is the initial learning rate)
+learning_rate:
+  0: 1e-2
+  30: 5e-3
+  40: 1e-3
+
+# Mini-batch size
+batch_size: 256
+
+# Number of training epochs
+epochs: 16
+
+# If a value, clips the gradients during training to that norm.
+clip_gradient_norm: 1
+
+# Defines which time steps are used to calculate the loss. Can't be larger than seq_length.
+# If use_frequencies is used, this needs to be a dict mapping each frequency to a predict_last_n-value, else an int.
+predict_last_n: 1
+
+# Length of the input sequence
+# If use_frequencies is used, this needs to be a dict mapping each frequency to a seq_length, else an int.
+seq_length: 365
+
+# Number of parallel workers used in the data pipeline
+num_workers: 8
+
+# Log the training loss every n steps
+log_interval: 4
+
+# If true, writes logging results into tensorboard file
+log_tensorboard: True
+
+# If a value and greater than 0, logs n random basins as figures during validation
+log_n_figures: 1
+
+# Save model weights every n epochs
+save_weights_every: 4
+
+# --- Data configurations --------------------------------------------------------------------------
+
+# which data set to use [camels_us, camels_gb, global, hourly_camels_us]
+dataset: tuler
+
+# Path to data set root
+data_dir: None
+
+# Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
+# can be either a list of forcings or a single forcing product
+# forcings:
+#   - maurer
+#   - daymet
+#   - nldas
+
+dynamic_inputs:
+  - MF_TuleR_S10ET-POTENTIAL
+  - MF_TuleR_S10FLOW
+  - MF_TuleR_S10PRECIP-INC
+  - MF_TuleR_S10SATURATION FRACTION
+  - MF_TuleR_S10STORAGE-SOIL
+  - MF_TuleR_S10SWE-OBSERVED
+  - MF_TuleR_S10TEMPERATURE-AIR
+  - MF_TuleR_S20ET-POTENTIAL
+  - MF_TuleR_S20FLOW
+  - MF_TuleR_S20PRECIP-INC
+  - MF_TuleR_S20SATURATION FRACTION
+  - MF_TuleR_S20STORAGE-SOIL
+  - MF_TuleR_S20SWE-OBSERVED
+  - MF_TuleR_S20TEMPERATURE-AIR
+  - NF_TuleR_S10ET-POTENTIAL
+  - NF_TuleR_S10FLOW
+  - NF_TuleR_S10PRECIP-INC
+  - NF_TuleR_S10SATURATION FRACTION
+  - NF_TuleR_S10STORAGE-SOIL
+  - NF_TuleR_S10SWE-OBSERVED
+  - NF_TuleR_S10TEMPERATURE-AIR
+  - ReservoirInflowFLOW
+  - SF_TuleR_S10ET-POTENTIAL
+  - SF_TuleR_S10FLOW
+  - SF_TuleR_S10PRECIP-INC
+  - SF_TuleR_S10SATURATION FRACTION
+  - SF_TuleR_S10STORAGE-SOIL
+  - SF_TuleR_S10SWE-OBSERVED
+  - SF_TuleR_S10TEMPERATURE-AIR
+  - TuleR_S10ET-POTENTIAL
+  - TuleR_S10FLOW
+  - TuleR_S10PRECIP-INC
+  - TuleR_S10SATURATION FRACTION
+  - TuleR_S10STORAGE-SOIL
+  # - TuleR_S10SWE-OBSERVED #gives NoTrainDataError if enabled
+  - TuleR_S10TEMPERATURE-AIR
+  - TuleR_S20ET-POTENTIAL
+  - TuleR_S20FLOW
+  - TuleR_S20PRECIP-INC
+  - TuleR_S20SATURATION FRACTION
+  - TuleR_S20STORAGE-SOIL
+  - TuleR_S20SWE-OBSERVED
+  - TuleR_S20TEMPERATURE-AIR
+
+# which columns to use as target
+target_variables:
+  - ReservoirInflowFLOW-OBSERVED
+
+# clip negative predictions to zero for all variables listed below. Should be a list, even for single variables.
+# clip_targets_to_zero:
+#   - QObs(mm/d)
