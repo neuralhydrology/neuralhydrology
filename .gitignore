@@ -5,6 +5,7 @@
 !test/test_data/*.p
 *.swp
 .coverage
+*.csv
 
 # folder
 build/*
