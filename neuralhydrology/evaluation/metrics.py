@@ -473,7 +473,7 @@ def fdc_flv(obs: DataArray, sim: DataArray, l: float = 0.3) -> float:
     r"""Calculate the low flow bias of the flow duration curve [#]_
     
     .. math:: 
-        \%\text{BiasFMS} = -1 \frac{\sum_{l=1}^{L}[\log(Q_{s,l}) - \log(Q_{s,L})] - \sum_{l=1}^{L}[\log(Q_{o,l})
+        \%\text{BiasFLV} = -1 * \frac{\sum_{l=1}^{L}[\log(Q_{s,l}) - \log(Q_{s,L})] - \sum_{l=1}^{L}[\log(Q_{o,l})
             - \log(Q_{o,L})]}{\sum_{l=1}^{L}[\log(Q_{o,l}) - \log(Q_{o,L})]} \times 100,
     
     where :math:`Q_s` are the simulations (here, `sim`), :math:`Q_o` the observations (here, `obs`) and `L` is the lower
