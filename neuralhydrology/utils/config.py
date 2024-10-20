@@ -260,6 +260,11 @@ class Config(object):
         return cfg
 
     @property
+    #UCB
+    def physics_informed(self) -> bool:
+        return self._cfg.get("physics_informed", None)
+
+    @property
     def additional_feature_files(self) -> List[Path]:
         return self._as_default_list(self._cfg.get("additional_feature_files", None))
 

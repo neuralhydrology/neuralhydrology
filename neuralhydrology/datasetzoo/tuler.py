@@ -65,7 +65,7 @@ class Tuler(BaseDataset):
         """Load input and output data from csv files."""
 
         #select which columns you want for each basin by column name
-        forcings_d = {  'Tuler': ['MF_TuleR_S10ET-POTENTIAL', 'MF_TuleR_S10FLOW',
+        physics_forcings_d = {  'Tuler': ['MF_TuleR_S10ET-POTENTIAL', 'MF_TuleR_S10FLOW',
                                     'MF_TuleR_S10PRECIP-INC', 'MF_TuleR_S10SATURATION FRACTION',
                                     'MF_TuleR_S10STORAGE-SOIL', 'MF_TuleR_S10SWE-OBSERVED',
                                     'MF_TuleR_S10TEMPERATURE-AIR', 'MF_TuleR_S20ET-POTENTIAL',
@@ -88,6 +88,21 @@ class Tuler(BaseDataset):
                                     'TuleR_S20SWE-OBSERVED', 'TuleR_S20TEMPERATURE-AIR']
                         }
 
+        non_physics_forcings_d = {  'Tuler': [
+                                    'MF_TuleR_S10PRECIP-INC',
+                                    'MF_TuleR_S10TEMPERATURE-AIR', 
+                                    'MF_TuleR_S20PRECIP-INC',
+                                    'MF_TuleR_S20TEMPERATURE-AIR',
+                                    'NF_TuleR_S10PRECIP-INC',
+                                    'NF_TuleR_S10TEMPERATURE-AIR',
+                                    'SF_TuleR_S10PRECIP-INC',
+                                    'SF_TuleR_S10TEMPERATURE-AIR',
+                                    'TuleR_S10PRECIP-INC',
+                                    'TuleR_S10TEMPERATURE-AIR',
+                                    'TuleR_S20PRECIP-INC',
+                                    'TuleR_S20TEMPERATURE-AIR']
+                        }
+
         discharge_d = { 'Tuler': ['ReservoirInflowFLOW-OBSERVED']
                         }
        
@@ -95,8 +110,12 @@ class Tuler(BaseDataset):
         df = pd.read_csv(str(self.cfg.data_dir) + f'/HMS_inflow_results_data.csv', index_col = 'Date', parse_dates=True)
     
         #only select the forcings, observed data you want by only selecting the columns that correspond to the above dictionary for that basin
-        df = df.loc[:, forcings_d[basin]+discharge_d[basin]]
-
+        if self.cfg.physics_informed:
+            df = df.loc[:, physics_forcings_d[basin]+discharge_d[basin]]
+        else:
+            df = df.loc[:, non_physics_forcings_d[basin]+discharge_d[basin]]
+        
+        assert(self.cfg.physics_informed is not None)
         #rename date index
         df = df.rename_axis('date')
         

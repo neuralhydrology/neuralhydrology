@@ -35,17 +35,17 @@ class UCB_trainer:
             num_ensemble_members (int): The number of ensemble members.
             physics_informed (bool): Whether to use internal states of physical model as features.
         """
-        self.hyperparams = hyperparams
-        self.num_ensemble_members = num_ensemble_members
-        self.physics_informed = physics_informed
-        self.gpu = gpu
-        self.data_dir = path_to_csv_folder
+        self._hyperparams = hyperparams
+        self._num_ensemble_members = num_ensemble_members
+        self._physics_informed = physics_informed
+        self._gpu = gpu
+        self._data_dir = path_to_csv_folder
         
-        self.config = None
-        self.model = None
-        self.test_predictions = None
-        self.test_observed = None
-        self.metrics = None
+        self._config = None
+        self._model = None
+        self._test_predictions = None
+        self._test_observed = None
+        self._metrics = None
 
         self._create_config()
 
@@ -53,9 +53,9 @@ class UCB_trainer:
         """
         Public method to handle the training and evaluating process for individual models or ensembles. Sets self.model.
         """
-        if self.num_ensemble_members == 1:
-            self.model = self._train_model() # returns run directory of single model
-            self._eval_model(self.model)
+        if self._num_ensemble_members == 1:
+            self._model = self._train_model() # returns run directory of single model
+            self._eval_model(self._model)
         else:
             self.model = self._train_ensemble() # returns dict with predictions on test set and metrics
         return
@@ -65,10 +65,10 @@ class UCB_trainer:
         Public method to return metrics and plot data visualizations of model preformance.
         """
         self._get_predictions()
-        self.metrics = calculate_all_metrics(self.test_observed, self.test_predictions)
+        self._metrics = calculate_all_metrics(self._test_observed, self._test_predictions)
         
         self._generate_obs_sim_plt()
-        return self.metrics
+        return self._metrics
 
     def _train_model(self) -> Path:
         """
@@ -76,13 +76,13 @@ class UCB_trainer:
         """
     
         # check if a GPU has been specified. If yes, overwrite config
-        if self.gpu is not None and self.gpu >= 0:
-            self.config.device = f"cuda:{self.gpu}"
-        if self.gpu is not None and self.gpu < 0:
-            self.config.device = "cpu"
+        if self._gpu is not None and self._gpu >= 0:
+            self._config.device = f"cuda:{self._gpu}"
+        if self._gpu is not None and self._gpu < 0:
+            self._config.device = "cpu"
 
-        start_training(self.config)
-        path = self.config.run_dir
+        start_training(self._config)
+        path = self._config.run_dir
         return path
 
     def _eval_model(self, run_directory, period="test"):
@@ -97,7 +97,7 @@ class UCB_trainer:
         Private method to train and evaluate an ensemble of models.
         """
         paths = [] #store the path of the results of the model
-        for _ in range(self.num_ensemble_members):
+        for _ in range(self._num_ensemble_members):
             path = self._train_model()
             paths.append(path)
 
@@ -113,15 +113,15 @@ class UCB_trainer:
         """
         Private method to get and return predicted values and metrics after training and evaluation.
         """
-        if self.num_ensemble_members == 1:
-            with open(self.model / "test" / f"model_epoch{str(self.config.epochs).zfill(3)}" / "test_results.p", "rb") as fp:
+        if self._num_ensemble_members == 1:
+            with open(self._model / "test" / f"model_epoch{str(self._config.epochs).zfill(3)}" / "test_results.p", "rb") as fp:
                 results = pickle.load(fp)
-                self.test_observed = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs'].sel(time_step=0)
-                self.test_predictions = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_sim'].sel(time_step=0)
+                self._test_observed = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs'].sel(time_step=0)
+                self._test_predictions = results['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_sim'].sel(time_step=0)
 
         else:
-            self.test_observed = self.model['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs']
-            self.test_predictions = self.model['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_sim']
+            self._test_observed = self._model['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_obs']
+            self._test_predictions = self._model['Tuler']['1D']['xr']['ReservoirInflowFLOW-OBSERVED_sim']
         
         return
 
@@ -130,19 +130,20 @@ class UCB_trainer:
         Private method to create Configuration object for training from user specifications.
         """
         config = Config(Path('./template_config.yaml'))
-        config.update_config(self.hyperparams)
-        config.update_config({'data_dir': self.data_dir})
-        self.config = config
+        config.update_config(self._hyperparams)
+        config.update_config({'data_dir': self._data_dir})
+        config.update_config({'physics_informed': self._physics_informed})
+        self._config = config
         return
 
     def _generate_obs_sim_plt(self):
         """
         Private method to plot observed and simulated values over time.
         """
-        date_indexer = "date" if self.num_ensemble_members == 1 else "datetime"
+        date_indexer = "date" if self._num_ensemble_members == 1 else "datetime"
         fig, ax = plt.subplots(figsize=(16,10))
-        ax.plot(self.test_observed[date_indexer], self.test_observed, label="Obs")
-        ax.plot(self.test_predictions[date_indexer], self.test_predictions, label="Sim")
+        ax.plot(self._test_observed[date_indexer], self._test_observed, label="Obs")
+        ax.plot(self._test_predictions[date_indexer], self._test_predictions, label="Sim")
         ax.set_ylabel("ReservoirInflowFLOW-OBSERVED")
         ax.legend()
         plt.show()
