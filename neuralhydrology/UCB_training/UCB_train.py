@@ -49,13 +49,6 @@ class UCB_trainer:
 
         self._create_config()
 
-        if self._config.epochs % self._config.save_weights_every != 0:
-            raise ValueError(
-                "The 'save_weights_every' parameter must divide the 'epochs' parameter evenly. Ensure 'epochs' is a multiple of "
-                "'save_weights_every' to use the most recent weights for the final model."
-                )
-
-
     def train(self):
         """
         Public method to handle the training and evaluating process for individual models or ensembles. Sets self.model.
@@ -137,10 +130,21 @@ class UCB_trainer:
         Private method to create Configuration object for training from user specifications.
         """
         config = Config(Path('./template_config.yaml'))
+
+        if 'save_weights_every' not in self._hyperparams:
+            self._hyperparams['save_weights_every'] = self._hyperparams['epochs']
+            
         config.update_config(self._hyperparams)
         config.update_config({'data_dir': self._data_dir})
         config.update_config({'physics_informed': self._physics_informed})
         self._config = config
+
+        if self._config.epochs % self._config.save_weights_every != 0:
+            raise ValueError(
+                "The 'save_weights_every' parameter must divide the 'epochs' parameter evenly. Ensure 'epochs' is a multiple of "
+                "'save_weights_every' to use the most recent weights for the final model."
+                )
+
         return
 
     def _generate_obs_sim_plt(self):
