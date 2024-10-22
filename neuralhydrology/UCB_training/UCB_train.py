@@ -49,6 +49,13 @@ class UCB_trainer:
 
         self._create_config()
 
+        if self._config.epochs % self._config.save_weights_every != 0:
+            raise ValueError(
+                "The 'save_weights_every' parameter must divide the 'epochs' parameter evenly. Ensure 'epochs' is a multiple of "
+                "'save_weights_every' to use the most recent weights for the final model."
+                )
+
+
     def train(self):
         """
         Public method to handle the training and evaluating process for individual models or ensembles. Sets self.model.
