@@ -325,10 +325,10 @@ class Config(object):
 
     @device.setter
     def device(self, device: str):
-        if device == "cpu" or device.startswith("cuda:"):
+        if device == "cpu" or device.startswith("cuda:") or device == "mps":
             self._cfg["device"] = device
         else:
-            raise ValueError("'device' must be either 'cpu' or a 'cuda:X', with 'X' being the GPU ID.")
+            raise ValueError("'device' must be either 'cpu', 'mps', or 'cuda:X', with 'X' being the GPU ID.")
 
     @property
     def duplicate_features(self) -> dict:

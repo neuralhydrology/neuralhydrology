@@ -82,16 +82,26 @@ class BaseTester(object):
 
     def _set_device(self):
         if self.cfg.device is not None:
-            if "cuda" in self.cfg.device:
+            if self.cfg.device.startswith("cuda"):
                 gpu_id = int(self.cfg.device.split(':')[-1])
                 if gpu_id > torch.cuda.device_count():
                     raise RuntimeError(f"This machine does not have GPU #{gpu_id} ")
                 else:
                     self.device = torch.device(self.cfg.device)
+            elif self.cfg.device == "mps":
+                if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+                    self.device = torch.device("mps")
+                else:
+                    raise RuntimeError("MPS device is not available or not built.")
             else:
                 self.device = torch.device("cpu")
         else:
-            self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+            if torch.cuda.is_available():
+                self.device = torch.device("cuda:0")
+            elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+                self.device = torch.device("mps")
+            else:
+                self.device = torch.device("cpu")
 
     def _load_run_data(self):
         """Load run specific data from run directory"""

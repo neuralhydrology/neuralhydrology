@@ -27,7 +27,7 @@ per_basin_test_periods_file:
 # fixed seed, leave empty to use a random seed
 seed:
 
-# which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu or None]
+# which GPU (id) to use [in format of cuda:0, cuda:1 etc, or cpu, mps or None]
 device: cuda:0
 
 # --- Validation configuration ---------------------------------------------------------------------
