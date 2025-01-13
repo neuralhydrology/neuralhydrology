@@ -83,7 +83,7 @@ General experiment configurations
    this run.
 
 -  ``device``: Which device to use in format of ``cuda:0``, ``cuda:1``,
-   etc, for GPUs or ``cpu``
+   etc, for GPUs, ``mps`` for MacOS with Metal support, or ``cpu``
 
 Validation settings
 -------------------

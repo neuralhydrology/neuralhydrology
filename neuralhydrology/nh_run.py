@@ -62,6 +62,7 @@ def start_run(config_file: Path, gpu: int = None):
         Path to a configuration file (.yml), defining the settings for the specific run.
     gpu : int, optional
         GPU id to use. Will override config argument 'device'. A value smaller than zero indicates CPU.
+        Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
 
@@ -87,6 +88,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
         Path to an additional config file. Each config argument in this file will overwrite the original run config.
     gpu : int, optional
         GPU id to use. Will override config argument 'device'. A value smaller than zero indicates CPU.
+        Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
     # load config from base run and overwrite all elements with an optional new config
@@ -118,6 +120,7 @@ def finetune(config_file: Path = None, gpu: int = None):
         fine-tuning.
     gpu : int, optional
         GPU id to use. Will override config argument 'device'. A value smaller than zero indicates CPU.
+        Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
     # load finetune config and check for a non-empty list of finetune_modules
@@ -156,6 +159,7 @@ def eval_run(run_dir: Path, period: str, epoch: int = None, gpu: int = None):
         Define a specific epoch to use. By default, the weights of the last epoch are used.  
     gpu : int, optional
         GPU id to use. Will override config argument 'device'. A value less than zero indicates CPU.
+        Don't use this argument if you want to use the device as specified in the config file e.g. MPS.
 
     """
     config = Config(run_dir / "config.yml")

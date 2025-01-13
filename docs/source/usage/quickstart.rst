@@ -7,7 +7,7 @@ As a first step you need a Python environment with all required dependencies. Th
 and to create a new environment using one of our predefined environment files in `environments/ <https://github.com/neuralhydrology/neuralhydrology/tree/master/environments>`__.
 Make sure to select the correct file, depending on your system.
 
-If you don't have a CUDA-capable GPU, use:
+If you don't have a CUDA-capable GPU, or if you want to train on MacOS with Metal support, use:
 
 .. code-block::
 
