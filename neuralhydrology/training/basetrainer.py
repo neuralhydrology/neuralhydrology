@@ -347,16 +347,16 @@ class BaseTrainer(object):
                 else:
                     self.device = torch.device(self.cfg.device)
             elif self.cfg.device == "mps":
-                if torch.backends.mps.is_available() and torch.backends.mps.is_built():
+                if torch.backends.mps.is_available():
                     self.device = torch.device("mps")
                 else:
-                    raise RuntimeError("MPS device is not available or not built.")
+                    raise RuntimeError("MPS device is not available.")
             else:
                 self.device = torch.device("cpu")
         else:
             if torch.cuda.is_available():
                 self.device = torch.device("cuda:0")
-            elif torch.backends.mps.is_available() and torch.backends.mps.is_built():
+            elif torch.backends.mps.is_available():
                 self.device = torch.device("mps")
             else:
                 self.device = torch.device("cpu")
