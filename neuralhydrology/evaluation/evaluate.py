@@ -1,10 +1,13 @@
 from pathlib import Path
+from typing import Union
+
+from cloudpathlib import AnyPath
 
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.utils.config import Config
 
 
-def start_evaluation(cfg: Config, run_dir: Path, epoch: int = None, period: str = "test"):
+def start_evaluation(cfg: Config, run_dir: Union[Path, AnyPath], epoch: int = None, period: str = "test"):
     """Start evaluation of a trained network
 
     Parameters

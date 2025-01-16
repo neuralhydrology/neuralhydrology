@@ -3,13 +3,14 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Dict, Iterable, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
 from ruamel.yaml import YAML
 
 
-def load_basin_id_encoding(run_dir: Path) -> Dict[str, int]:
+def load_basin_id_encoding(run_dir: Union[Path, AnyPath]) -> Dict[str, int]:
     id_to_int_file = run_dir / "train_data" / "id_to_int.yml"
     if id_to_int_file.is_file():
         with id_to_int_file.open("r") as fp:

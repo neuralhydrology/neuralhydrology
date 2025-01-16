@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 from typing import List, Dict, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
@@ -77,7 +78,7 @@ class CamelsCL(BaseDataset):
         return load_camels_cl_attributes(self.cfg.data_dir, basins=self.basins)
 
 
-def load_camels_cl_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
+def load_camels_cl_timeseries(data_dir: Union[Path, AnyPath], basin: str) -> pd.DataFrame:
     """Load the time series data for one basin of the CAMELS CL data set.
 
     Parameters
@@ -110,7 +111,7 @@ def load_camels_cl_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
     return df
 
 
-def load_camels_cl_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+def load_camels_cl_attributes(data_dir: Union[Path, AnyPath], basins: List[str] = []) -> pd.DataFrame:
     """Load CAMELS CL attributes
 
     Parameters
@@ -145,7 +146,7 @@ def load_camels_cl_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     return df
 
 
-def preprocess_camels_cl_dataset(data_dir: Path):
+def preprocess_camels_cl_dataset(data_dir: Union[Path, AnyPath]):
     """Preprocess CAMELS-CL data set and create per-basin files for more flexible and faster data loading.
     
     This function will read-in all daily time series csv files and create per-basin csv files in a new subfolder called

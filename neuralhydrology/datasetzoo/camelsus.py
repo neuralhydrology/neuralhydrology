@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Tuple, Union
 
+from cloudpathlib import AnyPath
 import numpy as np
 import pandas as pd
 import xarray
@@ -92,7 +93,7 @@ class CamelsUS(BaseDataset):
         return load_camels_us_attributes(self.cfg.data_dir, basins=self.basins)
 
 
-def load_camels_us_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+def load_camels_us_attributes(data_dir: Union[Path, AnyPath], basins: List[str] = []) -> pd.DataFrame:
     """Load CAMELS US attributes from the dataset provided by [#]_
 
     Parameters
@@ -115,7 +116,7 @@ def load_camels_us_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
         meteorology for large-sample studies, Hydrol. Earth Syst. Sci., 21, 5293-5313, doi:10.5194/hess-21-5293-2017,
         2017.
     """
-    attributes_path = Path(data_dir) / 'camels_attributes_v2.0'
+    attributes_path = AnyPath(data_dir) / 'camels_attributes_v2.0'
 
     if not attributes_path.exists():
         raise RuntimeError(f"Attribute folder not found at {attributes_path}")
@@ -143,7 +144,7 @@ def load_camels_us_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     return df
 
 
-def load_camels_us_forcings(data_dir: Path, basin: str, forcings: str) -> Tuple[pd.DataFrame, int]:
+def load_camels_us_forcings(data_dir: Union[Path, AnyPath], basin: str, forcings: str) -> Tuple[pd.DataFrame, int]:
     """Load the forcing data for a basin of the CAMELS US data set.
 
     Parameters
@@ -189,7 +190,7 @@ def load_camels_us_forcings(data_dir: Path, basin: str, forcings: str) -> Tuple[
     return df, area
 
 
-def load_camels_us_discharge(data_dir: Path, basin: str, area: int) -> pd.Series:
+def load_camels_us_discharge(data_dir: Union[Path, AnyPath], basin: str, area: int) -> pd.Series:
     """Load the discharge data for a basin of the CAMELS US data set.
 
     Parameters
