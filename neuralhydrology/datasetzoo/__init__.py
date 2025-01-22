@@ -117,7 +117,7 @@ class DatasetZooRegistry:
 
     def register_dataset_class(self, key: str, new_class: Type):
         if issubclass(new_class, BaseDataset):
-            self.__dataset_class[key, new_class]
+            self.__dataset_class[key] = new_class
         else:
             raise TypeError(f"Class {type(new_class)} is not a subclass of BaseDataset.")
 
