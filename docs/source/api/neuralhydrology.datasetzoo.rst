@@ -20,3 +20,4 @@ nh.datasetzoo
    neuralhydrology.datasetzoo.hourlycamelsus
    neuralhydrology.datasetzoo.lamah
    neuralhydrology.datasetzoo.template
+   neuralhydrology.datasetzoo.datasetregistry
