@@ -1,3 +1,5 @@
+from typing import Type
+
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.utils.config import Config
 
