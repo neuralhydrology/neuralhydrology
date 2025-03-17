@@ -1,5 +1,5 @@
 DatasetRegistry
-=====
+===============
 
 .. automodule:: neuralhydrology.datasetzoo.datasetregistry
    :members:

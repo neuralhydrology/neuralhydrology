@@ -27,7 +27,7 @@ def get_dataset(cfg: Config,
     'hourly_camels_us', as well as the 'generic' dataset class that can be used for any kind of dataset as long as it is
     in the correct format.
 
-    New dataset type can be added at the begining of runtime using the function register_dataset().
+    New dataset classes can be added at the beginning of runtime using the function register_dataset().
 
     Parameters
     ----------
@@ -70,16 +70,17 @@ def get_dataset(cfg: Config,
 
 
 def register_dataset(key: str, new_class: Type):
-    """Register a dataset class for use with neuralhydrology.
-    This class must derive from BaseDataset. New dataset calss has to be added at the begining of runtime.
+    """Adds a dataset class to the dataset registry.
+    
+    This class must derive from BaseDataset. New dataset class has to be added at the beginning of runtime.
 
     Parameters
     ----------
     key : str
-        the key of the dataset that is set in the configuration file.
+        The key of the dataset that is set in the configuration file.
 
     new_class : Type
-        The new Dataset class to register
+        The new Dataset class to register.
 
     Returns
     -------
@@ -88,7 +89,7 @@ def register_dataset(key: str, new_class: Type):
     Raises
     ------
     TypeError
-        If the new class is not derived from BaseDataset
+        If the new class is not derived from BaseDataset.
     """
     global _datasetZooRegistry
     _datasetZooRegistry.register_dataset_class(key, new_class)

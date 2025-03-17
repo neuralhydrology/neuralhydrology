@@ -5,14 +5,13 @@ from neuralhydrology.utils.config import Config
 
 
 class DatasetRegistry:
-    """Class that registers dataset classes that can be used with neuralhydrology.
-    """
+    """Class that registers dataset classes that can be used with neuralhydrology."""
 
     def __init__(self):
         self.__dataset_class = {}
 
     def register_dataset_class(self, key: str, new_class: Type):
-        """Register a new dataset class in the dataset zoo registry.
+        """Adds a new dataset class to the dataset registry.
 
         Parameters
         ----------
@@ -36,10 +35,10 @@ class DatasetRegistry:
         >>> registry = DatasetZooRegistry()
         >>> registry.register_dataset_class("my_dataset", MyCustomDataset)
         """
-        if issubclass(new_class, BaseDataset):
-            self.__dataset_class[key] = new_class
-        else:
+        if not issubclass(new_class, BaseDataset):
             raise TypeError(f"Class {type(new_class)} is not a subclass of BaseDataset.")
+        self.__dataset_class[key] = new_class
+            
 
     def instantiate_dataset(self,
                             cfg: Config,
@@ -49,7 +48,7 @@ class DatasetRegistry:
                             additional_features: list = [],
                             id_to_int: dict = {},
                             scaler: dict = {}) -> BaseDataset:
-        """Create and return an instance of a dataset class based on the configuration.
+        """Creates and returns an instance of a dataset class based on the configuration.
 
         Parameters
     ----------
