@@ -543,8 +543,21 @@ class Config(object):
             return self._cfg["log_n_figures"]
 
     @property
+    def logger_type(self) -> str:
+        return self._cfg.get("logger_type", "tensorboard")
+
+    @property
+    @warnings.deprecated("Use log_metrics instead")
     def log_tensorboard(self) -> bool:
         return self._cfg.get("log_tensorboard", True)
+
+    @property
+    def log_metrics(self) -> bool:
+        return self._cfg.get("log_metrics", self.log_tensorboard)
+
+    @property
+    def wandb_project(self) -> str:
+        return self._cfg.get("wandb_project", "neuralhydrology")
 
     @property
     def loss(self) -> str:
@@ -915,7 +928,7 @@ class Config(object):
             Level of verbosity.
         """
         return self._cfg.get("verbose", 1)
-    
+
     @property
     def early_stopping(self) -> bool:
         """Whether to use early stopping. Defaults to False if not set."""
@@ -931,13 +944,13 @@ class Config(object):
         """Number of epochs with no improvement before stopping."""
         if self.early_stopping:
             return self._get_value_verbose("patience_early_stopping")
-        
+
     @property
     def minimum_epochs_before_early_stopping(self) -> int:
         """Minimum number of epochs before early stopping can be triggered."""
         if self.early_stopping:
             return self._get_value_verbose("minimum_epochs_before_early_stopping")
-    
+
     @property
     def dynamic_learning_rate(self) -> bool:
         """Whether to use  dynamic learning rate. Defaults to False if not set."""
@@ -947,19 +960,19 @@ class Config(object):
             "Dynamic learning rate can only be used if validation is performed every epoch (validate_every=1). "
             "Set validate_every=1 in the config to use dynamic learning rate."
         )
-    
+
     @property
     def patience_dynamic_learning_rate(self) -> int:
         """Number of epochs with no improvement before reducing learning rate."""
         if self.dynamic_learning_rate:
             return self._get_value_verbose("patience_dynamic_learning_rate")
-        
+
     @property
     def factor_dynamic_learning_rate(self) -> float:
         """Factor by which to reduce learning rate."""
         if self.dynamic_learning_rate:
             return self._get_value_verbose("factor_dynamic_learning_rate")
-    
+
     def _get_embedding_spec(self, embedding_spec: dict) -> dict:
         if isinstance(embedding_spec, bool) and embedding_spec:  #
             msg = [

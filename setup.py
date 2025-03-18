@@ -47,6 +47,9 @@ setup(name='neuralhydrology',
           'tqdm',
           'xarray',
       ],
+      extras_require={
+          'wandb': ['wandb'],
+      },
       classifiers=[
           'Programming Language :: Python :: 3',
           'Operating System :: OS Independent',

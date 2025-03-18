@@ -19,7 +19,7 @@ from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
-from neuralhydrology.training.logger import Logger
+from neuralhydrology.training import tensorboard_logger, wandb_logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.logging_utils import setup_logging
 from neuralhydrology.training.earlystopper import EarlyStopper
@@ -180,9 +180,15 @@ class BaseTrainer(object):
         if self.cfg.is_continue_training:
             self._restore_training_state()
 
-        self.experiment_logger = Logger(cfg=self.cfg)
-        if self.cfg.log_tensorboard:
-            self.experiment_logger.start_tb()
+        if self.cfg.logger_type == "wandb":
+            self.experiment_logger = wandb_logger.Logger(cfg=self.cfg)
+        elif self.cfg.logger_type == "tensorboard":
+            self.experiment_logger = tensorboard_logger.Logger(cfg=self.cfg)
+        else:
+            raise ValueError(f"Invalid logger_type '{self.cfg.logger_type}'. Must be either 'wandb' or 'tensorboard'.")
+
+        if self.cfg.log_metrics:
+            self.experiment_logger.start_logger()
 
         if self.cfg.is_continue_training:
             # set epoch and iteration step counter to continue from the selected checkpoint
@@ -214,7 +220,7 @@ class BaseTrainer(object):
         """
         if self._early_stopping:
             if self.cfg.is_continue_training:
-                LOGGER.warning("Early stopping state is reset.")   
+                LOGGER.warning("Early stopping state is reset.")
             early_stopper = EarlyStopper(patience = self._patience_early_stopping, min_delta = 0.0001)
 
         if self._dynamic_learning_rate:
@@ -251,7 +257,7 @@ class BaseTrainer(object):
                     print_msg += f" -- Median validation metrics: "
                     print_msg += ", ".join(f"{k}: {v:.5f}" for k, v in valid_metrics.items() if k != 'avg_total_loss')
                     LOGGER.info(print_msg)
-                
+
 
                 if self._early_stopping and epoch > self._minimum_epochs_before_early_stopping and early_stopper.check_early_stopping(valid_metrics['avg_total_loss']):
                     LOGGER.info(f"Early stopping triggered at epoch {epoch} with validation loss {valid_metrics['avg_total_loss']:.5f}. Training stopped.")
@@ -260,8 +266,8 @@ class BaseTrainer(object):
                     scheduler.step(valid_metrics['avg_total_loss'])
 
         # make sure to close tensorboard to avoid losing the last epoch
-        if self.cfg.log_tensorboard:
-            self.experiment_logger.stop_tb()
+        if self.cfg.log_metrics:
+            self.experiment_logger.stop_logger()
 
     def _get_start_epoch_number(self):
         if self.cfg.is_continue_training:
@@ -294,6 +300,8 @@ class BaseTrainer(object):
 
         optimizer_path = self.cfg.run_dir / f"optimizer_state_epoch{epoch:03d}.pt"
         torch.save(self.optimizer.state_dict(), str(optimizer_path))
+
+        self.experiment_logger.log_model(weight_path, optimizer_path)
 
     def _train_epoch(self, epoch: int):
         self.model.train()
