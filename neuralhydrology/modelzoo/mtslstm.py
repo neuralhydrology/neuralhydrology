@@ -8,6 +8,7 @@ import torch.nn as nn
 from neuralhydrology.datautils.utils import get_frequency_factor, sort_frequencies
 from neuralhydrology.modelzoo.head import get_head
 from neuralhydrology.modelzoo.basemodel import BaseModel
+from neuralhydrology.modelzoo.inputlayer import InputLayer
 from neuralhydrology.utils.config import Config
 
 LOGGER = logging.getLogger(__name__)
@@ -27,7 +28,7 @@ class MTSLSTM(BaseModel):
     - the strategy to transfer states from the initial shared low-resolution LSTM to the per-timescale
     higher-resolution LSTMs. By default, this is a linear transfer layer, but you can specify 'identity' to use an
     identity operation or 'None' to turn off any transfer (via the ``transfer_mtlstm_states`` config argument).
-
+    - embedding networks for static and dynamic inputs using the ``statics_embedding`` and ``dynamics_embedding`` config arguments
 
     The sMTS-LSTM variant has the same overall architecture, but the weights of the per-timescale branches (including
     the output heads) are shared.
@@ -45,7 +46,7 @@ class MTSLSTM(BaseModel):
         https://arxiv.org/abs/2010.07921, 2020.
     """
     # specify submodules of the model that can later be used for finetuning. Names must match class attributes
-    module_parts = ['lstms', 'transfer_fcs', 'heads']
+    module_parts = ['embedding_net', 'lstms', 'transfer_fcs', 'heads']
 
     def __init__(self, cfg: Config):
         super(MTSLSTM, self).__init__(cfg=cfg)
@@ -68,6 +69,25 @@ class MTSLSTM(BaseModel):
         if len(cfg.use_frequencies) < 2:
             raise ValueError("MTS-LSTM expects more than one input frequency")
         self._frequencies = sort_frequencies(cfg.use_frequencies)
+
+        # initialize embedding networks for each frequency if embeddings are defined
+        self.embedding_net = None
+        if hasattr(cfg, 'dynamics_embedding') and cfg.dynamics_embedding is not None:
+            self.embedding_net = nn.ModuleDict()
+            for freq in self._frequencies:
+                freq_params = {
+                    'model': 'mtslstm',
+                    'dynamic_inputs': cfg.dynamic_inputs[freq] if isinstance(cfg.dynamic_inputs, dict) else cfg.dynamic_inputs,
+                    'dynamics_embedding': cfg.dynamics_embedding,
+                    'static_attributes': cfg.static_attributes if hasattr(cfg, 'static_attributes') else [],
+                    'statics_embedding': cfg.statics_embedding if hasattr(cfg, 'statics_embedding') else None,
+                    'use_basin_id_encoding': cfg.use_basin_id_encoding,
+                    'number_of_basins': cfg.number_of_basins,
+                    'head': cfg.head,
+                    'seq_length': cfg.seq_length[freq] if isinstance(cfg.seq_length, dict) else cfg.seq_length
+                }
+                freq_cfg = Config(freq_params)
+                self.embedding_net[freq] = InputLayer(freq_cfg, embedding_type='full_model')
 
         # start to count the number of inputs
         input_sizes = len(cfg.static_attributes + cfg.hydroatlas_attributes + cfg.evolving_attributes)
@@ -117,7 +137,14 @@ class MTSLSTM(BaseModel):
         self.heads = nn.ModuleDict()
         self.dropout = nn.Dropout(p=self.cfg.output_dropout)
         for idx, freq in enumerate(self._frequencies):
-            freq_input_size = input_sizes[freq]
+            if self.embedding_net is not None:
+                freq_input_size = self.embedding_net[freq].output_size
+                if self._is_shared_mtslstm:
+                    freq_input_size += len(self._frequencies)
+                if self.cfg.head.lower() == "umal":
+                    freq_input_size += 1
+            else:
+                freq_input_size = input_sizes[freq]
 
             if self._is_shared_mtslstm and idx > 0:
                 self.lstms[freq] = self.lstms[self._frequencies[idx - 1]]  # same LSTM for all frequencies.
@@ -156,31 +183,77 @@ class MTSLSTM(BaseModel):
 
     def _prepare_inputs(self, data: Dict[str, torch.Tensor], freq: str) -> torch.Tensor:
         """Concat all different inputs to the time series input"""
-        suffix = f"_{freq}"
-        # transpose to [seq_length, batch_size, n_features]
-        x_d = torch.cat([data[f'x_d{suffix}'][k] for k in self._dynamic_inputs[freq]], dim=-1).transpose(0, 1)
-
-        # concat all inputs
-        if f'x_s{suffix}' in data and 'x_one_hot' in data:
-            x_s = data[f'x_s{suffix}'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s, x_one_hot], dim=-1)
-        elif f'x_s{suffix}' in data:
-            x_s = data[f'x_s{suffix}'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_s], dim=-1)
-        elif 'x_one_hot' in data:
-            x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
-            x_d = torch.cat([x_d, x_one_hot], dim=-1)
+        if self.embedding_net is not None:
+            # use embedding network if available
+            input_data = {
+                'x_d': data[f'x_d_{freq}'],
+                'x_s': data['x_s'] if 'x_s' in data else None,
+                'x_one_hot': data['x_one_hot'] if 'x_one_hot' in data else None
+            }
+            # if specific x_s for frequency is available, use that
+            if f'x_s_{freq}' in data:
+                input_data['x_s'] = data[f'x_s_{freq}']
+                
+            # filter out None values
+            input_data = {k: v for k, v in input_data.items() if v is not None}
+            x_d = self.embedding_net[freq](input_data, concatenate_output=True)
+                       
+            # add frequency one-hot encoding if shared_mtslstm is used
+            if self._is_shared_mtslstm:
+                # add frequency one-hot encoding
+                idx = self._frequencies.index(freq)
+                # x_d has the shape [seq_length, batch_size, features]
+                seq_length, batch_size = x_d.shape[0], x_d.shape[1]
+                one_hot_freq = torch.zeros(seq_length, batch_size, len(self._frequencies), device=x_d.device)
+                one_hot_freq[:, :, idx] = 1
+                x_d = torch.cat([x_d, one_hot_freq], dim=2)
         else:
-            pass
+            # directly use the input data without embedding, following the original implementation
+            suffix = f"_{freq}"
+            
+            # handle case where x_d_{freq} is a dictionary
+            if isinstance(data[f'x_d{suffix}'], dict):
+                # concatenate all feature tensors from the dictionary
+                feature_tensors = []
+                for feature_name, feature_tensor in data[f'x_d{suffix}'].items():
+                    feature_tensors.append(feature_tensor)
+                
+                if feature_tensors:
+                    # concatenate all features along the feature dimension
+                    x_d = torch.cat(feature_tensors, dim=-1).transpose(0, 1)
+                else:
+                    # if no features, create an empty tensor with appropriate dimensions
+                    batch_size = next(iter(data.values())).shape[0] if data else 1
+                    seq_length = self._seq_lengths[freq]
+                    x_d = torch.zeros((seq_length, batch_size, 0), device=next(iter(data.values())).device if data else None)
+            else:
+                # transpose to [seq_length, batch_size, n_features]
+                x_d = data[f'x_d{suffix}'].transpose(0, 1)
 
-        if self._is_shared_mtslstm:
-            # add frequency one-hot encoding
-            idx = self._frequencies.index(freq)
-            one_hot_freq = torch.zeros(x_d.shape[0], x_d.shape[1], len(self._frequencies)).to(x_d)
-            one_hot_freq[:, :, idx] = 1
-            x_d = torch.cat([x_d, one_hot_freq], dim=2)
+            # concat all inputs
+            if f'x_s{suffix}' in data and 'x_one_hot' in data:
+                x_s = data[f'x_s{suffix}'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
+                x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
+                x_d = torch.cat([x_d, x_s, x_one_hot], dim=-1)
+            elif f'x_s{suffix}' in data:
+                x_s = data[f'x_s{suffix}'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
+                x_d = torch.cat([x_d, x_s], dim=-1)
+            elif 'x_s' in data:
+                x_s = data['x_s'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
+                x_d = torch.cat([x_d, x_s], dim=-1)
+            elif 'x_one_hot' in data:
+                x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
+                x_d = torch.cat([x_d, x_one_hot], dim=-1)
+            else:
+                pass
 
+            if self._is_shared_mtslstm:
+                # add frequency one-hot encoding
+                idx = self._frequencies.index(freq)
+                one_hot_freq = torch.zeros(x_d.shape[0], x_d.shape[1], len(self._frequencies)).to(x_d)
+                one_hot_freq[:, :, idx] = 1
+                x_d = torch.cat([x_d, one_hot_freq], dim=2)
+        
         return x_d
 
     def forward(self, data: dict[str, torch.Tensor | dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
