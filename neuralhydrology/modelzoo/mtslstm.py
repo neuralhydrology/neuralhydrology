@@ -72,13 +72,13 @@ class MTSLSTM(BaseModel):
 
         # initialize embedding networks for each frequency if embeddings are defined
         self.embedding_net = None
-        if hasattr(cfg, 'dynamics_embedding') and cfg.dynamics_embedding is not None:
+        if (hasattr(cfg, 'dynamics_embedding') and cfg.dynamics_embedding is not None) or (hasattr(cfg, 'statics_embedding') and cfg.statics_embedding is not None):
             self.embedding_net = nn.ModuleDict()
             for freq in self._frequencies:
                 freq_params = {
                     'model': 'mtslstm',
                     'dynamic_inputs': cfg.dynamic_inputs[freq] if isinstance(cfg.dynamic_inputs, dict) else cfg.dynamic_inputs,
-                    'dynamics_embedding': cfg.dynamics_embedding,
+                    'dynamics_embedding': cfg.dynamics_embedding if hasattr(cfg, 'dynamics_embedding') else None,
                     'static_attributes': cfg.static_attributes if hasattr(cfg, 'static_attributes') else [],
                     'statics_embedding': cfg.statics_embedding if hasattr(cfg, 'statics_embedding') else None,
                     'use_basin_id_encoding': cfg.use_basin_id_encoding,
