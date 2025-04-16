@@ -88,6 +88,10 @@ class InputLayer(nn.Module):
             else:
                 dynamics_input_sizes = [len(group) for group in self._dynamic_inputs]
 
+        if cfg.head.lower() == "umal":
+            dynamics_input_sizes = [size + 1 for size in dynamics_input_sizes]
+            self._dynamic_inputs = {k: v + ['_tau'] for k, v in self._dynamic_inputs.items()}
+
         self._num_autoregression_inputs = 0
         if cfg.autoregressive_inputs:
             self._num_autoregression_inputs = len(cfg.autoregressive_inputs)
@@ -139,8 +143,6 @@ class InputLayer(nn.Module):
             self.dynamics_embedding_p_dropout = cfg.dynamics_embedding['dropout']
 
         self.output_size = self.dynamics_output_size + self.statics_output_size + self._num_autoregression_inputs
-        if cfg.head.lower() == "umal":
-            self.output_size += 1
         self.cfg = cfg
 
     @staticmethod
