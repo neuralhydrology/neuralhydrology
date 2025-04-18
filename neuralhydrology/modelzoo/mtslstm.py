@@ -72,15 +72,15 @@ class MTSLSTM(BaseModel):
 
         # initialize embedding networks for each frequency if embeddings are defined
         self.embedding_net = None
-        if (hasattr(cfg, 'dynamics_embedding') and cfg.dynamics_embedding is not None) or (hasattr(cfg, 'statics_embedding') and cfg.statics_embedding is not None):
+        if (cfg.dynamics_embedding is not None) or (cfg.statics_embedding is not None):
             self.embedding_net = nn.ModuleDict()
             for freq in self._frequencies:
                 freq_params = {
                     'model': 'mtslstm',
                     'dynamic_inputs': cfg.dynamic_inputs[freq] if isinstance(cfg.dynamic_inputs, dict) else cfg.dynamic_inputs,
-                    'dynamics_embedding': cfg.dynamics_embedding if hasattr(cfg, 'dynamics_embedding') else None,
-                    'static_attributes': cfg.static_attributes if hasattr(cfg, 'static_attributes') else [],
-                    'statics_embedding': cfg.statics_embedding if hasattr(cfg, 'statics_embedding') else None,
+                    'dynamics_embedding': cfg.dynamics_embedding,
+                    'static_attributes': cfg.static_attributes,
+                    'statics_embedding': cfg.statics_embedding,
                     'use_basin_id_encoding': cfg.use_basin_id_encoding,
                     'number_of_basins': cfg.number_of_basins,
                     'head': cfg.head,
@@ -181,14 +181,20 @@ class MTSLSTM(BaseModel):
                 hidden_size = self._hidden_size[freq]
                 self.lstms[freq].bias_hh_l0.data[hidden_size:2 * hidden_size] = self.cfg.initial_forget_bias
 
+    def _add_frequency_one_hot_encoding(self, x_d: torch.Tensor, freq: str) -> torch.Tensor:
+        idx = self._frequencies.index(freq)
+        one_hot_freq = torch.zeros(x_d.shape[0], x_d.shape[1], len(self._frequencies), device=x_d.device)
+        one_hot_freq[:, :, idx] = 1
+        return torch.cat([x_d, one_hot_freq], dim=2)
+
     def _prepare_inputs(self, data: Dict[str, torch.Tensor], freq: str) -> torch.Tensor:
         """Concat all different inputs to the time series input"""
         if self.embedding_net is not None:
             # use embedding network if available
             input_data = {
                 'x_d': data[f'x_d_{freq}'],
-                'x_s': data['x_s'] if 'x_s' in data else None,
-                'x_one_hot': data['x_one_hot'] if 'x_one_hot' in data else None
+                'x_s': data.get('x_s'),
+                'x_one_hot': data.get('x_one_hot')
             }
             # if specific x_s for frequency is available, use that
             if f'x_s_{freq}' in data:
@@ -200,37 +206,27 @@ class MTSLSTM(BaseModel):
                        
             # add frequency one-hot encoding if shared_mtslstm is used
             if self._is_shared_mtslstm:
-                # add frequency one-hot encoding
-                idx = self._frequencies.index(freq)
-                # x_d has the shape [seq_length, batch_size, features]
-                seq_length, batch_size = x_d.shape[0], x_d.shape[1]
-                one_hot_freq = torch.zeros(seq_length, batch_size, len(self._frequencies), device=x_d.device)
-                one_hot_freq[:, :, idx] = 1
-                x_d = torch.cat([x_d, one_hot_freq], dim=2)
+                x_d = self._add_frequency_one_hot_encoding(x_d, freq)
+
         else:
             # directly use the input data without embedding, following the original implementation
             suffix = f"_{freq}"
             
-            # handle case where x_d_{freq} is a dictionary
-            if isinstance(data[f'x_d{suffix}'], dict):
-                # concatenate all feature tensors from the dictionary
-                feature_tensors = []
-                for feature_name, feature_tensor in data[f'x_d{suffix}'].items():
-                    feature_tensors.append(feature_tensor)
-                
-                if feature_tensors:
-                    # concatenate all features along the feature dimension
-                    x_d = torch.cat(feature_tensors, dim=-1).transpose(0, 1)
-                else:
-                    # if no features, create an empty tensor with appropriate dimensions
-                    batch_size = next(iter(data.values())).shape[0] if data else 1
-                    seq_length = self._seq_lengths[freq]
-                    x_d = torch.zeros((seq_length, batch_size, 0), device=next(iter(data.values())).device if data else None)
+            # concatenate all dynamic feature tensors from the dictionary
+            feature_tensors = []
+            for feature_name, feature_tensor in data[f'x_d{suffix}'].items():
+                feature_tensors.append(feature_tensor)
+            
+            if feature_tensors:
+                # concatenate all features along the feature dimension
+                x_d = torch.cat(feature_tensors, dim=-1).transpose(0, 1)
             else:
-                # transpose to [seq_length, batch_size, n_features]
-                x_d = data[f'x_d{suffix}'].transpose(0, 1)
+                # if no features, create an empty tensor with appropriate dimensions
+                batch_size = next(iter(data.values())).shape[0] if data else 1
+                seq_length = self._seq_lengths[freq]
+                x_d = torch.zeros((seq_length, batch_size, 0), device=next(iter(data.values())).device if data else None)
 
-            # concat all inputs
+            # concat all static and one-hot encoded features
             if f'x_s{suffix}' in data and 'x_one_hot' in data:
                 x_s = data[f'x_s{suffix}'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
                 x_one_hot = data['x_one_hot'].unsqueeze(0).repeat(x_d.shape[0], 1, 1)
@@ -248,11 +244,7 @@ class MTSLSTM(BaseModel):
                 pass
 
             if self._is_shared_mtslstm:
-                # add frequency one-hot encoding
-                idx = self._frequencies.index(freq)
-                one_hot_freq = torch.zeros(x_d.shape[0], x_d.shape[1], len(self._frequencies)).to(x_d)
-                one_hot_freq[:, :, idx] = 1
-                x_d = torch.cat([x_d, one_hot_freq], dim=2)
+                x_d = self._add_frequency_one_hot_encoding(x_d, freq)
         
         return x_d
 
