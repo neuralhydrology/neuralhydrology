@@ -221,10 +221,8 @@ class MTSLSTM(BaseModel):
                 # concatenate all features along the feature dimension
                 x_d = torch.cat(feature_tensors, dim=-1).transpose(0, 1)
             else:
-                # if no features, create an empty tensor with appropriate dimensions
-                batch_size = next(iter(data.values())).shape[0] if data else 1
-                seq_length = self._seq_lengths[freq]
-                x_d = torch.zeros((seq_length, batch_size, 0), device=next(iter(data.values())).device if data else None)
+                # no dynamic features found, which is invalid
+                raise ValueError(f"No dynamic features found for frequency {freq}.")
 
             # concat all static and one-hot encoded features
             if f'x_s{suffix}' in data and 'x_one_hot' in data:
