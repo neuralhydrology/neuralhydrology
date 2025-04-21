@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+from pathlib import Path
 import torch
 from typing import Dict, List, Union
 import xarray as xr
@@ -48,8 +49,8 @@ ALLOWED_TYPES_FOR_SCALING = Union[
 
 
 def _get_feature_scaler(
-    cfg: Config,
     scaler_type: str,
+    scaler_dir: Path,
     feature: str,
     calculate: bool,
     load: bool,
@@ -59,7 +60,7 @@ def _get_feature_scaler(
     
     feature_scaler_args = {
         'feature': feature,
-        'run_path': cfg.train_dir,
+        'run_path': scaler_dir,
         'calculate': calculate,
         'load': load,
         'da': da
@@ -105,12 +106,16 @@ class Scaler():
         features: List[str] | None = None,
         calculate: bool = False,
         load: bool = False,
+        scaler_dir: Path | None = None
     ):
         if load and calculate:
             raise ValueError('Cannot both load and calculate the scaler.')
         if not load and not calculate:
             raise ValueError('Must either load or calculate the scaler.')
         self._load = load
+        
+        if scaler_dir is None:
+            scaler_dir = cfg.train_dir
 
         #TODO(gsnearing) :: Needs to be able to handle duplicate_features.
         self.features = []
@@ -129,8 +134,8 @@ class Scaler():
             else:
                 scaler_type = DEFAULT_SCALER_TYPE
             self.feature_scalers[feature] = _get_feature_scaler(
-                cfg=cfg,
                 scaler_type=scaler_type,
+                scaler_dir=scaler_dir,
                 feature=feature,
                 calculate=calculate,
                 load=load,

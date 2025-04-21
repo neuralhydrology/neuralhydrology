@@ -96,6 +96,7 @@ def continue_run(run_dir: Path, config_file: Path = None, gpu: int = None):
 
     if config_file is not None:
         base_config.update_config(config_file)
+        base_config.run_dir = run_dir
 
     base_config.is_continue_training = True
 

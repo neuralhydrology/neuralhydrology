@@ -100,10 +100,15 @@ class BaseDataset(Dataset):
         self.id_to_int = id_to_int
         # don't compute scale when finetuning
         self._compute_scaler = not load_precalculated_scaler
+        if cfg.is_finetuning:
+            scaler_dir = cfg.base_run_dir
+        else:
+            scaler_dir = cfg.run_dir
         self.scaler = Scaler(
             cfg=cfg,
             calculate=self._compute_scaler,
-            load=load_precalculated_scaler
+            load=load_precalculated_scaler,
+            scaler_dir=scaler_dir
         )
 
         # check and extract frequency information from config
