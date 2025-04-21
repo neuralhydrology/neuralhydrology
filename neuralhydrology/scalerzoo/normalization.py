@@ -59,8 +59,7 @@ class NormalizationScaler(FeatureScaler):
         self.parameters = {
             'center': center,
             'scale': self.std,
-        }
-        
+        }       
         self.save()
 
     def scale(

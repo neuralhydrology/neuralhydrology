@@ -67,7 +67,6 @@ class BaseTester(object):
 
         # pre-initialize variables, defined in class methods
         self.basins = None
-        self.scaler = None
         self.id_to_int = {}
         self.additional_features = []
 
@@ -109,14 +108,12 @@ class BaseTester(object):
         # get list of basins
         self.basins = load_basin_file(getattr(self.cfg, f"{self.period}_basin_file"))
 
-        # load feature scaler
-        self.scaler = load_scaler(self.run_dir)
-
-        # check for old scaler files, where the center/scale parameters had still old names
-        if "xarray_means" in self.scaler.keys():
-            self.scaler["xarray_feature_center"] = self.scaler.pop("xarray_means")
-        if "xarray_stds" in self.scaler.keys():
-            self.scaler["xarray_feature_scale"] = self.scaler.pop("xarray_stds")
+        #TODO :: Incorporate this into scaler backwards compatability.
+#         # check for old scaler files, where the center/scale parameters had still old names
+#         if "xarray_means" in self.scaler.keys():
+#             self.scaler["xarray_feature_center"] = self.scaler.pop("xarray_means")
+#         if "xarray_stds" in self.scaler.keys():
+#             self.scaler["xarray_feature_scale"] = self.scaler.pop("xarray_stds")
 
         # load basin_id to integer dictionary for one-hot-encoding
         if self.cfg.use_basin_id_encoding:
@@ -150,7 +147,7 @@ class BaseTester(object):
                          basin=basin,
                          additional_features=self.additional_features,
                          id_to_int=self.id_to_int,
-                         scaler=self.scaler)
+                         load_precalculated_scaler=True)
         return ds
 
     def evaluate(self,
@@ -244,17 +241,38 @@ class BaseTester(object):
                 results[basin][freq] = {}
 
                 # rescale observations
-                feature_scaler = self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values
-                feature_center = self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
-                y_freq = y[freq] * feature_scaler + feature_center
-                # rescale predictions
-                if y_hat[freq].ndim == 3 or (len(feature_scaler) == 1):
-                    y_hat_freq = y_hat[freq] * feature_scaler + feature_center
-                elif y_hat[freq].ndim == 4:
-                    # if y_hat has 4 dim and we have multiple features we expand the dimensions for scaling
-                    feature_scaler = np.expand_dims(feature_scaler, (0, 1, 3))
-                    feature_center = np.expand_dims(feature_center, (0, 1, 3))
-                    y_hat_freq = y_hat[freq] * feature_scaler + feature_center
+                if y_hat[freq].ndim == 3:
+                    if len(self.cfg.target_variables) != 1:
+                        raise ValueError(f'Feature dimension ({y_hat[freq].ndim}) does not match the number of targets in the config file ({len(self._cfg.target_variables)}).')
+                    
+                    target_feature = self.cfg.target_variables[0]
+                    
+                    y_hat_freq = ds.scaler.unscale({target_feature: y_hat[freq]})
+                    y_hat_freq = y_hat_freq[target_feature]
+
+                    y_freq = ds.scaler.unscale({target_feature: y[freq]})
+                    y_freq = y_freq[target_feature]
+                    
+                elif feature_dim == 4:
+                    if len(self.cfg.target_variables) <= 1:
+                        raise ValueError(f'Feature dimension ({y_hat[freq].ndim}) does not match the number of targets in the config file ({len(self._cfg.target_variables)}).')
+
+                    y_hat_freq = ds.scaler.unscale(
+                        {
+                            var: y_hat[freq][..., -i]
+                            for i, var in enumerate(self._cfg.target_variables)
+                        }
+                    )
+                    y_hat_freq = np.stack(y_hat_freq.values(), -1)
+                
+                    y_freq = ds.scaler.unscale(
+                        {
+                            var: y[freq][..., -i]
+                            for i, var in enumerate(self._cfg.target_variables)
+                        }
+                    )
+                    y_freq = np.stack(y_freq.values(), -1)
+                               
                 else:
                     raise RuntimeError(f"Simulations have {y_hat[freq].ndim} dimension. Only 3 and 4 are supported.")
 
@@ -267,7 +285,6 @@ class BaseTester(object):
                 # Create coords dictionary for the xarray.Dataset. 'date' can be directly infered from the dates
                 # dictionary. We index the sample by the date of the last timestep of the sequence. The 'time_step'
                 # index that specifies the position in the output sequence (relative to the end) can be inferred by
-                # computing the timedelta of the dates. To account for predict_last_n > 1 and multi-freq stuff, we
                 # need to add the frequency factor and remove 1 (to start at zero).
                 coords = {
                     'date':

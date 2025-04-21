@@ -251,6 +251,7 @@ class BaseTrainer(object):
             if self.cfg.continue_from_epoch is not None:
                 epoch = self.cfg.continue_from_epoch
             else:
+                import pdb; pdb.set_trace()
                 weight_path = [x for x in sorted(list(self.cfg.run_dir.glob('model_epoch*.pt')))][-1]
                 epoch = weight_path.name[-6:-3]
         else:

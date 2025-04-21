@@ -173,6 +173,8 @@ class Scaler():
             if feature not in self.features:
                 raise ValueError(f'Asking to calculate scaling parameters for a feature that is not in the initialized scaler: {feature}.')
             self.feature_scalers[feature].calculate(da)
+            self.target_means[feature] = self.feature_scalers[feature].mean
+            self.target_stds[feature] = self.feature_scalers[feature].std        
 
     def _scale_or_unscale_feature(
         self,
