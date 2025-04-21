@@ -32,9 +32,8 @@ class Caravan(BaseDataset):
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
-        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
+    load_precalculated_scaler : bool
+        Forces the dataset to load a scaler with parameters already calculated. This is required for fine tuning and inference.
 
     References
     ----------
@@ -51,7 +50,7 @@ class Caravan(BaseDataset):
                  basin: str = None,
                  additional_features: List[Dict[str, pd.DataFrame]] = [],
                  id_to_int: Dict[str, int] = {},
-                 scaler: Dict[str, Union[pd.Series, xarray.DataArray]] = {}):
+                 load_precalculated_scaler: bool = True):
         # initialize parent class
         super(Caravan, self).__init__(cfg=cfg,
                                       is_train=is_train,
@@ -59,7 +58,7 @@ class Caravan(BaseDataset):
                                       basin=basin,
                                       additional_features=additional_features,
                                       id_to_int=id_to_int,
-                                      scaler=scaler)
+                                      load_precalculated_scaler=load_precalculated_scaler)
 
     def _load_basin_data(self, basin: str) -> pd.DataFrame:
         """Load timeseries data from netcdf files."""

@@ -1,16 +1,23 @@
+import numpy as np
 import os
 import pandas as pd
 from pathlib import Path
 import torch
+from typing import Union
 import xarray as xr
-
-from neuralhydrology.utils.config import Config
 
 BANNED_FILENAME_CHARACTERS = ['/', '(', ')']
 REPLACEMENT_FILENAME_CHARACTER = '_'
 SCALER_SUBPATH = 'scaler'
 SCALER_INDEX_COLUMN_NAME = 'parameter'
 SAMPLER_PREFIX = 'sampler'
+
+ALLOWED_TYPES = Union[
+    xr.DataArray,
+    pd.Series,
+    torch.Tensor,
+    np.ndarray
+]
 
 
 class FeatureScaler():
@@ -24,8 +31,10 @@ class FeatureScaler():
         Name of the feature that this scaler applies to.
     run_path : Path
         Path to the model run for saving and loading scaler.
-    force_calculate : bool
-        Force the scaler to recalculate parameters instead of loading a precalculated scaler, even if one exits.
+    calculate : bool
+        Force the scaler to (re)calculate parameters instead of loading a precalculated scaler.
+    load : bool
+        Force the scaler to load precalculated parameters and throw an error if none exist.
     da : xr.DataArray
         An optional xarray data array for calculating scaler parameters immediately. Alternatively, the calculate
         method can be applied after instantiation.
@@ -35,19 +44,25 @@ class FeatureScaler():
         self,
         feature: str,
         run_path: Path,
-        force_calculate: bool = False,
+        calculate: bool = False,
+        load: bool = False,
         da: xr.DataArray | None = None,
     ):
+        if load and calculate:
+            raise ValueError('Cannot both load and calculate the scaler.')
+        if not load and not calculate:
+            raise ValueError('Must either load or calculate the scaler.')
+        
         self.feature = feature
         self._file_name(run_path=run_path, feature=feature)
         
         self.parameters = None
         self.mean = None
         self.std = None
-        if not force_calculate:
-            self.load()
-        if self.parameters is None and da is not None:
+        if calculate and da is not None:
             self.calculate(da)
+        elif load:
+            self.load()
         
     def _check_set(self):
         if self.parameters is None:
@@ -79,7 +94,9 @@ class FeatureScaler():
                 if not name.startswith(SAMPLER_PREFIX)
             }
             self.mean = df.loc[f'{SAMPLER_PREFIX}_mean']
-            self.std = df.loc[f'{SAMPLER_PREFIX}_std']            
+            self.std = df.loc[f'{SAMPLER_PREFIX}_std']
+        else:
+            raise ValueError(f'Scaler file does not exist: {self.scaler_file} .')
 
     def save(self):
         parameters = self.parameters.copy()
@@ -114,16 +131,16 @@ class FeatureScaler():
         
     def scale(
         self,
-        data: torch.Tensor,
-    ) -> torch.Tensor:
+        data: ALLOWED_TYPES,
+    ) -> ALLOWED_TYPES:
         """Scale the feature in a single xarray data array."""
         self._check_set()
         raise NotImplementedError
             
     def unscale(
         self,
-        data: torch.Tensor,
-    ) -> torch.Tensor:
+        data: ALLOWED_TYPES,
+    ) -> ALLOWED_TYPES:
         """Unscale the feature in a single tensor."""
         self._check_set()
         raise NotImplementedError

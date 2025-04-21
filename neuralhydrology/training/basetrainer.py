@@ -47,7 +47,6 @@ class BaseTrainer(object):
         self.noise_sampler_y = None
         self._target_mean = None
         self._target_std = None
-        self._scaler = {}
         self._allow_subsequent_nan_losses = cfg.allow_subsequent_nan_losses
         self._disable_pbar = cfg.verbose == 0
         self._max_updates_per_epoch = cfg.max_updates_per_epoch
@@ -76,8 +75,11 @@ class BaseTrainer(object):
         self._set_random_seeds()
         self._set_device()
 
-    def _get_dataset(self) -> BaseDataset:
-        return get_dataset(cfg=self.cfg, period="train", is_train=True, scaler=self._scaler)
+    def _get_dataset(self, load_scaler: bool) -> BaseDataset:
+        return get_dataset(cfg=self.cfg,
+                           period="train",
+                           is_train=True,
+                           load_precalculated_scaler=load_scaler)
 
     def _get_model(self) -> torch.nn.Module:
         return get_model(cfg=self.cfg)
@@ -139,12 +141,8 @@ class BaseTrainer(object):
         tensorboard logging, and Tester class.
         If called in a ``continue_training`` context, this model will also restore the model and optimizer state.
         """
-        if self.cfg.is_finetuning:
-            # Load scaler from pre-trained model.
-            self._scaler = load_scaler(self.cfg.base_run_dir)
-
         # Initialize dataset before the model is loaded.
-        ds = self._get_dataset()
+        ds = self._get_dataset(load_scaler=self.cfg.is_finetuning)
         if len(ds) == 0:
             raise ValueError("Dataset contains no samples.")
         self.loader = self._get_data_loader(ds=ds)

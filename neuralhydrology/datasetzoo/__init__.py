@@ -14,13 +14,15 @@ from neuralhydrology.utils.config import Config
 from neuralhydrology.datasetzoo.datasetregistry import DatasetRegistry
 
 
-def get_dataset(cfg: Config,
-                is_train: bool,
-                period: str,
-                basin: str = None,
-                additional_features: list = [],
-                id_to_int: dict = {},
-                scaler: dict = {}) -> BaseDataset:
+def get_dataset(
+    cfg: Config,
+    is_train: bool,
+    period: str,
+    basin: str = None,
+    additional_features: list = [],
+    id_to_int: dict = {},
+    load_precalculated_scaler: bool = False
+) -> BaseDataset:
     """Get data set instance, depending on the run configuration.
 
     Currently implemented datasets are 'caravan', 'camels_aus', 'camels_br', 'camels_cl', 'camels_gb', 'camels_us', and
@@ -50,9 +52,8 @@ def get_dataset(cfg: Config,
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
-        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
+    load_precalculated_scaler : bool
+        Forces the dataset to load a scaler with parameters already calculated. This is required for fine tuning and inference.
 
     Returns
     -------
@@ -66,7 +67,15 @@ def get_dataset(cfg: Config,
     """
     global _datasetZooRegistry
 
-    return _datasetZooRegistry.instantiate_dataset(cfg, is_train, period, basin, additional_features, id_to_int, scaler)
+    return _datasetZooRegistry.instantiate_dataset(
+        cfg,
+        is_train, 
+        period,
+        basin,
+        additional_features,
+        id_to_int,
+        load_precalculated_scaler
+    )
 
 
 def register_dataset(key: str, new_class: Type):
