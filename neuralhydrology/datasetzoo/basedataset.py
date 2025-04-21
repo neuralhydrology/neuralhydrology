@@ -52,9 +52,10 @@ class BaseDataset(Dataset):
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
-        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
+    scaler : scaler.Scaler, optional
+        If period is either 'validation' or 'test', this input is required. It contains the scaling functions
+        for each feature and is stored to the run directory during training as:
+        `train_data/scaler/<scaler_type>_<feature_name>.csv`.
     """
 
     def __init__(self,
@@ -64,7 +65,7 @@ class BaseDataset(Dataset):
                  basin: str = None,
                  additional_features: List[Dict[str, pd.DataFrame]] = [],
                  id_to_int: Dict[str, int] = {},
-                 scaler: Dict[str, Union[pd.Series, xarray.DataArray]] = {}):
+                 scaler: Scaler | None = None):
         super(BaseDataset, self).__init__()
         self.cfg = cfg
         self.is_train = is_train
@@ -75,7 +76,7 @@ class BaseDataset(Dataset):
             self.period = period
 
         if period in ["validation", "test"]:
-            if not scaler:
+            if scaler is None:
                 raise ValueError("During evaluation of validation or test period, scaler dictionary has to be passed")
 
             if cfg.use_basin_id_encoding and not id_to_int:
@@ -99,12 +100,16 @@ class BaseDataset(Dataset):
             self.basins = [basin]
         self.additional_features = additional_features
         self.id_to_int = id_to_int
-        self.scaler = scaler
         # don't compute scale when finetuning
-        if is_train and not scaler:
+        if is_train and scaler is None:
             self._compute_scaler = True
+            self.scaler = Scaler(
+                cfg=cfg,
+                force_calculate=self._compute_scaler
+            )
         else:
             self._compute_scaler = False
+            self.scaler = scaler
 
         # check and extract frequency information from config
         self.frequencies = []
@@ -140,9 +145,6 @@ class BaseDataset(Dataset):
 
         # load and preprocess data
         self._load_data()
-
-        if self.is_train:
-            self._dump_scaler()
 
     def __len__(self):
         return self.num_samples
@@ -250,20 +252,6 @@ class BaseDataset(Dataset):
         with file_path.open("w") as fp:
             yaml = YAML()
             yaml.dump(self.id_to_int, fp)
-
-    def _dump_scaler(self):
-        # dump scaler dictionary into run directory for inference
-        scaler = defaultdict(dict)
-        for key, value in self.scaler.items():
-            if isinstance(value, pd.Series) or isinstance(value, xarray.Dataset):
-                scaler[key] = value.to_dict()
-            else:
-                raise RuntimeError(f"Unknown datatype for scaler: {key}. Supported are pd.Series and xarray.Dataset")
-        file_path = self.cfg.train_dir / "train_data_scaler.yml"
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open("w") as fp:
-            yaml = YAML()
-            yaml.dump(dict(scaler), fp)
 
     def _get_start_and_end_dates(self):
 
@@ -718,22 +706,18 @@ class BaseDataset(Dataset):
             if missing_columns:
                 raise ValueError(f"The following attributes are not available in the dataset: {missing_columns}")
 
-            # fix the order of the columns to be alphabetically
+            # fix the order of the columns to be alphabetical
             df = df.sort_index(axis=1)
 
             # calculate statistics and normalize features
             if self._compute_scaler:
-                self.scaler["attribute_means"] = df.mean()
-                self.scaler["attribute_stds"] = df.std()
-
-            if any([k.startswith("camels_attr") for k in self.scaler.keys()]):
+                self.scaler.calculate(df)
+            
+            if any([k.startswith("camels_attr") for k in self.scaler.features]):
                 LOGGER.warning(
                     "Deprecation warning: Using old scaler files won't be supported in the upcoming release.")
 
-                # Here we assume that only camels attributes are used
-                df = (df - self.scaler['camels_attr_means']) / self.scaler["camels_attr_stds"]
-            else:
-                df = (df - self.scaler['attribute_means']) / self.scaler["attribute_stds"]
+            df = self.scaler.scale(df)
 
             # preprocess each basin feature vector as pytorch tensor
             for basin in self.basins:
@@ -755,7 +739,7 @@ class BaseDataset(Dataset):
             self._setup_normalization(xr)
 
         # performs normalization
-        xr = (xr - self.scaler["xarray_feature_center"]) / self.scaler["xarray_feature_scale"]
+        xr = self.scaler.scale(xr)
 
         self._create_lookup_table(xr)
 

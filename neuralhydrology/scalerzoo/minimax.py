@@ -1,0 +1,70 @@
+from pathlib import Path
+import torch
+import xarray as xr
+
+from neuralhydrology.scalerzoo.featurescaler import FeatureScaler
+
+
+class MinMaxScaler(FeatureScaler):
+    """Bounded scaling over [0, 1] for a single feature.
+    
+    Parameters
+    ----------
+    feature : str
+        Name of the feature that this scaler applies to.
+    run_path : Path
+        Path to the model run for saving and loading scaler.
+    force_calculate : bool
+        Force the scaler to recalculate parameters instead of loading a precalculated scaler, even if one exits.
+    da : xr.DataArray
+        An optional xarray data array for calculating scaler parameters immediately. Alternatively, the calculate
+        method can be applied after instantiation.
+    """
+
+    def __init__(
+        self,
+        feature: str,
+        run_path: Path,
+        min_bound: float = 0,
+        force_calculate: bool = False,
+        da: xr.DataArray | None = None,
+    ):
+        super(MinMaxScaler, self).__init__(
+            feature=feature,
+            run_path=run_path,
+            force_calculate=force_calculate,
+            da=da,
+        )
+        self.min_bound = min_bound
+        self.scale = 1 + min_bound
+        
+    def calculate(
+        self,
+        da: xr.DataArray,
+    ):
+        """Calculate scaling parameters."""
+        self.parameters = {
+            'min': da.min(skipna=True).values.item(),
+            'max': da.max(skipna=True).values.item(),
+        }
+        self.parameters['range'] = self.parameters['max'] - self.parameters['min']
+        self._calculate_mean_and_std(da)
+        self.save()
+
+    def scale(
+        self,
+        data: torch.Tensor,
+    ) -> torch.Tensor:
+        """Scale the feature in a single tensor."""
+        self._check_set()
+        scaled_data = (data - self.parameters['min']) / self.parameters['range']
+        return scaled_data * self.scale + self.min_bound
+            
+    def unscale(
+        self,
+        data: torch.Tensor,
+    ) -> torch.Tensor:
+        """Unscale the feature in a single tensor."""
+        self._check_set()
+        shifted_data = (data - self.min_bound) / self.scale
+        return shifted_data * self.parameters['range'] + self.parameters['min']

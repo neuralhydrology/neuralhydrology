@@ -194,10 +194,20 @@ class BaseTrainer(object):
 
         if self.cfg.target_noise_std is not None:
             self.noise_sampler_y = torch.distributions.Normal(loc=0, scale=self.cfg.target_noise_std)
-            self._target_mean = torch.from_numpy(
-                ds.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values).to(self.device)
-            self._target_std = torch.from_numpy(
-                ds.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values).to(self.device)
+            target_means = np.array(                
+                [
+                    ds.scaler.target_means[var]
+                    for var in self.cfg.target_variables
+                ]
+            )
+            self._target_mean = torch.from_numpy(target_means).to(self.device)
+            target_stds = np.array(                
+                [
+                    ds.scaler.target_stds[var]
+                    for var in self.cfg.target_variables
+                ]
+            )
+            self._target_std = torch.from_numpy(target_stds).to(self.device)
 
     def train_and_validate(self):
         """Train and validate the model.
