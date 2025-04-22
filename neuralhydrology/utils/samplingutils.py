@@ -208,7 +208,7 @@ class _SamplingSetup():
         self.predict_last_n = cfg.predict_last_n
 
         # determine appropriate frequency suffix:
-        if self.cfg.use_frequencies:
+        if len(self.cfg.use_frequencies) > 1:
             self.freq_suffixes = [f'_{freq}' for freq in cfg.use_frequencies]
         else:
             self.freq_suffixes = ['']
@@ -219,7 +219,10 @@ class _SamplingSetup():
         if isinstance(self.predict_last_n, int):
             frequency_last_n = self.predict_last_n
         else:
-            frequency_last_n = self.predict_last_n[freq_suffix[1:]]
+            if freq_suffix != '':
+                frequency_last_n = self.predict_last_n[freq_suffix[1:]]
+            else:
+                frequency_last_n = self.predict_last_n[self.cfg.use_frequencies[0]]
         return frequency_last_n
 
 
@@ -638,7 +641,10 @@ def umal_extend_batch(data: Dict[str, torch.Tensor], cfg: Config, n_taus: int = 
         if isinstance(cfg.predict_last_n, int):
             predict_last_n = cfg.predict_last_n
         else:
-            predict_last_n = cfg.predict_last_n[freq_suffix[1:]]
+            if freq_suffix != '':
+                predict_last_n = cfg.predict_last_n[freq_suffix[1:]]
+            else:
+                predict_last_n = cfg.predict_last_n[cfg.use_frequencies[0]]
 
         # sample tau within [tau_down, tau_up] and add to data:
         tau = (cfg.tau_up - cfg.tau_down) * torch.rand(batch_size * n_taus, 1, 1) + cfg.tau_down
