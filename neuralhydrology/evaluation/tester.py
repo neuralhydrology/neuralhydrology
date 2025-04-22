@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, load_scaler, sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.evaluation.utils import load_basin_id_encoding, metrics_to_dataframe
@@ -246,7 +246,7 @@ class BaseTester(object):
                     y_freq = ds.scaler.unscale({target_feature: y[freq]})
                     y_freq = y_freq[target_feature]
                     
-                elif feature_dim == 4:
+                elif y_hat[freq].ndim == 4:
                     if len(self.cfg.target_variables) <= 1:
                         raise ValueError(f'Feature dimension ({y_hat[freq].ndim}) does not match the number of targets in the config file ({len(self._cfg.target_variables)}).')
 

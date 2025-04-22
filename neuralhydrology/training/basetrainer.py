@@ -1,10 +1,8 @@
 import logging
-import pickle
 import random
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 import torch
@@ -14,7 +12,7 @@ from tqdm import tqdm
 import neuralhydrology.training.loss as loss
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import load_basin_file, load_scaler
+from neuralhydrology.datautils.utils import load_basin_file
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.modelzoo import get_model

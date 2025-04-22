@@ -1,7 +1,6 @@
-from typing import List, Dict, Union
+from typing import List, Dict
 
 import pandas as pd
-import xarray
 
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.utils.config import Config

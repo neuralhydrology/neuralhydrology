@@ -1,9 +1,8 @@
 from pathlib import Path
-from typing import List, Dict, Union
+from typing import List, Dict
 
 import numpy as np
 import pandas as pd
-import xarray
 
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datautils import utils
