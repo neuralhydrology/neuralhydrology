@@ -208,19 +208,23 @@ class _SamplingSetup():
         self.predict_last_n = cfg.predict_last_n
 
         # determine appropriate frequency suffix:
-        if self.cfg.use_frequencies:
+        if len(self.cfg.use_frequencies) > 1:
             self.freq_suffixes = [f'_{freq}' for freq in cfg.use_frequencies]
         else:
             self.freq_suffixes = ['']
 
         self.batch_size_data = data[f'y{self.freq_suffixes[0]}'].shape[0]
 
-    def _get_frequency_last_n(self, freq_suffix: str):
-        if isinstance(self.predict_last_n, int):
-            frequency_last_n = self.predict_last_n
+
+def _get_frequency_last_n(predict_last_n: dict[str, int] | int, freq_suffix: str, use_frequencies: list[str]):
+    if isinstance(predict_last_n, int):
+        frequency_last_n = predict_last_n
+    else:
+        if freq_suffix != '':
+            frequency_last_n = predict_last_n[freq_suffix[1:]]
         else:
-            frequency_last_n = self.predict_last_n[freq_suffix[1:]]
-        return frequency_last_n
+            frequency_last_n = predict_last_n[use_frequencies[0]]
+    return frequency_last_n
 
 
 def sample_mcd(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int,
@@ -263,7 +267,11 @@ def sample_mcd(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
     samples = {}
     for freq_suffix in setup.freq_suffixes:
         sample_points = []
-        frequency_last_n = setup._get_frequency_last_n(freq_suffix=freq_suffix)
+        frequency_last_n = _get_frequency_last_n(setup.cfg.predict_last_n, freq_suffix, setup.cfg.use_frequencies)
+
+        x_d = data[f'x_d{freq_suffix}']
+        some_key = list(x_d)[0]
+        ids = list(range(x_d[some_key].shape[0]))
 
         for nth_target in range(setup.number_of_targets):
             # unbound sampling:
@@ -276,7 +284,6 @@ def sample_mcd(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
                     target_values[ids, -frequency_last_n:, i] = value_buffer.detach().cpu()
                 return target_values
 
-            ids = list(range(data[f'x_d{freq_suffix}'].shape[0]))
             values = _sample_values(ids)
 
             # bind values and add to sample_points:
@@ -341,7 +348,7 @@ def sample_gmm(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
     samples = {}
     for freq_suffix in setup.freq_suffixes:
         # get predict_last_n for the given the mode:
-        frequency_last_n = setup._get_frequency_last_n(freq_suffix=freq_suffix)
+        frequency_last_n = _get_frequency_last_n(setup.cfg.predict_last_n, freq_suffix, setup.cfg.use_frequencies)
 
         # initialize sample_points tensor for sampling:
         sample_points = torch.zeros((setup.batch_size_data, frequency_last_n, setup.number_of_targets, n_samples))
@@ -433,7 +440,7 @@ def sample_cmal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
     samples = {}
     for freq_suffix in setup.freq_suffixes:
         # get predict_last_n for the given the mode:
-        frequency_last_n = setup._get_frequency_last_n(freq_suffix=freq_suffix)
+        frequency_last_n = _get_frequency_last_n(setup.cfg.predict_last_n, freq_suffix, setup.cfg.use_frequencies)
 
         # CMAL has 4 parts: means (m/mu), scales (b), asymmetries (t/) and weights (p/pi):
         m = pred[f'mu{freq_suffix}']
@@ -541,7 +548,7 @@ def sample_umal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
     samples = {}
     for freq_suffix in setup.freq_suffixes:
         # get predict_last_n for the given the mode:
-        frequency_last_n = setup._get_frequency_last_n(freq_suffix=freq_suffix)
+        frequency_last_n = _get_frequency_last_n(setup.cfg.predict_last_n, freq_suffix, setup.cfg.use_frequencies)
 
         # UMAL has 2 parts: means (m/mu), scales (b); the tau is randomly chosen:
         m = pred[f'mu{freq_suffix}']
@@ -621,28 +628,31 @@ def umal_extend_batch(data: Dict[str, torch.Tensor], cfg: Config, n_taus: int = 
         pp. 8838-8848, 2019.
     """
     # setup:
-    if cfg.use_frequencies:
+    if len(cfg.use_frequencies) > 1:
         freq_suffixes = [f'_{freq}' for freq in cfg.use_frequencies]
     else:
         freq_suffixes = ['']
 
     for freq_suffix in freq_suffixes:
-        batch_size, seq_length, input_size = data[f'x_d{freq_suffix}'].shape
+        x_d = data[f'x_d{freq_suffix}']
+        # All entries in x_d have the same batch size and sequence length, so we just pick the first.
+        some_dynamic_input = x_d[list(x_d)[0]]
+        batch_size, seq_length, _ = some_dynamic_input.shape
 
-        if isinstance(cfg.predict_last_n, int):
-            predict_last_n = cfg.predict_last_n
-        else:
-            predict_last_n = cfg.predict_last_n[freq_suffix[1:]]
+        predict_last_n = _get_frequency_last_n(cfg.predict_last_n, freq_suffix, cfg.use_frequencies)
 
         # sample tau within [tau_down, tau_up] and add to data:
         tau = (cfg.tau_up - cfg.tau_down) * torch.rand(batch_size * n_taus, 1, 1) + cfg.tau_down
         tau = tau.repeat(1, seq_length, 1)  # in our convention tau remains the same over all inputs
-        tau = tau.to(data[f'x_d{freq_suffix}'].device)
+        tau = tau.to(some_dynamic_input.device)
         data[f'tau{freq_suffix}'] = tau[:, -predict_last_n:, :]
 
         # extend dynamic inputs with tau and expand batch:
-        x_d = data[f'x_d{freq_suffix}'].repeat(n_taus, 1, 1)
-        data[f'x_d{freq_suffix}'] = torch.cat([x_d, tau], dim=-1)
+        for k, v in x_d.items():
+            x_d[k] = v.repeat(n_taus, 1, 1)
+        # prefix with underscore to avoid name clashes with normal input features.
+        assert '_tau' not in x_d
+        x_d['_tau'] = tau
         data[f'y_extended{freq_suffix}'] = data[f'y{freq_suffix}'].repeat(n_taus, 1, 1)
         if f'x_s{freq_suffix}' in data:
             data[f'x_s{freq_suffix}'] = data[f'x_s{freq_suffix}'].repeat(n_taus, 1)
