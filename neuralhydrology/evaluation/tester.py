@@ -278,6 +278,7 @@ class BaseTester(object):
                 # Create coords dictionary for the xarray.Dataset. 'date' can be directly infered from the dates
                 # dictionary. We index the sample by the date of the last timestep of the sequence. The 'time_step'
                 # index that specifies the position in the output sequence (relative to the end) can be inferred by
+                # computing the timedelta of the dates. To account for predict_last_n > 1 and multi-freq stuff, we
                 # need to add the frequency factor and remove 1 (to start at zero).
                 coords = {
                     'date':

@@ -5,7 +5,10 @@ from neuralhydrology.scalerzoo.featurescaler import ALLOWED_TYPES, FeatureScaler
 
 
 class MinMaxScaler(FeatureScaler):
-    """Bounded scaling over [0, 1] for a single feature.
+    """Bounded scaling for a single feature.
+    
+    The default bounds are [0, 1], but this can be adjusted ith the 'min_bound' argument.
+    The upper bound is always 1. 
     
     Parameters
     ----------
@@ -13,6 +16,8 @@ class MinMaxScaler(FeatureScaler):
         Name of the feature that this scaler applies to.
     run_path : Path
         Path to the model run for saving and loading scaler.
+    min_bound : float
+        Lower bound for the scaled range.
     calculate : bool
         Force the scaler to (re)calculate parameters instead of loading a precalculated scaler.
     load : bool

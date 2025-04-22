@@ -122,6 +122,10 @@ class FeatureScaler():
             except FileNotFoundError:
                 pass
             if old_scaler is not None:
+                
+                if self.__class__.__name__ != 'NormalizationScaler':
+                    raise ValueError(f'Only normalization scalers can load legacy scaler files.')
+                
                 self.parameters = {}
                 for parameter in OLD_SCALER_COMPONENTS:
                     for data_key in OLD_SCALER_COMPONENTS[parameter]:
@@ -133,6 +137,7 @@ class FeatureScaler():
                             elif isinstance(data, xr.Dataset):
                                 if self.feature in data.data_vars:
                                     self.parameters[parameter] = data[self.feature].values.item()
+                
                 # This part is not exactly backward compatable in cases where center and scale from
                 # the old file were not mean and standard deviation.
                 self.mean = self.parameters['center']
