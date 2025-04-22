@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from pathlib import Path
 import torch
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 import xarray as xr
 
 from neuralhydrology.scalerzoo.featurescaler import ALLOWED_TYPES as FEATURE_SCALER_ALLOWED_TYPES
@@ -54,9 +54,9 @@ def _get_feature_scaler(
     feature: str,
     calculate: bool,
     load: bool,
-    center: str | None = None,
-    scale: str | None = None,
-    da: xr.DataArray | None = None,
+    center: Optional[str] = None,
+    scale: Optional[str] = None,
+    da: Optional[xr.DataArray] = None,
 ) -> FeatureScaler:
     """Instantiates a FeatureScaler for a single feature."""
     
@@ -106,10 +106,10 @@ class Scaler():
     def __init__(
         self,
         cfg: Config,
-        features: List[str] | None = None,
+        features: Optional[List[str]] = None,
         calculate: bool = False,
         load: bool = False,
-        scaler_dir: Path | None = None
+        scaler_dir: Optional[Path] = None
     ):
         if load and calculate:
             raise ValueError('Cannot both load and calculate the scaler.')
@@ -246,9 +246,9 @@ class Scaler():
 
     def _scale_dataarray_or_series(
         self,
-        data: pd.Series | xr.DataArray,
+        data: Union[pd.Series, xr.DataArray],
         unscale: bool,
-    ) -> pd.Series | xr.DataArray:
+    ) -> Union[pd.Series, xr.DataArray]:
         return self._scale_or_unscale_feature(
             feature=data.name,
             data=data,
@@ -257,9 +257,9 @@ class Scaler():
 
     def _scale_array_dict(
         self,
-        data: Dict[str, np.ndarray | torch.Tensor],
+        data: Dict[str, Union[np.ndarray, torch.Tensor]],
         unscale: bool,
-    ) -> Dict[str, np.ndarray | torch.Tensor]:
+    ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
         scaled_data = {}
         for feature, array in data.items():
             scaled_data[feature] = self._scale_or_unscale_feature(

@@ -1,3 +1,4 @@
+from typing import Optional
 from pathlib import Path
 import xarray as xr
 
@@ -29,11 +30,11 @@ class NormalizationScaler(FeatureScaler):
         self,
         feature: str,
         run_path: Path,
-        center: str | None = 'mean',
-        scale: str | None = 'std',
+        center: Optional[str] = 'mean',
+        scale: Optional[str] = 'std',
         calculate: bool = False,
         load: bool = False,
-        da: xr.DataArray | None = None,
+        da: Optional[xr.DataArray] = None,
     ):
         self.centering = center
         self.scaling = scale

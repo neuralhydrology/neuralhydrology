@@ -1,3 +1,4 @@
+from typing import Optional
 from pathlib import Path
 import xarray as xr
 
@@ -30,7 +31,7 @@ class IdentityScaler(FeatureScaler):
         run_path: Path,
         calculate: bool = False,
         load: bool = False,
-        da: xr.DataArray | None = None,
+        da: Optional[xr.DataArray] = None,
     ):
         super(IdentityScaler, self).__init__(
             feature=feature,

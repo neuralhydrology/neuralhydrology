@@ -1,3 +1,4 @@
+from typing import Optional
 from pathlib import Path
 import xarray as xr
 
@@ -34,7 +35,7 @@ class MinMaxScaler(FeatureScaler):
         min_bound: float = 0,
         calculate: bool = False,
         load: bool = False,
-        da: xr.DataArray | None = None,
+        da: Optional[xr.DataArray] = None,
     ):
         super(MinMaxScaler, self).__init__(
             feature=feature,

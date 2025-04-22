@@ -3,7 +3,7 @@ import os
 import pandas as pd
 from pathlib import Path
 import torch
-from typing import Union
+from typing import Union, Optional
 import xarray as xr
 
 from neuralhydrology.datautils.utils import load_scaler as old_load_scaler
@@ -62,7 +62,7 @@ class FeatureScaler():
         run_path: Path,
         calculate: bool = False,
         load: bool = False,
-        da: xr.DataArray | None = None,
+        da: Optional[xr.DataArray] = None,
     ):
         if load and calculate:
             raise ValueError('Cannot both load and calculate the scaler.')
