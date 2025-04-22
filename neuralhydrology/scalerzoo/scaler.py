@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from pathlib import Path
+import re
 import torch
 from typing import Dict, List, Optional, Union
 import xarray as xr
@@ -46,6 +47,21 @@ ALLOWED_TYPES_FOR_SCALING = Union[
     pd.DataFrame,
     Dict[str, Union[torch.Tensor, np.ndarray]],
 ]
+
+
+def _extract_base_feature(feature: str) -> str:
+    """Remove suffixes from feature names."""
+    base_feature = feature
+    
+    # Remove lagged fetaures.
+    shift_pattern = r'_shift\d+$'
+    base_feature = re.sub(shift_pattern, '', base_feature)
+
+    # Remove duplicated features.
+    copy_pattern = r'_copy\d+$'
+    base_feature = re.sub(copy_pattern, '', base_feature)
+    
+    return base_feature
 
 
 def _get_feature_scaler(
@@ -129,6 +145,8 @@ class Scaler():
                     self.features += getattr(cfg, feature_type)
         else:
             self.features = features
+        # Ignore any lagged (shiftN) or duplicated (copyN) features.
+        self.features = [_extract_base_feature(feature) for feature in self.features]
         self.features = list(set(self.features))
 
         # First, check whether we need to use the legacy custom normalization.
@@ -196,11 +214,16 @@ class Scaler():
                 das[feature] = data_object.to_xarray()
 
         for feature, da in das.items():
-            if feature not in self.features:
-                raise ValueError(f'Asking to calculate scaling parameters for a feature that is not in the initialized scaler: {feature}.')
-            self.feature_scalers[feature].calculate(da)
-            self.target_means[feature] = self.feature_scalers[feature].mean
-            self.target_stds[feature] = self.feature_scalers[feature].std        
+            # Potentially recalculates for a base feature where it has already calculated for the modified feature,
+            # which is OK because we would rather have stats from the unmodified feature. This
+            # potential for recalculation allows for the possibility that the base feature does not exist.
+            base_feature = _extract_base_feature(feature)
+            if base_feature not in self.features:
+                raise ValueError(f'Asking to calculate scaling parameters for a feature that is not in the initialized scaler: {base_feature}.')
+            elif self.feature_scalers[base_feature].parameters is None:
+                self.feature_scalers[base_feature].calculate(da)
+                self.target_means[base_feature] = self.feature_scalers[base_feature].mean
+                self.target_stds[base_feature] = self.feature_scalers[base_feature].std        
 
     def _scale_or_unscale_feature(
         self,
@@ -208,11 +231,12 @@ class Scaler():
         data: FEATURE_SCALER_ALLOWED_TYPES,
         unscale: bool,
     ) -> FEATURE_SCALER_ALLOWED_TYPES:
-        if feature in self.features:
+        base_feature = _extract_base_feature(feature)
+        if base_feature in self.features:
             if not unscale:
-                return self.feature_scalers[feature].scale(data)
+                return self.feature_scalers[base_feature].scale(data)
             else:
-                return self.feature_scalers[feature].unscale(data)
+                return self.feature_scalers[base_feature].unscale(data)
         else:
             return data
                 
