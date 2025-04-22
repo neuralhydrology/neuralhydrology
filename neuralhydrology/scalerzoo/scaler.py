@@ -114,10 +114,11 @@ class Scaler():
             raise ValueError('Must either load or calculate the scaler.')
         self._load = load
         
-        if scaler_dir is None:
-            scaler_dir = cfg.train_dir
+        if scaler_dir is None and cfg.base_run_dir is not None:
+            scaler_dir = cfg.base_run_dir
+        elif scaler_dir is None:
+            scaler_dir = cfg.run_dir
 
-        #TODO(gsnearing) :: Needs to be able to handle duplicate_features.
         self.features = []
         if features is None:
             for feature_type in TYPES_OF_FEATURES:

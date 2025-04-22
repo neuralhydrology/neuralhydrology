@@ -108,13 +108,6 @@ class BaseTester(object):
         # get list of basins
         self.basins = load_basin_file(getattr(self.cfg, f"{self.period}_basin_file"))
 
-        #TODO :: Incorporate this into scaler backwards compatability.
-#         # check for old scaler files, where the center/scale parameters had still old names
-#         if "xarray_means" in self.scaler.keys():
-#             self.scaler["xarray_feature_center"] = self.scaler.pop("xarray_means")
-#         if "xarray_stds" in self.scaler.keys():
-#             self.scaler["xarray_feature_scale"] = self.scaler.pop("xarray_stds")
-
         # load basin_id to integer dictionary for one-hot-encoding
         if self.cfg.use_basin_id_encoding:
             self.id_to_int = load_basin_id_encoding(self.run_dir)
