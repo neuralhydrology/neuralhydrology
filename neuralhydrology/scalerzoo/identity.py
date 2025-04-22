@@ -7,6 +7,8 @@ from neuralhydrology.scalerzoo.featurescaler import ALLOWED_TYPES, FeatureScaler
 class IdentityScaler(FeatureScaler):
     """Identity scaling for a single feature.
     
+    The feature is not transformed.
+    
     Parameters
     ----------
     feature : str

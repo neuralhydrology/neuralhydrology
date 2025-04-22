@@ -54,6 +54,8 @@ def _get_feature_scaler(
     feature: str,
     calculate: bool,
     load: bool,
+    center: str | None = None,
+    scale: str | None = None,
     da: xr.DataArray | None = None,
 ) -> FeatureScaler:
     """Instantiates a FeatureScaler for a single feature."""
@@ -67,6 +69,7 @@ def _get_feature_scaler(
     }
 
     if scaler_type.lower() == 'normalization':
+        feature_scaler_args.update({'center': center, 'scale': scale})
         return NormalizationScaler(**feature_scaler_args)
     elif scaler_type.lower() == 'normalization_median':
         return NormalizationScaler(**feature_scaler_args.update({'center': 'median'}))
@@ -128,19 +131,36 @@ class Scaler():
             self.features = features
         self.features = list(set(self.features))
 
+        # First, check whether we need to use the legacy custom normalization.
+        centering_type = 'mean'
+        scaling_type = 'std'
+        if 'centering' in cfg.custom_normalization:
+            centering_type = cfg.custom_normalization['centering']
+        if 'scaling' in cfg.custom_normalization:
+            scaling_type = cfg.custom_normalization['scaling']
+        
+        # Second, init all feature scalers.
         self.feature_scalers = {}
         for feature in self.features:
             if feature in cfg.custom_normalization:
                 scaler_type = cfg.custom_normalization[feature]
             else:
                 scaler_type = DEFAULT_SCALER_TYPE
-            self.feature_scalers[feature] = _get_feature_scaler(
-                scaler_type=scaler_type,
-                scaler_dir=scaler_dir,
-                feature=feature,
-                calculate=calculate,
-                load=load,
-            )
+            scaler_args = {
+                'scaler_type': scaler_type,
+                'scaler_dir': scaler_dir,
+                'feature': feature,
+                'calculate': calculate,
+                'load': load,
+            }
+            if scaler_type == 'normalization':
+                scaler_args.update(
+                    {
+                        'center': centering_type,
+                        'scale': scaling_type,
+                    }
+                )
+            self.feature_scalers[feature] = _get_feature_scaler(**scaler_args)
         
         self.target_means = {} 
         self.target_stds = {}

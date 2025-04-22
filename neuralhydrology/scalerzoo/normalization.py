@@ -7,6 +7,9 @@ from neuralhydrology.scalerzoo.featurescaler import ALLOWED_TYPES, FeatureScaler
 class NormalizationScaler(FeatureScaler):
     """Normalization-based scaling for a single feature.
     
+    This scaler removes (subtracts) a center value and divides by a scale value.
+    The default center is the data mean and the default scale is the standard deviaion.
+    
     Parameters
     ----------
     feature : str
@@ -26,12 +29,14 @@ class NormalizationScaler(FeatureScaler):
         self,
         feature: str,
         run_path: Path,
-        center: str = 'mean',
+        center: str | None = 'mean',
+        scale: str | None = 'std',
         calculate: bool = False,
         load: bool = False,
         da: xr.DataArray | None = None,
     ):
-        self.center = center
+        self.centering = center
+        self.scaling = scale
         super(NormalizationScaler, self).__init__(
             feature=feature,
             run_path=run_path,
@@ -47,18 +52,35 @@ class NormalizationScaler(FeatureScaler):
         """Calculate scaling parameters."""
         self._calculate_mean_and_std(da)
 
-        if self.center == 'mean':
+        if self.centering == 'mean':
             center = self.mean
-        elif self.center == 'median':
+        elif self.centering == 'median':
             center = da.median(skipna=True).values.item()
-        elif self.center == 'min':
+        elif self.centering == 'min':
             center = da.min(skipna=True).values.item()
+        elif self.centering.lower() == 'none':
+            center = 0
+        elif self.centering is None:
+            center = 0
+        else:
+            raise ValueError(f'Normalization center type {self.center} not recognized.')
+
+        if self.scaling == 'std':
+            scale = self.std
+        elif self.scaling == 'minmax':
+            min_value = da.min(skipna=True).values.item()
+            max_value = da.max(skipna=True).values.item()
+            scale = max_value - min_value
+        elif self.scaling.lower() == 'none':
+            scale = 1.
+        elif self.scaling is None:
+            scale = 1.
         else:
             raise ValueError(f'Normalization center type {self.center} not recognized.')
 
         self.parameters = {
             'center': center,
-            'scale': self.std,
+            'scale': scale,
         }       
         self.save()
 
