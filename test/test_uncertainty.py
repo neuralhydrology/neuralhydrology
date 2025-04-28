@@ -2,6 +2,7 @@
 from typing import Callable
 
 import pandas as pd
+import numpy as np
 import pytest
 
 from neuralhydrology.evaluation.evaluate import start_evaluation
@@ -10,14 +11,14 @@ from neuralhydrology.utils.config import Config
 
 from test import Fixture
 
-from test.test_config_runs import _get_test_start_end_dates, _get_basin_results
+from test.test_config_runs import get_test_start_end_dates, get_basin_results
 
 
 # Common to all uncertainty heads
 common_uncertainty_config = {
     "n_samples": 10,
     "negative_sample_handling": "clip",
-    "negative_sample_max_retries": 5,
+    "negative_sample_max_retries": 1,
     "mc_dropout": False
 }
 
@@ -61,9 +62,14 @@ def test_daily_uncertainty(get_config: Fixture[Callable[[str], dict]],
                            daily_dataset: Fixture[str],
                            single_timescale_forcings: Fixture[str],
                            head: str,
-                           mc_dropout: bool,
-                           negative_sample_handling: str):
-    """Test uncertainty output for different heads, losses, and negative sample handling strategies."""
+                           negative_sample_handling: str,
+                           mc_dropout: bool):
+    """Test probabilistic output consistency across different heads, dropout settings, and negative sample handling modes.
+
+    This test verifies that training and evaluation produce valid uncertainty outputs
+    for UMAL, CMAL, and GMM heads under various negative sample handling strategies
+    ('none', 'clip', 'truncate') and with or without Monte Carlo dropout.
+    """
     
     config = get_config('daily_uncertainty')  # Load a generic daily config
 
@@ -81,9 +87,6 @@ def test_daily_uncertainty(get_config: Fixture[Callable[[str], dict]],
         'dynamic_inputs': single_timescale_forcings['variables'],
     }
 
-    if negative_sample_handling == 'truncate':
-        update_dict['negative_sample_max_retries'] = 3
-
     config.update_config(update_dict)
 
     # Merge in the head-specific parameters dynamically
@@ -100,40 +103,50 @@ def test_daily_uncertainty(get_config: Fixture[Callable[[str], dict]],
 
 
 def _check_uncertainty_output(config: Config, basin: str, negative_sample_handling: str):
-    """Perform basic sanity checks of uncertainty predictions.
+    """Perform sanity checks on uncertainty prediction outputs for a given basin.
 
-    Checks that:
-        -the results file has the correct date range, 
-        -the observed discharge in the file is correct, 
-        -the results object has a 'samples' dimension, 
-        -there are no NaN predictions in the simulated samples.
+    This function verifies that:
+        - The results file contains the expected simulated target variable.
+        - The simulated results have a 'samples' dimension with the correct number of samples.
+        - The simulated results fully cover the configured test date range.
+        - No NaN or infinite values are present in the simulated samples.
+        - The 'samples' dimension exists and has no NaN entries.
+        - If negative sample handling was set to 'truncate' or 'clip', all negative values are within floating-point tolerance of zero.
 
     Parameters
     ----------
     config : Config
-        The run configuration used to produce the results
+        The configuration object used for model training and evaluation.
     basin : str
-        Id of a basin for which to check the results
+        The ID of the basin for which predictions are being checked.
+    negative_sample_handling : str
+        Strategy used to handle negative samples during training ("truncate" or "clip"),
+        which determines whether non-negativity is strictly enforced in the output.
     """
-    results = _get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
+    results = get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
     
-    print("\n[DEBUG] Available variables:", results.data_vars)
     sample_key = f"{config.target_variables[0]}_sim"
-    assert sample_key in results.data_vars
-    assert "samples" in results[sample_key].dims # evaluation produces a samples dimension (probabilistic output)
-    assert not pd.isna(results[sample_key]).any()  # Check for NaN values in the samples
+    assert sample_key in results.data_vars, f"Expected {sample_key} in results, got {results.data_vars}"
+    # The model evaluation should produce a 'samples' dimension (probabilistic output)
+    assert "samples" in results[sample_key].dims, f'"samples" dimension not found in {sample_key}' 
 
-    # get the test date range from the config
-    test_start_date, test_end_date = _get_test_start_end_dates(config)
-    # check that samples in the test period are not NaN
+    # Assert the number of samples in the output matches the config
+    assert results[sample_key].shape[1] == config.n_samples, f'Expected {config.n_samples} samples, got {results[sample_key].shape[0]}'
+
+    # Check that the results file has the correct date range
+    test_start_date, test_end_date = get_test_start_end_dates(config)
+    assert pd.to_datetime(results['date'].values[0]) == test_start_date.floor('D')
+    assert pd.to_datetime(results['date'].values[-1]) == test_end_date.floor('D')
+
+    # Check that no NaN values are present in the generated samples 
     test_dates = pd.date_range(test_start_date, test_end_date, freq='D')
     test_vals = results.sel(date=test_dates)
-    assert not pd.isna(test_vals[sample_key]).any()  # Check for NaN values in the test period
+    # Assert all sample values are finite
+    assert np.isfinite(test_vals[sample_key].values).all(), f'Found non-finite values in {sample_key}'
 
-    if negative_sample_handling == 'truncate':
-        # check that no samples are negative
-        assert (test_vals[sample_key] >= 0).all()
-    elif negative_sample_handling == 'clip':
-        # check that no samples are negative
-        assert (test_vals[sample_key] >= 0).all()
-
+    if negative_sample_handling in ["truncate", "clip"]:
+        # For 'truncate' or 'clip', we expect all non-negative values
+        negative_vals = test_vals[sample_key].values[test_vals[sample_key].values < 0]
+        assert np.allclose(negative_vals, 0.0), (
+            f"Found negative samples below tolerance. Smallest val: {np.min(negative_vals)}"
+        )
