@@ -111,7 +111,8 @@ def _check_uncertainty_output(config: Config, basin: str, negative_sample_handli
         - The simulated results fully cover the configured test date range.
         - No NaN or infinite values are present in the simulated samples.
         - The 'samples' dimension exists and has no NaN entries.
-        - If negative sample handling was set to 'truncate' or 'clip', all negative values are within floating-point tolerance of zero.
+        - If negative sample handling was set to 'clip', all negative values are within floating-point tolerance of zero.
+        - negative sample handling = 'truncate' testing is not yet implemented
 
     Parameters
     ----------
@@ -146,7 +147,7 @@ def _check_uncertainty_output(config: Config, basin: str, negative_sample_handli
 
     negative_vals = test_vals[sample_key].values[test_vals[sample_key].values < 0]
     if negative_sample_handling == "clip":
-        # For 'truncate' or 'clip', we expect all non-negative values
+        # For 'clip', we expect all non-negative values
         assert np.allclose(negative_vals, 0.0, atol=1e-6), (
             f"Found negative samples below tolerance. Smallest val: {np.min(negative_vals)}"
         )
