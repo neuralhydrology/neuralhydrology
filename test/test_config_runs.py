@@ -142,12 +142,12 @@ def test_multi_timescale_regression(get_config: Fixture[Callable[[str], dict]], 
     config.update_config({'model': multi_timescale_model})
 
     basin = '01022500'
-    test_start_date, test_end_date = _get_test_start_end_dates(config)
+    test_start_date, test_end_date = get_test_start_end_dates(config)
 
     start_training(config)
     start_evaluation(cfg=config, run_dir=config.run_dir, epoch=1, period='test')
 
-    results = _get_basin_results(config.run_dir, 1)[basin]
+    results = get_basin_results(config.run_dir, 1)[basin]
     discharge = hourlycamelsus.load_hourly_us_netcdf(config.data_dir, config.forcings[0]) \
         .sel(basin=basin, date=slice(test_start_date, test_end_date))['qobs_mm_per_hour']
 
@@ -188,7 +188,7 @@ def test_daily_regression_nan_targets(get_config: Fixture[Callable[[str], dict]]
     # the fact that the targets are NaN should not lead the model to create NaN outputs.
     # however, we do need to pass discharge as an NaN series, because the camels discharge loader would return [],
     # as the test period is outside the part of the discharge time series that is stored on disk.
-    discharge = pd.Series(float('nan'), index=pd.date_range(*_get_test_start_end_dates(config)))
+    discharge = pd.Series(float('nan'), index=pd.date_range(*get_test_start_end_dates(config)))
     _check_results(config, '01022500', discharge=discharge)
 
 
@@ -208,9 +208,9 @@ def _check_results(config: Config, basin: str, discharge: pd.Series = None):
         If provided, will check that the stored discharge obs match this series. Else, will compare to the discharge
         loaded from disk.
     """
-    test_start_date, test_end_date = _get_test_start_end_dates(config)
+    test_start_date, test_end_date = get_test_start_end_dates(config)
 
-    results = _get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
+    results = get_basin_results(config.run_dir, 1)[basin]['1D']['xr'].isel(time_step=-1)
 
     assert pd.to_datetime(results['date'].values[0]) == test_start_date.floor('D')
     assert pd.to_datetime(results['date'].values[-1]) == test_end_date.floor('D')
@@ -225,14 +225,14 @@ def _check_results(config: Config, basin: str, discharge: pd.Series = None):
     assert not pd.isna(results[f'{config.target_variables[0]}_sim']).any()
 
 
-def _get_test_start_end_dates(config: Config) -> Tuple[pd.Timestamp, pd.Timestamp]:
+def get_test_start_end_dates(config: Config) -> Tuple[pd.Timestamp, pd.Timestamp]:
     test_start_date = pd.to_datetime(config.test_start_date, format='%d/%m/%Y')
     test_end_date = pd.to_datetime(config.test_end_date, format='%d/%m/%Y') + pd.Timedelta(days=1, seconds=-1)
 
     return test_start_date, test_end_date
 
 
-def _get_basin_results(run_dir: Path, epoch: int) -> Dict:
+def get_basin_results(run_dir: Path, epoch: int) -> Dict:
     results_file = list(run_dir.glob(f'test/model_epoch{str(epoch).zfill(3)}/test_results.p'))
     if len(results_file) != 1:
         pytest.fail('Results file not found.')
