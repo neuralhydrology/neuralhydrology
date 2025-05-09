@@ -8,7 +8,7 @@ from neuralhydrology.datautils.utils import (get_frequency_factor, infer_frequen
 
 def test_sort_frequencies():
     """Test the sorting of frequencies. """
-    assert sort_frequencies(['1D', '1h', '2D', '3H']) == ['2D', '1D', '3H', '1h']
+    assert sort_frequencies(['1D', '1h', '2D', '3h']) == ['2D', '1D', '3h', '1h']
     assert sort_frequencies(['1' + _ME_FREQ, '1' + _YE_FREQ]) == ['1' + _YE_FREQ, '1' + _ME_FREQ]
     assert sort_frequencies(['1D', '48h']) == ['48h', '1D']
     assert sort_frequencies(['1D']) == ['1D']
