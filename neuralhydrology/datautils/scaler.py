@@ -5,6 +5,8 @@ from typing import Dict, Optional
 import pandas as pd
 import xarray as xr
 
+from neuralhydrology.datautils.utils import load_scaler as old_load_scaler
+
 SCALER_FILE_NAME = 'scaler.nc'
 
 
@@ -18,7 +20,8 @@ class Scaler():
     calculate_scaler : bool
         Flag to indicate if the scaler should be computed (the alternative is to load an existing scaler file).
     custom_normalization : Dict[str, Dict[str, float]]
-        Feature-specific normalization parameters as a mapping from feature name to centering and/or scaling valued.
+        Feature-specific scaling instructions as a mapping from feature name to centering and/or scaling type.
+        See docs for a list of accepted types and their meaning.
     dataset : Optional[xr.Dataset]
         Dataset to use for calculating a new scaler. Cannot be supplied if `calculate_scaler` is False.
         
@@ -50,8 +53,17 @@ class Scaler():
    
     def load(self):
         scaler_file = self.scaler_dir / SCALER_FILE_NAME
-        with open(scaler_file, 'rb') as f:
-            self.scaler = xr.load_dataset(f)
+        if os.path.exists(scaler_file):
+            with open(scaler_file, 'rb') as f:
+                self.scaler = xr.load_dataset(f)
+            return
+        else:
+            scaler = old_load_scaler(self.scaler_dir)
+            # Add target scalers for tester.
+            obs_scaler = scaler.copy().rename({feature: feature + '_obs' for feature in scaler.data_vars})
+            sim_scaler = scaler.copy().rename({feature: feature + '_sim' for feature in scaler.data_vars})
+            self.scaler = xr.merge([scaler, obs_scaler, sim_scaler])
+            return
 
     def save(self):
         if self.scaler is None:

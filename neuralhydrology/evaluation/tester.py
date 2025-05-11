@@ -247,7 +247,7 @@ class BaseTester(object):
                     'time_step': ((dates[freq][0, :] - dates[freq][0, -1]) / pd.Timedelta(freq)).astype(np.int64) +
                                  frequency_factor - 1
                 }
-                data_vars = self._create_xarray_data_vars(y_hat=y_hat[freq], y=y[freq])
+                data_vars = self._create_xarray_data_vars(y_hat[freq], y[freq])
                 xr = xarray.Dataset(data_vars=data_vars, coords=coords)
                 xr = xr.reindex({
                     'date':

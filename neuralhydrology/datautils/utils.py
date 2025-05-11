@@ -46,34 +46,68 @@ def load_scaler(run_dir: Path) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
         If neither a 'train_data_scaler.yml' or 'train_data_scaler.p' file is found in the 'train_data' folder of the 
         run directory.
     """
+    # try the newer scaler file
     scaler_file = run_dir / "train_data" / "train_data_scaler.yml"
-
     if scaler_file.is_file():
+        
         # read scaler from disk
         with scaler_file.open("r") as fp:
             yaml = YAML(typ="safe")
             scaler_dump = yaml.load(fp)
 
-        # transform scaler into the format expected by NeuralHydrology
-        scaler = {}
+        # transform into a single xarray.dataset
+        scaler = {"center": [], "scale": []}
         for key, value in scaler_dump.items():
-            if key in ["attribute_means", "attribute_stds", "camels_attr_means", "camels_attr_stds"]:
-                scaler[key] = pd.Series(value)
-            elif key in ["xarray_feature_scale", "xarray_feature_center"]:
-                scaler[key] = xarray.Dataset.from_dict(value).astype(np.float32)
+            if key in ["attribute_means", "camels_attr_means"]:
+                scaler["center"].append(xarray.Dataset(value).astype(np.float32))
+            elif key in ["attribute_stds","camels_attr_stds"]:
+                scaler["scale"].append(xarray.Dataset(value).astype(np.float32))
+            elif key == "xarray_feature_center":
+                scaler["center"].append(xarray.Dataset.from_dict(value).astype(np.float32))
+            elif key == "xarray_feature_scale":
+                scaler["scale"].append(xarray.Dataset.from_dict(value).astype(np.float32))
 
-        return scaler
+        scaler["center"] = xarray.merge(scaler["center"])
+        scaler["scale"] = xarray.merge(scaler["scale"])
+        parameter_coords = xarray.DataArray(
+            data=list(scaler.keys()),
+            dims=['parameter'],
+            name='parameter'
+        )
+        return xarray.concat(list(scaler.values()), dim=parameter_coords)
 
-    else:
-        scaler_file = run_dir / "train_data" / "train_data_scaler.p"
+    # try the older scaler file
+    scaler_file = run_dir / "train_data" / "train_data_scaler.p"
+    if scaler_file.is_file():
 
-        if scaler_file.is_file():
-            with scaler_file.open('rb') as fp:
-                scaler = pickle.load(fp)
-            return scaler
-        else:
-            raise FileNotFoundError(f"No scaler file found in {scaler_file.parent}. "
-                                    "Looked for (new) yaml file or (old) pickle file")
+        # read scaler from disk
+        with scaler_file.open('rb') as fp:
+            scaler = pickle.load(fp)
+
+        # transform into a single xarray.dataset
+        scaler = {"center": [], "scale": []}
+        for key, value in scaler_dump.items():
+            if key in ["attribute_means", "camels_attr_means"]:
+                scaler["center"].append(xarray.Dataset(value).astype(np.float32))
+            elif key in ["attribute_stds","camels_attr_stds"]:
+                scaler["scale"].append(xarray.Dataset(value).astype(np.float32))
+            elif key == "xarray_feature_center":
+                scaler["center"].append(value.astype(np.float32))
+            elif key == "xarray_feature_scale":
+                scaler["scale"].append(value.astype(np.float32))
+
+        scaler["center"] = xarray.merge(scaler["center"])
+        scaler["scale"] = xarray.merge(scaler["scale"])
+        parameter_coords = xarray.DataArray(
+            data=list(scaler.keys()),
+            dims=['parameter'],
+            name='parameter'
+        )
+        return xarray.concat(list(scaler.values()), dim=parameter_coords)
+
+    # raise error if neither the newer or older files were found
+    raise FileNotFoundError(f"No scaler file found in {scaler_file.parent}. "
+                            "Looked for (new) yaml file or (old) pickle file")
 
 
 def load_hydroatlas_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
