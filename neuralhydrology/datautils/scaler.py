@@ -10,6 +10,32 @@ from neuralhydrology.datautils.utils import load_scaler as old_load_scaler
 SCALER_FILE_NAME = 'scaler.nc'
 
 
+def _get_center(feature_da: xr.DataArray, centering_type: str) -> float:
+    """Canonical selector for currently-supported center types."""
+    if (centering_type is None) or (centering_type.lower() == 'none'):
+        return np.float32(0.0)
+    elif centering_type.lower() == 'median':
+        return feature_da.median(skipna=True)
+    elif centering_type.lower() == 'min':
+        return feature_da.min(skipna=True)
+    elif centering_type.lower() == 'mean':
+        return feature_da.mean(skipna=True)
+    else:
+        raise ValueError(f'Unknown centering method {centering_type}')
+
+        
+def _get_scale(feature_da: xr.DataArray, scaling_type: str) -> float:
+    """Canonical selector for currently-supported scale types."""
+    if (scaling_type is None) or (scaling_type.lower() == 'none'):
+        return np.float32(1.0)
+    elif scaling_type.lower() == 'minmax':
+        return feature_da.max(skipna=True) - feature_da.min(skipna=True)
+    elif scaling_type.lower() == 'std':
+        return feature_da.std(skipna=True)
+    else:
+        raise ValueError(f'Unknown scaling method {scaling_type}')
+
+
 class Scaler():
     """Scaler for a dataset that contains multiple features.
     
@@ -78,28 +104,6 @@ class Scaler():
         dataset: xr.Dataset,
     ):
         
-        def _get_center(feature_da: xr.DataArray, centering_type: str) -> float:
-            if (centering_type is None) or (centering_type.lower() == 'none'):
-                return np.float32(0.0)
-            elif centering_type.lower() == 'median':
-                return feature_da.median(skipna=True)
-            elif centering_type.lower() == 'min':
-                return feature_da.min(skipna=True)
-            elif centering_type.lower() == 'mean':
-                return feature_da.mean(skipna=True)
-            else:
-                raise ValueError(f'Unknown centering method {centering_type}')
-
-        def _get_scale(feature_da: xr.DataArray, scaling_type: str) -> float:
-            if (scaling_type is None) or (scaling_type.lower() == 'none'):
-                return np.float32(1.0)
-            elif scaling_type.lower() == 'minmax':
-                return feature_da.max(skipna=True) - feature_da.min(skipna=True)
-            elif scaling_type.lower() == 'std':
-                return feature_da.std(skipna=True)
-            else:
-                raise ValueError(f'Unknown scaling method {scaling_type}')
-
         # Option for custom scaling for each feature.
         centering_types = {feature: 'mean' for feature in dataset.data_vars}
         scaling_types = {feature: 'std' for feature in dataset.data_vars}
