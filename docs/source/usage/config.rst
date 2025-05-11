@@ -616,32 +616,19 @@ Data settings
    are any NaN's in the original timeseries. Only works for timeseries features
    (inputs and targets). Leave empty if none should be used. 
 
--  ``custom_normalization``: Dictionary mapping from feature names to one of
-   the allowed scaler types: 
-   - ``normalization`` subtracts the mean and scales by standard deviation.
-   - ``minimax`` maps to the interval [0, 1].
-   - ``identity`` does not transform the feature.
-
-   This config argument also supports backward compatability with different
-   types of normalization scaling. This is done by instead of mapping from
-   feature names to scaling type, it uses normalization-type scaling for
-   all features with different types of centers and scales. Set these choices
-   by using a mapping with the following two keys: ``centering`` and ``scaling``.
-   Supported options for ``centering`` are 'None' or 'none', 'mean',
-   'median' and 'min'. None/none sets the centering parameter to 0.0,
-   mean to the feature mean, median to the feature median, and min to the
-   feature minimum, respectively. Supported options for `scaling` are
+-  ``custom_normalization``: Has to be a dictionary, mapping from
+   time series feature names to ``centering`` and/or ``scaling``. Using
+   this argument allows to overwrite the default zero mean, unit
+   variance normalization per feature. Supported options for
+   ``centering`` are 'None' or 'none', 'mean', 'median' and min.
+   None/none sets the centering parameter to 0.0, mean to the feature
+   mean, median to the feature median, and min to the feature
+   minimum, respectively. Supported options for `scaling` are
    'None' or 'none', 'std', 'minmax'. None/none sets the scaling
    parameter to 1.0, std to the feature standard deviation and
    minmax to the feature max minus the feature min. The combination
    of centering: min and scaling: minmax results in min/max
    feature scaling to the range [0,1].
-   
-   The ``custom_normalization`` config argument support both the per-feature
-   scaler type mapping (``normalization``, ``minimax``, ``identity``) and
-   the ``centering`` and ``scaling`` arguments as keys in the same dictionary.
-   If both are supplied, then all ``normalization`` and unlisted features are
-   scaled using the ``centering`` and ``scaling`` approach.
 
 -  ``additional_feature_files``: Path to a pickle file (or list of paths
    for multiple files), containing a dictionary with each key

@@ -233,50 +233,6 @@ class BaseTester(object):
                     continue  # this frequency is not being predicted
                 results[basin][freq] = {}
 
-#                 # rescale observations
-#                 if y_hat[freq].ndim == 3:
-#                     if len(self.cfg.target_variables) != 1:
-#                         raise ValueError(f'Feature dimension ({y_hat[freq].ndim}) does not match the number of targets in the config file ({len(self.cfg.target_variables)}).')
-                    
-#                     target_feature = self.cfg.target_variables[0]
-#                     target_ds = xr.Dataset(
-#                         y_hat[freq]
-                        
-                    
-#                     y_hat_freq = ds.scaler.unscale({target_feature: y_hat[freq]})
-#                     y_hat_freq = y_hat_freq[target_feature]
-
-#                     y_freq = ds.scaler.unscale({target_feature: y[freq]})
-#                     y_freq = y_freq[target_feature]
-                    
-#                 elif y_hat[freq].ndim == 4:
-#                     if len(self.cfg.target_variables) <= 1:
-#                         raise ValueError(f'Feature dimension ({y_hat[freq].ndim}) does not match the number of targets in the config file ({len(self.cfg.target_variables)}).')
-
-#                     y_hat_freq = ds.scaler.unscale(
-#                         {
-#                             var: y_hat[freq][..., -i]
-#                             for i, var in enumerate(self._cfg.target_variables)
-#                         }
-#                     )
-#                     y_hat_freq = np.stack(y_hat_freq.values(), -1)
-                
-#                     y_freq = ds.scaler.unscale(
-#                         {
-#                             var: y[freq][..., -i]
-#                             for i, var in enumerate(self._cfg.target_variables)
-#                         }
-#                     )
-#                     y_freq = np.stack(y_freq.values(), -1)
-                               
-#                 else:
-#                     raise RuntimeError(f"Simulations have {y_hat[freq].ndim} dimension. Only 3 and 4 are supported.")
-
-                # Create data_vars dictionary for the xarray.Dataset
-                y_hat_freq = np.stack([y_hat[freq][..., -i] for i, _ in enumerate(self.cfg.target_variables)], -1)
-                y_freq = np.stack([y[freq][..., -i] for i, _ in enumerate(self.cfg.target_variables)], -1)
-                data_vars = self._create_xarray_data_vars(y_hat_freq, y_freq)
-
                 # freq_range are the steps of the current frequency at each lowest-frequency step
                 frequency_factor = int(get_frequency_factor(lowest_freq, freq))
 
@@ -291,6 +247,7 @@ class BaseTester(object):
                     'time_step': ((dates[freq][0, :] - dates[freq][0, -1]) / pd.Timedelta(freq)).astype(np.int64) +
                                  frequency_factor - 1
                 }
+                data_vars = self._create_xarray_data_vars(y_hat=y_hat[freq], y=y[freq])
                 xr = xarray.Dataset(data_vars=data_vars, coords=coords)
                 xr = xr.reindex({
                     'date':

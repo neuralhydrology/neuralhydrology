@@ -225,7 +225,7 @@ class InputLayer(nn.Module):
         elif self.nan_handling_method == 'input_replacing':
             dynamics_out = self._input_replacing_embedding(data[self._x_d_key])
         else:
-            # transpose to [seq_length, batch_size, n_features]\
+            # transpose to [seq_length, batch_size, n_features]
             x_d = torch.cat([data[self._x_d_key][k] for k in itertools.chain(*features)], dim=-1).transpose(0, 1)
             dynamics_out = self.dynamics_embeddings[0](x_d)
 

@@ -74,10 +74,7 @@ class BaseTrainer(object):
         self._set_device()
 
     def _get_dataset(self, compute_scaler: bool) -> BaseDataset:
-        return get_dataset(cfg=self.cfg,
-                           period="train",
-                           is_train=True,
-                           compute_scaler=compute_scaler)
+        return get_dataset(cfg=self.cfg, period="train", is_train=True, compute_scaler=compute_scaler)
 
     def _get_model(self) -> torch.nn.Module:
         return get_model(cfg=self.cfg)

@@ -17,7 +17,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from neuralhydrology.datautils import utils
-from neuralhydrology.scalerzoo.scaler import Scaler
+from neuralhydrology.datautils.scaler import Scaler
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import NoTrainDataError, NoEvaluationDataError
 from neuralhydrology.utils import samplingutils
@@ -70,7 +70,7 @@ class BaseDataset(Dataset):
         self.is_train = is_train
 
         if period not in ["train", "validation", "test"]:
-            raise ValueError("'period' must be one of 'train', 'validation' or 'test'.")
+            raise ValueError("'period' must be one of 'train', 'validation' or 'test' ")
         else:
             self.period = period
 

@@ -14,15 +14,13 @@ from neuralhydrology.utils.config import Config
 from neuralhydrology.datasetzoo.datasetregistry import DatasetRegistry
 
 
-def get_dataset(
-    cfg: Config,
-    is_train: bool,
-    period: str,
-    basin: str = None,
-    additional_features: list = [],
-    id_to_int: dict = {},
-    compute_scaler: bool = False
-) -> BaseDataset:
+def get_dataset(cfg: Config,
+                is_train: bool,
+                period: str,
+                basin: str = None,
+                additional_features: list = [],
+                id_to_int: dict = {},
+                compute_scaler: bool = False) -> BaseDataset:
     """Get data set instance, depending on the run configuration.
 
     Currently implemented datasets are 'caravan', 'camels_aus', 'camels_br', 'camels_cl', 'camels_gb', 'camels_us', and
@@ -68,13 +66,7 @@ def get_dataset(
     """
     global _datasetZooRegistry
 
-    return _datasetZooRegistry.instantiate_dataset(cfg,
-                                                   is_train,
-                                                   period,
-                                                   basin,
-                                                   additional_features,
-                                                   id_to_int,
-                                                   compute_scaler)
+    return _datasetZooRegistry.instantiate_dataset(cfg, is_train, period, basin, additional_features, id_to_int, compute_scaler)
 
 
 def register_dataset(key: str, new_class: Type):
