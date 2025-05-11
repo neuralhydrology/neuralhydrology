@@ -38,8 +38,9 @@ class CamelsAUS(BaseDataset):
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    load_precalculated_scaler : bool
-        Forces the dataset to load a scaler with parameters already calculated. This is required for fine tuning and inference.
+    compute_scaler : bool
+        Forces the dataset to calculate a new scaler instead of loading a precalculated scaler. Used during training, but
+        not finetuning.
 
     References
     ----------
@@ -55,14 +56,14 @@ class CamelsAUS(BaseDataset):
                  basin: str = None,
                  additional_features: List[Dict[str, pd.DataFrame]] = [],
                  id_to_int: Dict[str, int] = {},
-                 load_precalculated_scaler: bool = True):
+                 compute_scaler: bool = True):
         super(CamelsAUS, self).__init__(cfg=cfg,
                                         is_train=is_train,
                                         period=period,
                                         basin=basin,
                                         additional_features=additional_features,
                                         id_to_int=id_to_int,
-                                        load_precalculated_scaler=load_precalculated_scaler)
+                                        compute_scaler=compute_scaler)
 
     def _load_basin_data(self, basin: str) -> pd.DataFrame:
         """Load input and output data from text files."""

@@ -2,7 +2,7 @@ from typing import Optional
 from pathlib import Path
 import xarray as xr
 
-from neuralhydrology.scalerzoo.featurescaler import ALLOWED_TYPES, FeatureScaler
+from neuralhydrology.scalerzoo.featurescaler import FeatureScaler
 
 
 class NormalizationScaler(FeatureScaler):

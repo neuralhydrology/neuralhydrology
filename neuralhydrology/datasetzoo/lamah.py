@@ -51,8 +51,9 @@ class LamaH(BaseDataset):
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    load_precalculated_scaler : bool
-        Forces the dataset to load a scaler with parameters already calculated. This is required for fine tuning and inference.
+    compute_scaler : bool
+        Forces the dataset to calculate a new scaler instead of loading a precalculated scaler. Used during training, but
+        not finetuning.
 
     References
     ----------
@@ -68,7 +69,7 @@ class LamaH(BaseDataset):
                  basin: str = None,
                  additional_features: List[Dict[str, pd.DataFrame]] = [],
                  id_to_int: Dict[str, int] = {},
-                 load_precalculated_scaler: bool = True):
+                 compute_scaler: bool = True):
         # Discharge is provided in m3/s in the data set as 'Qobs [m3/s]'. We allow to use 'Qobs [mm/h]' or 'Qobs [mm/d]'
         # in the config and in this case will normalize on the fly. For that, we need the basin area
         self._all_variables = self._get_list_of_all_variables(cfg)
@@ -83,7 +84,7 @@ class LamaH(BaseDataset):
                                     basin=basin,
                                     additional_features=additional_features,
                                     id_to_int=id_to_int,
-                                    load_precalculated_scaler=load_precalculated_scaler)
+                                    compute_scaler=compute_scaler)
 
     @staticmethod
     def _get_list_of_all_variables(cfg: Config) -> List[str]:

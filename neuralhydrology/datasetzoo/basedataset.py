@@ -52,8 +52,9 @@ class BaseDataset(Dataset):
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    load_precalculated_scaler : bool
-        Forces the dataset to load a scaler with parameters already calculated. This is required for fine tuning and inference.
+    compute_scaler : bool
+        Forces the dataset to calculate a new scaler instead of loading a precalculated scaler. Used during training, but
+        not finetuning.
     """
 
     def __init__(self,
@@ -63,7 +64,7 @@ class BaseDataset(Dataset):
                  basin: str = None,
                  additional_features: List[Dict[str, pd.DataFrame]] = [],
                  id_to_int: Dict[str, int] = {},
-                 load_precalculated_scaler: bool = True):
+                 compute_scaler: bool = True):
         super(BaseDataset, self).__init__()
         self.cfg = cfg
         self.is_train = is_train
@@ -73,12 +74,23 @@ class BaseDataset(Dataset):
         else:
             self.period = period
 
-        if period in ["validation", "test"]:
-            if not load_precalculated_scaler:
-                raise ValueError("Scaler must be loaded (not computed) for validation and test.")
+        # initialize scaler
+        if period in ["validation", "test"] or cfg.is_finetuning:
+            if compute_scaler:
+                raise ValueError("Scaler must be loaded (not computed) for validation, test, and finetuning.")
+        self._compute_scaler = compute_scaler
+        if cfg.is_finetuning:
+            scaler_dir = cfg.base_run_dir
+        else:
+            scaler_dir = cfg.run_dir
+        self.scaler = Scaler(
+            scaler_dir=scaler_dir,
+            calculate_scaler=self._compute_scaler,
+            custom_normalization=cfg.custom_normalization
+        )
 
-            if cfg.use_basin_id_encoding and not id_to_int:
-                raise ValueError("For basin id embedding, the id_to_int dictionary has to be passed anything but train.")
+        if period in ["validation", "test"] and cfg.use_basin_id_encoding and not id_to_int:
+            raise ValueError("For basin id embedding, the id_to_int dictionary has to be passed anything but train.")
 
         if self.cfg.timestep_counter:
             if not self.cfg.forecast_inputs_flattened:
@@ -98,19 +110,7 @@ class BaseDataset(Dataset):
             self.basins = [basin]
         self.additional_features = additional_features
         self.id_to_int = id_to_int
-        # don't compute scale when finetuning
-        self._compute_scaler = not load_precalculated_scaler
-        if cfg.is_finetuning:
-            scaler_dir = cfg.base_run_dir
-        else:
-            scaler_dir = cfg.run_dir
-        self.scaler = Scaler(
-            cfg=cfg,
-            calculate=self._compute_scaler,
-            load=load_precalculated_scaler,
-            scaler_dir=scaler_dir
-        )
-
+        
         # check and extract frequency information from config
         self.frequencies = []
         self.seq_len = None
@@ -145,6 +145,9 @@ class BaseDataset(Dataset):
 
         # load and preprocess data
         self._load_data()
+
+        if self.is_train:
+            self.scaler.save()
 
     def __len__(self):
         return self.num_samples
@@ -710,13 +713,12 @@ class BaseDataset(Dataset):
 
             # calculate statistics and normalize features
             if self._compute_scaler:
-                self.scaler.calculate(df)
+                self.scaler.calculate(df.to_xarray())
             
-            if any([k.startswith("camels_attr") for k in self.scaler.features]):
-                LOGGER.warning(
-                    "Deprecation warning: Using old scaler files won't be supported in the upcoming release.")
+            if any([k.startswith("camels_attr") for k in self.scaler.scaler.data_vars]):
+                ValueError("Using old scaler files is no longer supported.")
 
-            df = self.scaler.scale(df)
+            df = self.scaler.scale(df.to_xarray()).to_dataframe()
 
             # preprocess each basin feature vector as pytorch tensor
             for basin in self.basins:

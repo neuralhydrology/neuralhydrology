@@ -1,323 +1,190 @@
-import numpy as np
-import pandas as pd
+import os
 from pathlib import Path
-import re
-import torch
-from typing import Dict, List, Optional, Union
+from typing import Dict, Optional
+
+import pandas as pd
 import xarray as xr
 
-from neuralhydrology.scalerzoo.featurescaler import ALLOWED_TYPES as FEATURE_SCALER_ALLOWED_TYPES
-from neuralhydrology.scalerzoo.featurescaler import FeatureScaler
-from neuralhydrology.scalerzoo.normalization import NormalizationScaler
-from neuralhydrology.scalerzoo.minimax import MinMaxScaler
-from neuralhydrology.scalerzoo.identity import IdentityScaler
-from neuralhydrology.utils.config import Config
-
-DEFAULT_SCALER_TYPE = 'normalization'
-
-TYPES_OF_FEATURES = [
-    'target_variables',
-    'hindcast_inputs',
-    'forecast_inputs',
-    'dynamic_inputs',
-    'static_attributes',
-    'evolving_attributes',
-    'hydroatlas_attributes',
-]
-
-ALLOWED_TYPES_FOR_CALCULATING = Union[
-    xr.Dataset,
-    xr.DataArray,
-    pd.DataFrame,
-    pd.Series,
-    List[
-        Union[
-            xr.Dataset,
-            xr.DataArray,
-            pd.DataFrame,
-            pd.Series,
-        ]
-    ]
-]
-
-ALLOWED_TYPES_FOR_SCALING = Union[
-    xr.DataArray,
-    pd.Series,
-    xr.Dataset,
-    pd.DataFrame,
-    Dict[str, Union[torch.Tensor, np.ndarray]],
-]
-
-
-def _extract_base_feature(feature: str) -> str:
-    """Remove suffixes from feature names."""
-    base_feature = feature
-    
-    # Remove lagged fetaures.
-    shift_pattern = r'_shift\d+$'
-    base_feature = re.sub(shift_pattern, '', base_feature)
-
-    # Remove duplicated features.
-    copy_pattern = r'_copy\d+$'
-    base_feature = re.sub(copy_pattern, '', base_feature)
-    
-    return base_feature
-
-
-def _get_feature_scaler(
-    scaler_type: str,
-    scaler_dir: Path,
-    feature: str,
-    calculate: bool,
-    load: bool,
-    center: Optional[str] = None,
-    scale: Optional[str] = None,
-    da: Optional[xr.DataArray] = None,
-) -> FeatureScaler:
-    """Instantiates a FeatureScaler for a single feature."""
-    
-    feature_scaler_args = {
-        'feature': feature,
-        'run_path': scaler_dir,
-        'calculate': calculate,
-        'load': load,
-        'da': da
-    }
-
-    if scaler_type.lower() == 'normalization':
-        feature_scaler_args.update({'center': center, 'scale': scale})
-        return NormalizationScaler(**feature_scaler_args)
-    elif scaler_type.lower() == 'normalization_median':
-        return NormalizationScaler(**feature_scaler_args.update({'center': 'median'}))
-    elif scaler_type.lower() == 'normalization_min':
-        return NormalizationScaler(**feature_scaler_args.update({'center': 'min'}))
-    elif scaler_type.lower() == 'minmax':
-        return MinMaxScaler(**feature_scaler_args)
-    elif scaler_type.lower() == 'minmax_negative_one':
-        return MinMaxScaler(**feature_scaler_args.update({'min_bound': -1}))
-    elif scaler_type.lower() == 'identity':
-        return IdentityScaler(**feature_scaler_args)
-    else:
-        raise NotImplementedError(f'Asking to calculate scaling parameters for a feature that is not in the initialized scaler: {feature}.')
+SCALER_FILE_NAME = 'scaler.nc'
 
 
 class Scaler():
-    """Scaler for a full dataset that contains multiple features.
-    
-    Each feature has its own scaling function.
+    """Scaler for a dataset that contains multiple features.
     
     Parameters
     ----------
-    cfg : Config
-        The run configuration.
-    features : List[str]
-        List of all features that should be in this scaler. If not provided, then the list is generated from the
-        run config.
-    force_calculate : bool
-        Optionally force the scaler to not load a precalculated scaler on initialization, even if one exists.
-    force_load : bool
-        Optionally force the scaler to load and not calculate.
+    scaler_dir : pathlib.Path
+        Directory for loading a pre-calculated scaler or saving this scaler if it is calculated.
+    calculate_scaler : bool
+        Flag to indicate if the scaler should be computed (the alternative is to load an existing scaler file).
+    custom_normalization : Dict[str, Dict[str, float]]
+        Feature-specific normalization parameters as a mapping from feature name to centering and/or scaling valued.
+    dataset : Optional[xr.Dataset]
+        Dataset to use for calculating a new scaler. Cannot be supplied if `calculate_scaler` is False.
+        
+    Raises
+    -------
+    ValueError for incompatible loading/calculating instructions.
     """
     
     def __init__(
         self,
-        cfg: Config,
-        features: Optional[List[str]] = None,
-        calculate: bool = False,
-        load: bool = False,
-        scaler_dir: Optional[Path] = None
+        scaler_dir: Path,
+        calculate_scaler,
+        custom_normalization: Dict[str, Dict[str, float]] = {},
+        dataset: Optional[xr.Dataset] = None,
     ):
-        if load and calculate:
-            raise ValueError('Cannot both load and calculate the scaler.')
-        if not load and not calculate:
-            raise ValueError('Must either load or calculate the scaler.')
-        self._load = load
-        
-        if scaler_dir is None and cfg.base_run_dir is not None:
-            scaler_dir = cfg.base_run_dir
-        elif scaler_dir is None:
-            scaler_dir = cfg.run_dir
+        # Consistency check.
+        if not calculate_scaler and dataset is not None:
+            raise ValueError('Do nto pass a dataset if you are loading a pre-calculated scaler.')
 
-        self.features = []
-        if features is None:
-            for feature_type in TYPES_OF_FEATURES:
-                if getattr(cfg, feature_type) is not None:
-                    self.features += getattr(cfg, feature_type)
+        # Load or calculate scaling parameters.
+        self.scaler = None
+        self.scaler_dir = scaler_dir
+        if not calculate_scaler:
+            self.load()
         else:
-            self.features = features
-        # Ignore any lagged (shiftN) or duplicated (copyN) features.
-        self.features = [_extract_base_feature(feature) for feature in self.features]
-        self.features = list(set(self.features))
+            self._custom_normalization = custom_normalization
+            if dataset is not None:
+                self.calculate(dataset)
+   
+    def load(self):
+        scaler_file = self.scaler_dir / SCALER_FILE_NAME
+        with open(scaler_file, 'rb') as f:
+            self.scaler = xr.load_dataset(f)
 
-        # First, check whether we need to use the legacy custom normalization.
-        centering_type = 'mean'
-        scaling_type = 'std'
-        if 'centering' in cfg.custom_normalization:
-            centering_type = cfg.custom_normalization['centering']
-        if 'scaling' in cfg.custom_normalization:
-            scaling_type = cfg.custom_normalization['scaling']
+    def save(self):
+        if self.scaler is None:
+            raise ValueError('You are trying to save a scaler that has not been computed.')
+        os.makedirs(self.scaler_dir, exist_ok=True)
+        scaler_file = self.scaler_dir / SCALER_FILE_NAME
+        with open(scaler_file, 'wb') as f:
+            self.scaler.to_netcdf(f)
         
-        # Second, init all feature scalers.
-        self.feature_scalers = {}
-        for feature in self.features:
-            if feature in cfg.custom_normalization:
-                scaler_type = cfg.custom_normalization[feature]
-            else:
-                scaler_type = DEFAULT_SCALER_TYPE
-            scaler_args = {
-                'scaler_type': scaler_type,
-                'scaler_dir': scaler_dir,
-                'feature': feature,
-                'calculate': calculate,
-                'load': load,
-            }
-            if scaler_type == 'normalization':
-                scaler_args.update(
-                    {
-                        'center': centering_type,
-                        'scale': scaling_type,
-                    }
-                )
-            self.feature_scalers[feature] = _get_feature_scaler(**scaler_args)
-        
-        self.target_means = {} 
-        self.target_stds = {}
-        for feature, scaler in self.feature_scalers.items():
-            if feature not in cfg.target_variables:
-                continue
-            self.target_means[feature] = scaler.mean
-            self.target_stds[feature] = scaler.std
-    
     def calculate(
         self,
-        data: ALLOWED_TYPES_FOR_CALCULATING
+        dataset: xr.Dataset,
     ):
-        if self._load:
-            raise ValueError('Cannot calculate parameters for a scaler that was loaded.')
-            
-        if not isinstance(data, list):
-            data = [data]
-
-        das = {}
-        for data_object in data:
-            if isinstance(data_object, xr.Dataset):
-                for feature in data_object.data_vars:
-                    das[feature] = data_object[feature]
-            elif isinstance(data_object, pd.DataFrame):
-                for feature in data_object:
-                    das[feature] = data_object[feature].to_xarray()
-            elif isinstance(data_object, xr.DataArray):
-                feature = data_object.name
-                das[feature] = data_object
-            elif isinstance(data_object, pd.Series):
-                feature = data_object.name
-                das[feature] = data_object.to_xarray()
-
-        for feature, da in das.items():
-            # Potentially recalculates for a base feature where it has already calculated for the modified feature,
-            # which is OK because we would rather have stats from the unmodified feature. This
-            # potential for recalculation allows for the possibility that the base feature does not exist.
-            base_feature = _extract_base_feature(feature)
-            if base_feature not in self.features:
-                raise ValueError(f'Asking to calculate scaling parameters for a feature that is not in the initialized scaler: {base_feature}.')
-            elif self.feature_scalers[base_feature].parameters is None:
-                self.feature_scalers[base_feature].calculate(da)
-                self.target_means[base_feature] = self.feature_scalers[base_feature].mean
-                self.target_stds[base_feature] = self.feature_scalers[base_feature].std        
-
-    def _scale_or_unscale_feature(
-        self,
-        feature: str,
-        data: FEATURE_SCALER_ALLOWED_TYPES,
-        unscale: bool,
-    ) -> FEATURE_SCALER_ALLOWED_TYPES:
-        base_feature = _extract_base_feature(feature)
-        if base_feature in self.features:
-            if not unscale:
-                return self.feature_scalers[base_feature].scale(data)
+        
+        def _get_center(feature_da: xr.DataArray, centering_type: str) -> float:
+            if (centering_type is None) or (centering_type.lower() == 'none'):
+                return np.float32(0.0)
+            elif centering_type.lower() == 'median':
+                return feature_da.median(skipna=True)
+            elif centering_type.lower() == 'min':
+                return feature_da.min(skipna=True)
+            elif centering_type.lower() == 'mean':
+                return feature_da.mean(skipna=True)
             else:
-                return self.feature_scalers[base_feature].unscale(data)
+                raise ValueError(f'Unknown centering method {centering_type}')
+
+        def _get_scale(feature_da: xr.DataArray, scaling_type: str) -> float:
+            if (scaling_type is None) or (scaling_type.lower() == 'none'):
+                return np.float32(1.0)
+            elif scaling_type.lower() == 'minmax':
+                return feature_da.max(skipna=True) - feature_da.min(skipna=True)
+            elif scaling_type.lower() == 'std':
+                return feature_da.std(skipna=True)
+            else:
+                raise ValueError(f'Unknown scaling method {scaling_type}')
+
+        # Option for custom scaling for each feature.
+        centering_types = {feature: 'mean' for feature in dataset.data_vars}
+        scaling_types = {feature: 'std' for feature in dataset.data_vars}
+        for feature in self._custom_normalization:
+            if 'centering' in self._custom_normalization[feature]:
+                centering_types[feature] = self._custom_normalization[feature]['centering']
+            if 'scaling' in self._custom_normalization[feature]:
+                scaling_types[feature] = self._custom_normalization[feature]['scaling']
+
+        # Target noise distrbutions (in BaseTrainer) require means and standard deviations.
+        # Force these parameters to be avaiable, even if the targets use a different center
+        # and scale type. Could restrict these extra calculations to only when necessary 
+        # (i.e., targets only, and only when using other scaling types), but this adds
+        # complication and these extra mean and std calcs & storage are cheap.
+        parameters = {
+            feature: (('parameter',), [
+                _get_center(dataset[feature], centering_types[feature]),
+                _get_scale(dataset[feature], scaling_types[feature]),
+                _get_center(dataset[feature], 'mean'),
+                _get_scale(dataset[feature], 'std')
+            ]) for feature in dataset.data_vars
+        }
+        
+        # Expand the scaler dataset to include 'obs' and 'sim' versions of all variables.
+        # As above, this is only necessary for target variables, but a check here adds
+        # complexity for little benefit.
+        parameters.update({f'{feature}_obs': parameters[feature] for feature in parameters})
+        parameters.update({f'{feature}_sim': parameters[feature] for feature in parameters})      
+        
+        # Put the calculated parameters into an xarray dataset.
+        coords = {'parameter': ['center', 'scale', 'mean', 'std']}
+        scaler = xr.Dataset(parameters, coords=coords).astype('float32')
+
+        # Handle cases where part of the scaler is already calculated. Simply add new features.
+        if self.scaler is not None:
+            self.scaler = xr.merge([self.scaler, scaler])
         else:
-            return data
-                
-    def _scale_dataframe(
-        self,
-        data: pd.DataFrame,
-        unscale: bool,
-    ) -> pd.DataFrame:
-        scaled_data = {}
-        for feature in data:
-            scaled_data[feature] = self._scale_or_unscale_feature(
-                feature=feature,
-                data=data[feature],
-                unscale=unscale
-            )
-        return pd.concat(scaled_data, axis=1)
+            self.scaler = scaler
 
-    def _scale_dataset(
-        self,
-        data: xr.Dataset,
-        unscale: bool,
-    ) -> xr.Dataset:
-        scaled_data = {}
-        for feature in data:
-            scaled_data[feature] = self._scale_or_unscale_feature(
-                feature=feature,
-                data=data[feature],
-                unscale=unscale
-            )
-        return xr.merge(scaled_data.values())
-
-    def _scale_dataarray_or_series(
-        self,
-        data: Union[pd.Series, xr.DataArray],
-        unscale: bool,
-    ) -> Union[pd.Series, xr.DataArray]:
-        return self._scale_or_unscale_feature(
-            feature=data.name,
-            data=data,
-            unscale=unscale
-        )
-
-    def _scale_array_dict(
-        self,
-        data: Dict[str, Union[np.ndarray, torch.Tensor]],
-        unscale: bool,
-    ) -> Dict[str, Union[np.ndarray, torch.Tensor]]:
-        scaled_data = {}
-        for feature, array in data.items():
-            scaled_data[feature] = self._scale_or_unscale_feature(
-                feature=feature,
-                data=array,
-                unscale=unscale
-            )
-        return scaled_data
- 
-                
     def scale(
         self,
-        data: ALLOWED_TYPES_FOR_SCALING,
-        unscale: bool = False
-    ) -> ALLOWED_TYPES_FOR_SCALING:
-        """Scale all features in a data set."""
-        if isinstance(data, pd.DataFrame):
-            return self._scale_dataframe(data, unscale=unscale)
-        elif isinstance(data, xr.Dataset):
-            return self._scale_dataset(data, unscale=unscale)
-        elif isinstance(data, pd.Series) or isinstance(data, xr.DataArray):
-            return self._scale_dataarray_or_series(data, unscale=unscale)
-        elif isinstance(data, Dict):
-            return self._scale_array_dict(data, unscale=unscale)
-        else:
-            raise ValueError(f'Unrecognized data type: {type(data)}.')
-      
+        dataset: xr.Dataset,
+    ) -> xr.Dataset:
+        """Scale a data set with a precaculated_scaler.
+        
+        $$ unscaled_dataset = (dataset - center) + scale $$
+
+        Applies a linear transformation to the features (data_vars) in an xr.Dataset.
+        This transformation is the inverse of the one applied by self.unscale().
+        Agnostic to the dimensions and coordinates of the dataset.
+        
+        Parameters
+        ----------
+        dataset : xr.Dataset
+            Dataset to be scaled.
+        
+        Returns
+        -------
+        xr.Dataset
+            The new dataset where all scalable features are scaled.
+        
+        Raises
+        ------
+        ValueError if the dataset contains features that are not in the scaler parameters.
+        """
+        missing_features = [feature for feature in dataset if feature not in self.scaler.data_vars]
+        if any(missing_features):
+            raise ValueError(f'Requesting to scale variables that are not part of the scaler: {missing_features}')
+        return (dataset - self.scaler.sel(parameter='center')) / self.scaler.sel(parameter='scale')
 
     def unscale(
         self,
-        data: ALLOWED_TYPES_FOR_SCALING,
-    ) -> ALLOWED_TYPES_FOR_SCALING:
-        """Un-scale all features in a data set."""
-        return self.scale(data, unscale=True)
+        dataset: xr.Dataset
+    ) -> xr.Dataset:
+        """Un-scale a data set with a precalculated scaler.
         
-            
-       
+        $$ scaled_dataset = dataset * scale + center $$
+        
+        Applies a linear transformation to the features (data_vars) in an xr.Dataset.
+        This transformation is the inverse of the one applied by self.scale().
+        Agnostic to the dimensions and coordinates of the dataset.
+        
+        Parameters
+        ----------
+        dataset : xr.Dataset
+            Dataset to be un-scaled.
+        
+        Returns
+        -------
+        xr.Dataset
+            The new dataset where all scalable features are un-scaled. 
+        
+        Raises
+        ------
+        ValueError if the dataset contains features that are not in the scaler parameters.
+        """
+        missing_features = [feature for feature in dataset if feature not in self.scaler.data_vars]
+        if any(missing_features):
+            raise ValueError(f'Requesting to unscale variables that are not part of the scaler: {missing_features}')
+        return dataset * self.scaler.sel(parameter='scale') + self.scaler.sel(parameter='center')
