@@ -65,7 +65,7 @@ class Scaler():
     ):
         # Consistency check.
         if not calculate_scaler and dataset is not None:
-            raise ValueError('Do nto pass a dataset if you are loading a pre-calculated scaler.')
+            raise ValueError('Do not pass a dataset if you are loading a pre-calculated scaler.')
 
         # Load or calculate scaling parameters.
         self.scaler = None
@@ -82,13 +82,15 @@ class Scaler():
         if os.path.exists(scaler_file):
             with open(scaler_file, 'rb') as f:
                 self.scaler = xr.load_dataset(f)
+            self._check_zero_scale()
             return
         else:
             scaler = old_load_scaler(self.scaler_dir)
-            # Add target scalers for tester.
+            # Add target scalers for tester. Necessary for fine tuning.
             obs_scaler = scaler.copy().rename({feature: feature + '_obs' for feature in scaler.data_vars})
             sim_scaler = scaler.copy().rename({feature: feature + '_sim' for feature in scaler.data_vars})
             self.scaler = xr.merge([scaler, obs_scaler, sim_scaler])
+            self._check_zero_scale()
             return
 
     def save(self):
@@ -143,6 +145,18 @@ class Scaler():
         else:
             self.scaler = scaler
 
+        # Ensure that there are no zero-valued scale parameters, as this will cause NaN's.
+        self._check_zero_scale()
+
+    def _check_zero_scale(self):
+        """Raises an error if the scale is zero for any feature."""
+        zero_scale_features = [
+            feature for feature, da in self.scaler.sel(parameter=['scale', 'std']).data_vars.items()
+            if (da == 0).any()
+        ]
+        if any(zero_scale_features):
+             raise ValueError(f'Zero scale values found for features: {zero_scale_features}.')
+        
     def scale(
         self,
         dataset: xr.Dataset,
