@@ -8,7 +8,8 @@ import pandas as pd
 import pytest
 import xarray as xr
 
-from neuralhydrology.datautils.scaler import Scaler, SCALER_FILE_NAME, _get_center, _get_scale, old_load_scaler
+from neuralhydrology.datautils import utils
+from neuralhydrology.datautils.scaler import Scaler, SCALER_FILE_NAME, _get_center, _get_scale
 
 # Set a fixed seed for reproducible tests
 np.random.seed(42)
@@ -19,8 +20,8 @@ np.random.seed(42)
 def sample_dataset_basic():
     """Provides a basic dataset for calculation and scaling."""
     data = {
-        'temp': (('time', 'lat'), np.array([[10.0, 20.0], [15.0, 25.0], [12.0, 22.0]])),
-        'pressure': (('time', 'lat'), np.array([[1000.0, 1010.0], [1005.0, 1015.0], [1002.0, 1012.0]])),
+        'temp': (('date', 'basin'), np.array([[10.0, 20.0], [15.0, 25.0], [12.0, 22.0]])),
+        'pressure': (('date', 'basin'), np.array([[1000.0, 1010.0], [1005.0, 1015.0], [1002.0, 1012.0]])),
     }
     coords = {
         'date': pd.to_datetime(['2023-01-01', '2023-01-02', '2023-01-03']),
@@ -107,22 +108,6 @@ def test_scaler_init_calculate_with_dataset(tmp_scaler_dir, sample_dataset_basic
 def test_scaler_init_calculate_no_dataset(tmp_scaler_dir):
     scaler = Scaler(scaler_dir=tmp_scaler_dir, calculate_scaler=True, dataset=None)
     assert scaler.scaler is None
-
-def test_scaler_init_load_no_dataset_fallback(tmp_scaler_dir):
-    # Ensure load attempts are made, but no file exists initially
-    # This relies on the patched old_load_scaler.
-    with patch('os.path.exists', return_value=False), \
-         patch('scaler.old_load_scaler') as mock_old_load_scaler:
-        # Mocking old_load_scaler to return a simple dataset with NO ZERO SCALES
-        mock_old_load_scaler.return_value = xr.Dataset(
-            {'test_var': (('param',), np.array([0.0, 1.0]))},
-            coords={'param': ['center', 'scale']}
-        )
-        scaler = Scaler(scaler_dir=tmp_scaler_dir, calculate_scaler=False, dataset=None)
-        assert scaler.scaler is not None
-        assert 'test_var' in scaler.scaler.data_vars
-        assert 'test_var_obs' in scaler.scaler.data_vars
-        assert 'test_var_sim' in scaler.scaler.data_vars
 
 def test_scaler_init_load_with_dataset_raises_error(tmp_scaler_dir, sample_dataset_basic):
     with pytest.raises(ValueError, match="Do not pass a dataset if you are loading a pre-calculated scaler."):
@@ -298,24 +283,6 @@ def test_scaler_save_raises_error_if_not_calculated(tmp_scaler_dir):
     with pytest.raises(ValueError, match="You are trying to save a scaler that has not been computed."):
         scaler.save()
 
-@patch('scaler.old_load_scaler')
-@patch('os.path.exists', return_value=False)
-def test_scaler_load_fallback_to_old_load_scaler(mock_os_path_exists, mock_old_load_scaler, tmp_scaler_dir):
-    mock_old_load_scaler.return_value = xr.Dataset(
-        {'initial_var': (('param',), np.array([5.0, 2.0]))}, # Non-zero scale
-        coords={'param': ['center', 'scale']}
-    )
-
-    scaler = Scaler(scaler_dir=tmp_scaler_dir, calculate_scaler=False, dataset=None)
-
-    mock_old_load_scaler.assert_called_once_with(tmp_scaler_dir)
-    assert scaler.scaler is not None
-    assert 'initial_var' in scaler.scaler.data_vars
-    assert 'initial_var_obs' in scaler.scaler.data_vars
-    assert 'initial_var_sim' in scaler.scaler.data_vars
-    # old_load_scaler only returns 'center', 'scale', so 'mean', 'std' are missing in this path.
-    assert set(scaler.scaler.coords['param'].values) == {'center', 'scale'}
-
 # --- NEW TESTS: `_check_zero_scale` interaction with `load` ---
 
 def test_scaler_load_from_file_raises_error_for_zero_scale(tmp_scaler_dir):
@@ -330,18 +297,5 @@ def test_scaler_load_from_file_raises_error_for_zero_scale(tmp_scaler_dir):
         zero_scale_ds.to_netcdf(f)
 
     # Now try to load this scaler and expect a ValueError
-    with pytest.raises(ValueError, match="Zero scale values found for features:"):
-        Scaler(scaler_dir=tmp_scaler_dir, calculate_scaler=False, dataset=None)
-
-@patch('scaler.old_load_scaler')
-@patch('os.path.exists', return_value=False) # Ensure we hit the old_load_scaler path
-def test_scaler_load_fallback_raises_error_for_zero_scale(mock_os_path_exists, mock_old_load_scaler, tmp_scaler_dir):
-    # Mock old_load_scaler to return a dataset with a zero scale value
-    mock_old_load_scaler.return_value = xr.Dataset(
-        {'test_var': (('param',), np.array([0.0, 0.0]))}, # scale is 0
-        coords={'param': ['center', 'scale']}
-    )
-
-    # Try to initialize Scaler and expect a ValueError
     with pytest.raises(ValueError, match="Zero scale values found for features:"):
         Scaler(scaler_dir=tmp_scaler_dir, calculate_scaler=False, dataset=None)
