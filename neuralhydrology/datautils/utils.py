@@ -71,8 +71,8 @@ def load_scaler(run_dir: Path) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
         scaler["scale"] = xarray.merge(scaler["scale"])
         parameter_coords = xarray.DataArray(
             data=list(scaler.keys()),
-            dims=['parameter'],
-            name='parameter'
+            dims=["parameter"],
+            name="parameter"
         )
         return xarray.concat(list(scaler.values()), dim=parameter_coords)
 
@@ -100,8 +100,8 @@ def load_scaler(run_dir: Path) -> Dict[str, Union[pd.Series, xarray.Dataset]]:
         scaler["scale"] = xarray.merge(scaler["scale"])
         parameter_coords = xarray.DataArray(
             data=list(scaler.keys()),
-            dims=['parameter'],
-            name='parameter'
+            dims=["parameter"],
+            name="parameter"
         )
         return xarray.concat(list(scaler.values()), dim=parameter_coords)
 
