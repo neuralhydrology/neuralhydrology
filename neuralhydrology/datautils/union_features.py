@@ -124,7 +124,7 @@ def union_features(
                 )
             )
     
-   # Collect all features from the original dataset that were NOT targets of a union operation.
+    # Collect all features from the original dataset that were NOT targets of a union operation.
     # These should be included in the final output as they were.
     for original_feature_name in dataset.data_vars:
         if original_feature_name not in processed_feature_names:
