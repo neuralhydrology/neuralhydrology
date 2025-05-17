@@ -8,11 +8,17 @@ def _expand_lead_times(da: xr.DataArray, lead_time: int) -> xr.DataArray:
     if 'lead_time' in da.dims:
         raise ValueError('Trying to expand a dataarray that already has a lead time.')
     # TODO (future) :: This assumes daily data.
-    lt_das = []
-    for lt in range(lead_time+1):
+    lead_time_int = int(lead_time / np.timedelta64(1, 'D'))
+    lt_das, lead_times = [], []
+    # TODO (future) :: This assumes a minimum lead time of 1.
+    for lt in range(1, lead_time_int+1):
+        # TODO (future) :: This assumes daily data.
+        lead_times.append(np.timedelta64(lt, 'D'))
         lt_das.append(da.shift(date=-lt))
     lt_da = xr.concat(lt_das, dim='lead_time')
-    return lt_da.assign_coords(lead_time=range(lead_time+1))
+    # TODO (future) :: Like many forecast models (unlike ForecastDataset), this assumes that
+    # all lead times are present.
+    return lt_da.assign_coords(lead_time=lead_times)
 
     
 def _union_features_with_same_dimensions(
@@ -42,16 +48,16 @@ def _union_non_lead_time_feature_with_lead_time_feature(
   mask_feature_da: xr.DataArray,
 ) -> xr.DataArray:
     """Mask a non-lead-time feature with a lead-time feature."""
-    min_lead_time = mask_feature_da['lead_time'].min(skipna=True).item()
-    target_issue_dates = feature_da['date'] - min_lead_time
-    all_needed_issue_dates = np.unique(target_issue_dates.values)
+    min_lead_time = mask_feature_da['lead_time'].isel(lead_time=0).values
+    target_issue_dates = [d - min_lead_time for d in feature_da['date'].values]
+    all_needed_issue_dates = np.unique(target_issue_dates)
     reindexed_mask_feature = mask_feature_da.reindex(date=all_needed_issue_dates, fill_value=np.nan)
     min_lead_time_mask_feature = reindexed_mask_feature.sel(lead_time=min_lead_time)
     mask_values = min_lead_time_mask_feature.sel(
         date=target_issue_dates,
         basin=feature_da['basin'],
     )
-    return _union_features_with_same_dimensions(feature_da, mask_values).drop('lead_time')
+    return _union_features_with_same_dimensions(feature_da, mask_values).drop('lead_time').sel(date=feature_da['date'])
 
 
 def union_features(
