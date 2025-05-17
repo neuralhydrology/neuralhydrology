@@ -837,7 +837,8 @@ class BaseDataset(Dataset):
 
     @staticmethod
     def collate_fn(
-            samples: List[Dict[str, Union[torch.Tensor, np.ndarray]]]) -> Dict[str, Union[torch.Tensor, np.ndarray]]:
+            samples: List[Dict[str, Union[torch.Tensor, np.ndarray, Dict[str, torch.Tensor]]]]
+    ) -> Dict[str, Union[torch.Tensor, np.ndarray, Dict[str, torch.Tensor]]]:
         batch = {}
         if not samples:
             return batch
@@ -847,6 +848,7 @@ class BaseDataset(Dataset):
                 # Dates are stored as a numpy array of datetime64, which we maintain as numpy array.
                 batch[feature] = np.stack([sample[feature] for sample in samples], axis=0)
             elif feature.startswith('x_d'):
+                # Dynamics are stored as dictionaries with feature names as keys.
                 batch[feature] = {k: torch.stack([sample[feature][k] for sample in samples], dim=0)
                                   for k in samples[0][feature]}
             else:
