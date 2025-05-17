@@ -60,6 +60,8 @@ def union_features(
 ) -> xr.Dataset:
     """Replace missing values in various features with values from another feature.
     
+    Works with features that do and do not have a `lead_time` dimension.
+    
     Parameters
     ----------
     dataset : xr.Dataset
@@ -69,7 +71,8 @@ def union_features(
     
     Returns
     -------
-    Dataset of masked features.
+    Dataset of all features from the original dataset where the features that are keys in `union_feature_mapping'
+        are masked by the features in their respective dictionary values.
     
     Raises
     ------
