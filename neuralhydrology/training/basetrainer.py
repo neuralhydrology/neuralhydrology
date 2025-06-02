@@ -257,7 +257,7 @@ class BaseTrainer(object):
                     print_msg += f" -- Median validation metrics: "
                     print_msg += ", ".join(f"{k}: {v:.5f}" for k, v in valid_metrics.items() if k != 'avg_total_loss')
                     LOGGER.info(print_msg)
-
+                
 
                 if self._early_stopping and epoch > self._minimum_epochs_before_early_stopping and early_stopper.check_early_stopping(valid_metrics['avg_total_loss']):
                     LOGGER.info(f"Early stopping triggered at epoch {epoch} with validation loss {valid_metrics['avg_total_loss']:.5f}. Training stopped.")

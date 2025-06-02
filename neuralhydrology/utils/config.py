@@ -37,7 +37,7 @@ class Config(object):
     # config keys since these keys are not properties of the Config class.
     _deprecated_keys = [
         'static_inputs', 'camels_attributes', 'target_variable', 'embedding_hiddens', 'embedding_activation',
-        'embedding_dropout'
+        'embedding_dropout', 'log_tensorboard'
     ]
     _metadata_keys = ['package_version', 'commit_hash']
 
@@ -547,7 +547,6 @@ class Config(object):
         return self._cfg.get("logger_type", "tensorboard")
 
     @property
-    @warnings.deprecated("Use log_metrics instead")
     def log_tensorboard(self) -> bool:
         return self._cfg.get("log_tensorboard", True)
 
