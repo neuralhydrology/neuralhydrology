@@ -41,7 +41,7 @@ class CamelsDE(BaseDataset):
     .. [#] Loritz, R., Dolich, A., Acuña Espinoza, E., Ebeling, P., Guse, B., Götte, J., Hassler, S. K., Hauffe, C.,
         Heidbüchel, I., Kiesel, J., Mälicke, M., Müller-Thomy,., Stölzle, M., and Tarasova, L. (2024). CAMELS-DE:
         hydro-meteorological time series and attributes for 1582 catchments in germany. Earth System Science Data, 
-        https://doi.org/10.5194/essd-16-5625-2024, 2024. 
+        https://doi.org/10.5194/essd-16-5625-2024, 2024.
     """
 
     def __init__(self,
@@ -71,12 +71,12 @@ class CamelsDE(BaseDataset):
 
 
 def load_camels_de_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
-    """Load CAMELS GB attributes from the dataset provided by [#]_
+    """Load CAMELS DE attributes from the dataset provided by [#]_
 
     Parameters
     ----------
     data_dir : Path
-        Path to the CAMELS GB directory. This folder must contain an 'attributes' folder containing the corresponding 
+        Path to the CAMELS DE directory. This folder must contain an 'attributes' folder containing the corresponding 
         csv files for each attribute group (ending with _attributes.csv).
     basins : List[str], optional
         If passed, return only attributes for the basins specified in this list. Otherwise, the attributes of all basins
@@ -94,10 +94,10 @@ def load_camels_de_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
 
     References
     ----------
-    .. [#] Coxon, G., Addor, N., Bloomfield, J. P., Freer, J., Fry, M., Hannaford, J., Howden, N. J. K., Lane, R., 
-        Lewis, M., Robinson, E. L., Wagener, T., and Woods, R.: CAMELS-GB: Hydrometeorological time series and landscape 
-        attributes for 671 catchments in Great Britain, Earth Syst. Sci. Data Discuss., 
-        https://doi.org/10.5194/essd-2020-49,  in review, 2020. 
+    .. [#] Loritz, R., Dolich, A., Acuña Espinoza, E., Ebeling, P., Guse, B., Götte, J., Hassler, S. K., Hauffe, C.,
+        Heidbüchel, I., Kiesel, J., Mälicke, M., Müller-Thomy,., Stölzle, M., and Tarasova, L. (2024). CAMELS-DE:
+        hydro-meteorological time series and attributes for 1582 catchments in germany. Earth System Science Data, 
+        https://doi.org/10.5194/essd-16-5625-2024, 2024.
     """
     attributes_path = data_dir / 'attributes'
 
@@ -125,13 +125,13 @@ def load_camels_de_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
 
 
 def load_camels_de_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
-    """Load the time series data for one basin of the CAMELS GB data set.
+    """Load the time series data for one basin of the CAMELS DE data set.
 
     Parameters
     ----------
     data_dir : Path
-        Path to the CAMELS GB directory. This folder must contain a folder called 'timeseries' containing the forcing
-        files for each basin as .csv file. The file names have to start with 'CAMELS_GB_hydromet_timeseries'.
+        Path to the CAMELS DE directory. This folder must contain a folder called 'timeseries' containing the forcing
+        files for each basin as .csv file. The file names have to start with 'CAMELS_DE_hydromet_timeseries'.
     basin : str
         Basin identifier number as string.
 
