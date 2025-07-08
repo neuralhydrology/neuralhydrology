@@ -52,9 +52,7 @@ def create_sweep():
     sweep_id = wandb.sweep(sweep_config, project="neuralhydrology")
     
     print(f"Created sweep with ID: {sweep_id}")
-    print(f"To run sweep agents, use:")
-    print(f"wandb agent {sweep_id}")
-    print(f"OR use the neuralhydrology sweep mode:")
+    print(f"To run a new sweep agent use the neuralhydrology sweep mode:")
     print(f"python ../../neuralhydrology/nh_run.py sweep --config-file /path/to/your/base_config.yml --sweep-id {sweep_id}")
     print()
     print("Sweep configurations will be saved in a 'sweep_<sweep_name>' directory next to your base config file.")

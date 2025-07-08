@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import os
 import sys
 from pathlib import Path
 from typing import Optional
@@ -176,8 +177,7 @@ def sweep_run(config_file: Path, gpu: Optional[int] = None, sweep_id: Optional[s
 
     """
     import wandb
-    import os
-    
+
     def train_function():
         """Training function called by wandb.agent for each sweep run."""
         # Load base config
