@@ -5,7 +5,7 @@ import warnings
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 
 import pandas as pd
 from ruamel.yaml import YAML
@@ -543,16 +543,11 @@ class Config(object):
             return self._cfg["log_n_figures"]
 
     @property
-    def logger_type(self) -> str:
+    def logger_type(self) -> Literal["tensorboard", "wandb"] | None:
+        if "log_tensorboard" in self._cfg and not self._cfg["log_tensorboard"]:
+            # remain backwards compatible. If logging is disabled, keep it disabled.
+            return None
         return self._cfg.get("logger_type", "tensorboard")
-
-    @property
-    def log_tensorboard(self) -> bool:
-        return self._cfg.get("log_tensorboard", True)
-
-    @property
-    def log_metrics(self) -> bool:
-        return self._cfg.get("log_metrics", self.log_tensorboard)
 
     @property
     def wandb_project(self) -> str:

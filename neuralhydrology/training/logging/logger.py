@@ -1,22 +1,17 @@
-import subprocess
+from abc import abstractmethod, ABC
 from collections import defaultdict
-from pathlib import Path
-from typing import Dict, Union, List
 
 import matplotlib as mpl
+import matplotlib.figure
 import numpy as np
-try:
-    import wandb
-except ImportError as e:
-    raise ImportError("WandB is not installed. Run pip install -e .[wandb]") from e
 
 from neuralhydrology.__about__ import __version__
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.logging_utils import get_git_hash, save_git_diff
 
 
-class Logger(object):
-    """Class that logs runs to WandB and saves plots to disk.
+class Logger(ABC):
+    """Class that logs runs to tensorboard and saves plots to disk.
 
     Parameters
     ----------
@@ -46,9 +41,6 @@ class Logger(object):
         self.epoch = 0
         self.update = 0
         self._metrics = defaultdict(list)
-        self.writer = None
-        
-        self.cfg = cfg
 
     @property
     def tag(self):
@@ -76,28 +68,18 @@ class Logger(object):
         self._train = False
         return self
 
+    @abstractmethod
     def start_logger(self):
-        """ Start WandB logging. """
-        # Check if wandb is already initialized (e.g., in sweep mode)
-        if wandb.run is not None:
-            # Use the existing wandb run (for sweeps)
-            self.run = wandb.run
-            # Update the config with our run configuration
-            wandb.config.update(self.cfg.as_dict(), allow_val_change=True)
-        else:
-            # Initialize a new wandb run (for normal training)
-            self.run = wandb.init(
-                project=self.cfg.wandb_project,
-                dir=self.log_dir / "wandb",
-                tags=[self.cfg.experiment_name],
-                config=self.cfg.as_dict()
-            )
+        """ Start tensorboard logging. """
+        pass
 
+    @abstractmethod
     def stop_logger(self):
-        """ Stop WandB logging. """
-        self.run.finish()
+        """ Stop tensorboard logging. """
+        pass
 
-    def log_figures(self, figures: List[mpl.figure.Figure], freq: str, preamble: str = ""):
+    @abstractmethod
+    def log_figures(self, figures: list[matplotlib.figure.Figure], freq: str, preamble: str = ""):
         """Log matplotlib figures as to disk.
 
         Parameters
@@ -109,9 +91,7 @@ class Logger(object):
         preamble : str, optional
             Prefix to prepend to the figures' file names.
         """
-        for idx, figure in enumerate(figures):
-            self.run.log({f"validation/timeseries_{freq}_{idx + 1}": wandb.Image(figure)}, step=self.update)
-            figure.savefig(Path(self._img_log_dir, preamble + f'_freq{freq}_epoch{self.epoch}_{idx + 1}'), dpi=300)
+        pass
 
     def log_step(self, **kwargs):
         """Log the results of a single step within an epoch.
@@ -135,23 +115,16 @@ class Logger(object):
         if self.update % self.log_interval == 0:
             tag = self.tag
             for k, v in kwargs.items():
-                self.run.log({f"{tag}/{k}": v}, step=self.update)
-                
-    def log_model(self, weight_path, optimizer_path):
-        self.run.log_artifact(
-            weight_path,
-            name=f"{self.cfg.experiment_name}_model",
-            aliases=[f"epoch-{self.epoch}", f"step-{self.update}"],
-            type="model",
-        )
-        if optimizer_path is not None:
-            self.run.log_artifact(
-                optimizer_path,
-                name=f"{self.cfg.experiment_name}_optimizer",
-                aliases=[f"epoch-{self.epoch}", f"step-{self.update}"],
-                type="optimizer",
-            )
+                self.log_metric('/'.join([tag, k]), v, self.update)
 
+    @abstractmethod
+    def log_metric(self, name, value, step):
+        pass
+
+    def log_model(self, weight_path, optimizer_path):
+        pass
+
+    @abstractmethod
     def log_lr(self, learning_rate: float):
         """Log current learning rate.
 
@@ -160,10 +133,9 @@ class Logger(object):
         learning_rate : float
             Current learning rate value.
         """
-        if self.run is not None:
-            self.run.log({"train/learning_rate": learning_rate}, step=self.update)
+        pass
 
-    def summarise(self) -> Union[float, Dict[str, float]]:
+    def summarise(self) -> float | dict[str, float]:
         """"Log the results of the entire training or validation epoch.
 
         Returns
@@ -181,7 +153,7 @@ class Logger(object):
                 mean = np.nanmean(v) if v else np.nan
                 value[f'avg_{k}'] = mean
 
-                self.run.log({f"{self.tag}/avg_{k}": mean}, step=self.update)
+                self.log_metric('/'.join([self.tag, f'avg_{k}']), mean, self.epoch)
 
         # summarize validation
         else:
@@ -197,19 +169,16 @@ class Logger(object):
                     else:
                         weighted_loss = np.nan
                     value[f'avg_{k}'] = weighted_loss
-                    self.run.log({f"{self.tag}/avg_{k}": weighted_loss}, step=self.update)
+
+                    self.log_metric('/'.join([self.tag, f'avg_{k}']), weighted_loss, self.epoch)
                 else:
                     # All other metrics are lists of float values
                     means = np.nanmean(v) if v else np.nan
                     medians = np.nanmedian(v) if v else np.nan
                     value[k] = medians
-                    self.run.log(
-                        {
-                            f"{self.tag}/mean_{k.lower()}": means,
-                            f"{self.tag}/median_{k.lower()}": medians
-                        },
-                        step=self.update
-                    )
+
+                    self.log_metric('/'.join([self.tag, f'mean_{k.lower()}']), means, self.epoch)
+                    self.log_metric('/'.join([self.tag, f'median_{k.lower()}']), medians, self.epoch)
 
         # clear buffer
         self._metrics = defaultdict(list)

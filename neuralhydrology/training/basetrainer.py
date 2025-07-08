@@ -1,10 +1,8 @@
 import logging
-import pickle
 import random
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 import torch
@@ -19,7 +17,7 @@ from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
-from neuralhydrology.training import tensorboard_logger, wandb_logger
+from neuralhydrology.training.logging import tensorboard_logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.logging_utils import setup_logging
 from neuralhydrology.training.earlystopper import EarlyStopper
@@ -181,13 +179,16 @@ class BaseTrainer(object):
             self._restore_training_state()
 
         if self.cfg.logger_type == "wandb":
-            self.experiment_logger = wandb_logger.Logger(cfg=self.cfg)
+            from neuralhydrology.training.logging import wandb_logger
+            self.experiment_logger = wandb_logger.WandBLogger(cfg=self.cfg)
         elif self.cfg.logger_type == "tensorboard":
-            self.experiment_logger = tensorboard_logger.Logger(cfg=self.cfg)
+            self.experiment_logger = tensorboard_logger.TensorboardLogger(cfg=self.cfg)
+        elif self.cfg.logger_type is None:
+            pass  # No logging is done if no logger type is specified
         else:
             raise ValueError(f"Invalid logger_type '{self.cfg.logger_type}'. Must be either 'wandb' or 'tensorboard'.")
 
-        if self.cfg.log_metrics:
+        if self.cfg.logger_type is not None:
             self.experiment_logger.start_logger()
 
         if self.cfg.is_continue_training:
@@ -266,7 +267,7 @@ class BaseTrainer(object):
                     scheduler.step(valid_metrics['avg_total_loss'])
 
         # make sure to close tensorboard to avoid losing the last epoch
-        if self.cfg.log_metrics:
+        if self.cfg.logger_type is not None:
             self.experiment_logger.stop_logger()
 
     def _get_start_epoch_number(self):

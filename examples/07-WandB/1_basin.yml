@@ -93,9 +93,6 @@ num_workers: 8
 # Log the training loss every n steps
 log_interval: 5
 
-# If true, writes logging results into tensorboard file
-log_metrics: True
-
 # Possible values are 'tensorboard' and 'wandb'
 logger_type: wandb
 
