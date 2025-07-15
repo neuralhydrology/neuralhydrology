@@ -62,9 +62,7 @@ class CamelsDE(BaseDataset):
 
     def _load_basin_data(self, basin: str) -> pd.DataFrame:
         """Load input and output data from text files."""
-        df = load_camels_de_timeseries(data_dir=self.cfg.data_dir, basin=basin)
-
-        return df
+        return load_camels_de_timeseries(data_dir=self.cfg.data_dir, basin=basin)
 
     def _load_attributes(self) -> pd.DataFrame:
         return load_camels_de_attributes(self.cfg.data_dir, basins=self.basins)
