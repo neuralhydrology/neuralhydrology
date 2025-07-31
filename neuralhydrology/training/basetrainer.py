@@ -17,7 +17,7 @@ from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.training import get_loss_obj, get_optimizer, get_regularization_obj
-from neuralhydrology.training.logging import tensorboard_logger
+from neuralhydrology.training.logging import noop_logger, tensorboard_logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.logging_utils import setup_logging
 from neuralhydrology.training.earlystopper import EarlyStopper
@@ -184,12 +184,11 @@ class BaseTrainer(object):
         elif self.cfg.logger_type == "tensorboard":
             self.experiment_logger = tensorboard_logger.TensorboardLogger(cfg=self.cfg)
         elif self.cfg.logger_type is None:
-            pass  # No logging is done if no logger type is specified
+            self.experiment_logger = noop_logger.NoOpLogger(cfg=self.cfg)
         else:
             raise ValueError(f"Invalid logger_type '{self.cfg.logger_type}'. Must be either 'wandb' or 'tensorboard'.")
 
-        if self.cfg.logger_type is not None:
-            self.experiment_logger.start_logger()
+        self.experiment_logger.start_logger()
 
         if self.cfg.is_continue_training:
             # set epoch and iteration step counter to continue from the selected checkpoint
@@ -266,9 +265,8 @@ class BaseTrainer(object):
                 if self._dynamic_learning_rate:
                     scheduler.step(valid_metrics['avg_total_loss'])
 
-        # make sure to close tensorboard to avoid losing the last epoch
-        if self.cfg.logger_type is not None:
-            self.experiment_logger.stop_logger()
+        # make sure to close logger to avoid losing the last epoch
+        self.experiment_logger.stop_logger()
 
     def _get_start_epoch_number(self):
         if self.cfg.is_continue_training:
