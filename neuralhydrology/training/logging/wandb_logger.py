@@ -49,21 +49,8 @@ class WandBLogger(Logger):
         """ Stop WandB logging. """
         self.run.finish()
 
-    def log_figures(self, figures: list[matplotlib.figure.Figure], freq: str, preamble: str = ""):
-        """Log matplotlib figures as to disk.
-
-        Parameters
-        ----------
-        figures : List[mpl.figure.Figure]
-            List of figures to save.
-        freq : str
-            Prediction frequency of the figures.
-        preamble : str, optional
-            Prefix to prepend to the figures' file names.
-        """
-        for idx, figure in enumerate(figures):
-            self.run.log({f"validation/timeseries_{freq}_{idx + 1}": wandb.Image(figure)}, step=self.update)
-            figure.savefig(Path(self._img_log_dir, preamble + f'_freq{freq}_epoch{self.epoch}_{idx + 1}'), dpi=300)
+    def _log_figure(self, figure: matplotlib.figure.Figure, key: str, idx: int):
+        self.run.log({f"{key}_{idx + 1}": wandb.Image(figure)}, step=self.update)
 
     def log_metric(self, metric_name: str, value: float, step: int):
         if self.run is not None:

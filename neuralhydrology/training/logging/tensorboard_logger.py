@@ -32,23 +32,9 @@ class TensorboardLogger(Logger):
             self.writer.close()
             self.writer = None
 
-    def log_figures(self, figures: list[matplotlib.figure.Figure], freq: str, preamble: str = ""):
-        """Log matplotlib figures as to disk.
-
-        Parameters
-        ----------
-        figures : List[mpl.figure.Figure]
-            List of figures to save.
-        freq : str
-            Prediction frequency of the figures.
-        preamble : str, optional
-            Prefix to prepend to the figures' file names.
-        """
+    def _log_figure(self, figure: matplotlib.figure.Figure, key: str, idx: int):
         if self.writer is not None:
-            self.writer.add_figure(f'validation/timeseries/{freq}', figures, global_step=self.epoch)
-
-        for idx, figure in enumerate(figures):
-            figure.savefig(Path(self._img_log_dir, preamble + f'_freq{freq}_epoch{self.epoch}_{idx + 1}'), dpi=300)
+            self.writer.add_figure(key, figure, global_step=self.epoch)
 
     def log_metric(self, metric: str, value: float, step: int):
         if self.writer is not None:

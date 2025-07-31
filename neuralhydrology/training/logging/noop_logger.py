@@ -12,7 +12,7 @@ class NoOpLogger(Logger):
     def stop_logger(self):
         pass
 
-    def log_figures(self, figures: list[mpl.figure.Figure], freq: str, preamble: str = ""):
+    def _log_figure(self, figure: mpl.figure.Figure, key: str, idx: int):
         pass
 
     def log_metric(self, name, value, step):

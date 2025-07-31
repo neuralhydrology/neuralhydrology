@@ -78,7 +78,6 @@ class Logger(ABC):
         """ Stop tensorboard logging. """
         pass
 
-    @abstractmethod
     def log_figures(self, figures: list[matplotlib.figure.Figure], freq: str, preamble: str = ""):
         """Log matplotlib figures as to disk.
 
@@ -91,6 +90,13 @@ class Logger(ABC):
         preamble : str, optional
             Prefix to prepend to the figures' file names.
         """
+        for idx, figure in enumerate(figures):
+            self._log_figure(figure, f"validation/timeseries/{freq}", idx)
+            if "NoOpLogger" not in str(type(self)):
+                figure.savefig(Path(self._img_log_dir, preamble + f'_freq{freq}_epoch{self.epoch}_{idx + 1}'), dpi=300)
+
+    @abstractmethod
+    def _log_figure(self, figure: matplotlib.figure.Figure, key: str, idx: int):
         pass
 
     def log_step(self, **kwargs):
