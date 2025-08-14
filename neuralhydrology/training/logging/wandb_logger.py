@@ -53,8 +53,7 @@ class WandBLogger(Logger):
         self.run.log({f"{key}_{idx + 1}": wandb.Image(figure)}, step=self.update)
 
     def log_metric(self, metric_name: str, value: float, step: int):
-        if self.run is not None:
-            self.run.log({metric_name: value})
+        self.run.log({metric_name: value})
 
     def log_model(self, weight_path, optimizer_path):
         self.run.log_artifact(
@@ -79,5 +78,4 @@ class WandBLogger(Logger):
         learning_rate : float
             Current learning rate value.
         """
-        if self.run is not None:
-            self.run.log({"train/learning_rate": learning_rate}, step=self.update)
+        self.run.log({"train/learning_rate": learning_rate}, step=self.update)

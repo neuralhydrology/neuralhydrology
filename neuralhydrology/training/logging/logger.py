@@ -1,5 +1,6 @@
 from abc import abstractmethod, ABC
 from collections import defaultdict
+from pathlib import Path
 
 import matplotlib as mpl
 import matplotlib.figure
