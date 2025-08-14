@@ -7,35 +7,22 @@ left to try in the sweep.
 """
 import wandb
 
-# This specifies the hyperparameters to sweep over
+"""
+The general structure of the sweep_config contains the mandatory keys `method`, `name`, `metric` and `parameters`. 
+For a working example please refer to `examples/07-WandB/WandB.ipynb`.
 sweep_config = {
-    'method': 'bayes',  # Can be 'grid', 'random', or 'bayes'
-    'name': 'optimise_satimg_approach',  # Give your sweep a meaningful name
+    'method': <search method> {bayes|grid|random}
+    'name': <name of the sweep>,
     'metric': {
-        'name': 'valid/avg_total_loss',
-        'goal': 'minimize'
+        'name': <name of the metric to optimise for>,
+        'goal': <optimisation direction> {minimise|maximise}'
     },
     'parameters': {
-        'learning_rate': {
-            'value': 0.001  # value doesn't change during the sweep
-        },
-        'epochs': {
-            'value': 50
-        },
-        'hidden_size': {
-            'values': [64, 128, 256]  # list of values that are tested
-        },
-        'output_dropout': {
-            'values': [0.0, 0.1, 0.2]
-        },
-        'target_noise_std': {
-            'values': [0.0, 0.001, 0.005, 0.01, 0.05]
-        },
-        'batch_size': {
-            'values': [64, 128, 256]
-        }
+        # The parameter space to search over
     }
 }
+"""
+sweep_config = {}
 
 def create_sweep():
     """Create a wandb sweep and return the sweep ID.
