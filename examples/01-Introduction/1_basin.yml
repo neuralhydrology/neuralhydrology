@@ -22,7 +22,7 @@ device: cuda:0
 # --- Validation configuration ---------------------------------------------------------------------
 
 # specify after how many epochs to perform validation
-validate_every: 3
+validate_every: 1
 
 # specify how many random basins to use for validation
 validate_n_random_basins: 1
@@ -108,7 +108,7 @@ save_weights_every: 1
 dataset: camels_us
 
 # Path to data set root
-data_dir: ../../data/CAMELS_US
+data_dir: /home/patrick/data/hydrology/CAMELS_US
 
 # Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
 # can be either a list of forcings or a single forcing product
