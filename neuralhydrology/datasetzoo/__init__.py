@@ -4,6 +4,7 @@ from neuralhydrology.datasetzoo.basedataset import BaseDataset
 from neuralhydrology.datasetzoo.camelsaus import CamelsAUS
 from neuralhydrology.datasetzoo.camelsbr import CamelsBR
 from neuralhydrology.datasetzoo.camelscl import CamelsCL
+from neuralhydrology.datasetzoo.camelsde import CamelsDE
 from neuralhydrology.datasetzoo.camelsgb import CamelsGB
 from neuralhydrology.datasetzoo.camelsus import CamelsUS
 from neuralhydrology.datasetzoo.caravan import Caravan
@@ -23,9 +24,9 @@ def get_dataset(cfg: Config,
                 scaler: dict = {}) -> BaseDataset:
     """Get data set instance, depending on the run configuration.
 
-    Currently implemented datasets are 'caravan', 'camels_aus', 'camels_br', 'camels_cl', 'camels_gb', 'camels_us', and
-    'hourly_camels_us', as well as the 'generic' dataset class that can be used for any kind of dataset as long as it is
-    in the correct format.
+    Currently implemented datasets are 'caravan', 'camels_aus', 'camels_br', 'camels_cl', 'camels_de', 'camels_gb',
+    'camels_us' and 'hourly_camels_us'. The 'generic' dataset class can be used for any kind of dataset as long as
+    it is in the correct format.
 
     New dataset classes can be added at the beginning of runtime using the function register_dataset().
 
@@ -108,3 +109,4 @@ _datasetZooRegistry.register_dataset_class("lamah_a", LamaH)
 _datasetZooRegistry.register_dataset_class("lamah_b", LamaH)
 _datasetZooRegistry.register_dataset_class("lamah_c", LamaH)
 _datasetZooRegistry.register_dataset_class("caravan", Caravan)
+_datasetZooRegistry.register_dataset_class("camels_de", CamelsDE)
