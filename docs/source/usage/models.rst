@@ -199,6 +199,23 @@ The model requires the following hyperparameters specified in the config file:
 * ``transformer_dropout``: dropout in the feedforward networks between self-attention heads.
 * ``transformer_nlayers``: number of stacked self-attention + feedforward layers.
 
+XLSTM
+^^^^^^^^^^^
+:py:class:`neuralhydrology.modelzoo.x_lstm.XLSTM` is a recurrent architecture using the official implementation of backbone
+https://github.com/NX-AI/xlstm from `Beck et al. (2024) <https://arxiv.org/abs/2405.04517>`_.
+
+The ``xlstm`` package is the required dependency for XLSTM.
+
+There are five hyperparameters which can be set in the config file:
+
+* ``xlstm_num_blocks``: number of stacked xLSTM blocks (Default is set to 1)
+* ``xlstm_slstm_at``: indices of blocks of scalar-memory (Default is set to position [0])
+* ``xlstm_heads``: number of heads (Default is set to 2)
+* ``xlstm_kernel_size``: convolutional kernel size (Default is set to 4)
+* ``xlstm_proj_factor``: projection factor (Default is set to 1.3)
+
+
+
 Handoff-Forecast-LSTM
 ^^^^^^^^^^^^^^^^^^^^^
 :py:class:`neuralhydrology.modelzoo.handoff_forecast_lstm.HandoffForecastLSTM` is a forecasting model that uses a state-handoff to transition 
