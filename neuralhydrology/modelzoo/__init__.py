@@ -20,6 +20,8 @@ from neuralhydrology.modelzoo.stacked_forecast_lstm import StackedForecastLSTM
 from neuralhydrology.modelzoo.transformer import Transformer
 from neuralhydrology.utils.config import Config
 
+from neuralhydrology.modelzoo.x_lstm import XLSTM
+
 SINGLE_FREQ_MODELS = [
     "cudalstm",
     "ealstm", 
@@ -33,7 +35,8 @@ SINGLE_FREQ_MODELS = [
     "handoff_forecast_lstm",
     "sequential_forecast_lstm",
     "multihead_forecast_lstm",
-    "stacked_forecast_lstm"
+    "stacked_forecast_lstm",
+    "x_lstm"
 ]
 AUTOREGRESSIVE_MODELS = ['arlstm']
 
@@ -62,6 +65,14 @@ def get_model(cfg: Config) -> nn.Module:
 
     if cfg.model.lower() == "arlstm":
         model = ARLSTM(cfg=cfg)
+
+
+
+    elif cfg.model.lower() == "x_lstm":
+        model = XLSTM(cfg=cfg)
+
+
+
     elif cfg.model.lower() == "cudalstm":
         model = CudaLSTM(cfg=cfg)
     elif cfg.model.lower() == "ealstm":
