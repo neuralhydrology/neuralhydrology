@@ -252,6 +252,17 @@ These are used if ``model == transformer``.
 -  ``transformer_dropout``: Dropout used in transformer encoder layers.
 -  ``transformer_nhead``: Number of parallel transformer heads.
 
+XLSTM settings
+~~~~~~~~~~~~~~
+These are used if ``model == x_lstm``.
+
+-  ``xlstm_num_blocks``: number of stacked xLSTM blocks
+-  ``xlstm_slstm_at``: indices of blocks of scalar-memory
+-  ``xlstm_heads``: number of heads
+-  ``xlstm_kernel_size``: convolutional kernel size
+-  ``xlstm_proj_factor``: projection factor
+
+
 ODE-LSTM settings
 ~~~~~~~~~~~~~~~~~
 
