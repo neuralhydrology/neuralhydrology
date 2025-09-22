@@ -170,7 +170,7 @@ class _SamplingSetup():
             dropout_modules += [implied_statics_embedding, implied_dynamics_embedding]
         # account for transformer
         implied_transformer_dropout = None
-        if cfg.model.lower() == 'transfomer':
+        if cfg.model.lower() == 'transformer':
             implied_transformer_dropout = cfg.transformer_dropout
             dropout_modules.append(implied_transformer_dropout)
 
