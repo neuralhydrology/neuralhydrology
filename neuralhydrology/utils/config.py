@@ -984,6 +984,26 @@ class Config(object):
             'dropout': embedding_spec.get('dropout', 0.0)
         }
 
+    @property
+    def xlstm_num_blocks(self) -> int:
+        return self._cfg.get("xlstm_num_blocks", 1)
+    
+    @property
+    def xlstm_slstm_at(self) -> List[int]:
+        return self._as_default_list(self._cfg.get("xlstm_slstm_at", [0]))
+    
+    @property
+    def xlstm_heads(self) -> int:
+        return self._cfg.get("xlstm_heads", 2)
+    
+    @property
+    def xlstm_kernel_size(self) -> int:
+        return self._cfg.get("xlstm_kernel_size", 4)
+    
+    @property
+    def xlstm_proj_factor(self) -> float:
+        return self._cfg.get("xlstm_proj_factor", 1.3)
+
 
 def create_random_name():
     adjectives = ('white', 'black', 'green', 'golden', 'modern', 'lazy', 'great', 'meandering', 'nervous', 'demanding',
