@@ -65,14 +65,8 @@ def get_model(cfg: Config) -> nn.Module:
 
     if cfg.model.lower() == "arlstm":
         model = ARLSTM(cfg=cfg)
-
-
-
     elif cfg.model.lower() == "x_lstm":
         model = XLSTM(cfg=cfg)
-
-
-
     elif cfg.model.lower() == "cudalstm":
         model = CudaLSTM(cfg=cfg)
     elif cfg.model.lower() == "ealstm":

@@ -8,6 +8,8 @@ from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.utils.config import Config
 
 # -------- Auto-setup CUDA env for xLSTM --------
+# This block automatically sets CUDA_HOME and XLSTM_EXTRA_INCLUDE_PATHS so that xLSTM can find the correct CUDA headers.
+# (Source: https://github.com/NX-AI/xlstm?tab=readme-ov-file#using-the-slstm-cuda-kernels) 
 import os
 import shutil
 if "CUDA_HOME" not in os.environ:
@@ -56,42 +58,41 @@ class XLSTM(BaseModel):
     def __init__(self, cfg: Config):
         super(XLSTM, self).__init__(cfg=cfg)
 
+        if not XLSTM_AVAILABLE:
+            raise ModuleNotFoundError("xlstm, and dependencies, required. Please install the xlstm package\
+                                       from https://github.com/NX-AI/xLSTM (and ensure CUDA headers are available).")
+            
+        xlstm_cfg = xLSTMBlockStackConfig(
+            mlstm_block=mLSTMBlockConfig(
+                mlstm=mLSTMLayerConfig(
+                    conv1d_kernel_size=cfg.xlstm_kernel_size,
+                    qkv_proj_blocksize=4,
+                    num_heads=cfg.xlstm_heads,
+                )
+            ),
+            slstm_block=sLSTMBlockConfig(
+                slstm=sLSTMLayerConfig(
+                    backend="cuda" if torch.cuda.is_available() else "vanilla",          
+                    num_heads=cfg.xlstm_heads,
+                    conv1d_kernel_size=cfg.xlstm_kernel_size,
+                    bias_init="powerlaw_blockdependent",
+                ),
+                feedforward=FeedForwardConfig(
+                    proj_factor=cfg.xlstm_proj_factor,
+                    act_fn="gelu",
+                ),
+            ),
+            context_length = cfg.seq_length, 
+            num_blocks = cfg.xlstm_num_blocks,
+            embedding_dim = cfg.hidden_size,      
+            slstm_at = cfg.xlstm_slstm_at,
+        )
+        self.xlstm = xLSTMBlockStack(xlstm_cfg)
+        
         self.embedding_net = InputLayer(cfg)
 
         # using a linear layer to move from the emdedded_layer dims to the specified hidden size
         self.transition_layer = nn.Linear(self.embedding_net.output_size, self.cfg.hidden_size)
-
-        if not XLSTM_AVAILABLE:
-            raise ModuleNotFoundError("xlstm, and dependencies, required. Please install the xlstm package\
-                                       from https://github.com/NX-AI/xLSTM (and ensure CUDA headers are available).")
-        else:                
-            xlstm_cfg = xLSTMBlockStackConfig(
-                mlstm_block=mLSTMBlockConfig(
-                    mlstm=mLSTMLayerConfig(
-                        conv1d_kernel_size=cfg.xlstm_kernel_size,
-                        qkv_proj_blocksize=4,
-                        num_heads=cfg.xlstm_heads,
-                    )
-                ),
-                slstm_block=sLSTMBlockConfig(
-                    slstm=sLSTMLayerConfig(
-                        backend="cuda",           
-                        num_heads=cfg.xlstm_heads,
-                        conv1d_kernel_size=cfg.xlstm_kernel_size,
-                        bias_init="powerlaw_blockdependent",
-                    ),
-                    feedforward=FeedForwardConfig(
-                        proj_factor=cfg.xlstm_proj_factor,
-                        act_fn="gelu",
-                    ),
-                ),
-                context_length = cfg.seq_length, 
-                num_blocks = cfg.xlstm_num_blocks,
-                embedding_dim = cfg.hidden_size,      
-                slstm_at = cfg.xlstm_slstm_at,
-            )
-
-            self.xlstm = xLSTMBlockStack(xlstm_cfg)
 
         self.dropout = nn.Dropout(p=cfg.output_dropout)
 
@@ -130,5 +131,7 @@ class XLSTM(BaseModel):
         if isinstance(val, int):
             return val
         if isinstance(val, dict):
+            if len(val) != 1:
+                raise ValueError(f"Expected a single-valued dict (e.g. {{'1h': 24}}), got {val})")
             return next(iter(val.values()))
         raise TypeError(f"Expected int or single-valued dict, got {type(val)}")
