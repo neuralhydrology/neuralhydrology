@@ -200,7 +200,7 @@ The model requires the following hyperparameters specified in the config file:
 * ``transformer_nlayers``: number of stacked self-attention + feedforward layers.
 
 XLSTM
-^^^^^^^^^^^
+^^^^^
 :py:class:`neuralhydrology.modelzoo.x_lstm.XLSTM` is a recurrent architecture using the official implementation of backbone
 https://github.com/NX-AI/xlstm from `Beck et al. (2024) <https://arxiv.org/abs/2405.04517>`_.
 
