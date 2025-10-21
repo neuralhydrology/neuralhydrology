@@ -17,6 +17,17 @@ if "CUDA_HOME" not in os.environ:
     if nvcc_path is not None:
         os.environ["CUDA_HOME"] = os.path.dirname(os.path.dirname(nvcc_path))
 
+if "CUDA_LIB" not in os.environ:
+    cuda_home = os.environ.get("CUDA_HOME")
+    if cuda_home:
+        lib_candidates = [os.path.join(cuda_home, "lib64"),
+                          os.path.join(cuda_home, "lib"),
+                          os.path.join(cuda_home, "lib/x86_64-linux-gnu"),]
+        for path in lib_candidates:
+            if os.path.exists(path):
+                os.environ["CUDA_LIB"] = path
+                break
+
 if "XLSTM_EXTRA_INCLUDE_PATHS" not in os.environ:
     cuda_home = os.environ.get("CUDA_HOME")
     if cuda_home is not None:
