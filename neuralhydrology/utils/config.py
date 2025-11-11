@@ -5,7 +5,7 @@ import warnings
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union, Literal
 
 import pandas as pd
 from ruamel.yaml import YAML
@@ -37,7 +37,7 @@ class Config(object):
     # config keys since these keys are not properties of the Config class.
     _deprecated_keys = [
         'static_inputs', 'camels_attributes', 'target_variable', 'embedding_hiddens', 'embedding_activation',
-        'embedding_dropout'
+        'embedding_dropout', 'log_tensorboard'
     ]
     _metadata_keys = ['package_version', 'commit_hash']
 
@@ -543,8 +543,15 @@ class Config(object):
             return self._cfg["log_n_figures"]
 
     @property
-    def log_tensorboard(self) -> bool:
-        return self._cfg.get("log_tensorboard", True)
+    def logger_type(self) -> Literal["tensorboard", "wandb"] | None:
+        if "log_tensorboard" in self._cfg and not self._cfg["log_tensorboard"]:
+            # remain backwards compatible. If logging is disabled, keep it disabled.
+            return None
+        return self._cfg.get("logger_type", "tensorboard")
+
+    @property
+    def wandb_project(self) -> str:
+        return self._cfg.get("wandb_project", "neuralhydrology")
 
     @property
     def loss(self) -> str:
@@ -915,7 +922,7 @@ class Config(object):
             Level of verbosity.
         """
         return self._cfg.get("verbose", 1)
-    
+
     @property
     def early_stopping(self) -> bool:
         """Whether to use early stopping. Defaults to False if not set."""
@@ -932,16 +939,17 @@ class Config(object):
         """Number of epochs with no improvement before stopping."""
         if self.early_stopping:
             return self._get_value_verbose("patience_early_stopping")
-        
+
     @property
     def minimum_epochs_before_early_stopping(self) -> int:
         """Minimum number of epochs before early stopping can be triggered."""
         if self.early_stopping:
             return self._get_value_verbose("minimum_epochs_before_early_stopping")
-    
+
     @property
     def dynamic_learning_rate(self) -> bool:
         """Whether to use  dynamic learning rate. Defaults to False if not set."""
+
         early_stopping = self._cfg.get("early_stopping", False)
         if early_stopping and self.validate_every != 1:
             raise ValueError(
@@ -955,13 +963,13 @@ class Config(object):
         """Number of epochs with no improvement before reducing learning rate."""
         if self.dynamic_learning_rate:
             return self._get_value_verbose("patience_dynamic_learning_rate")
-        
+
     @property
     def factor_dynamic_learning_rate(self) -> float:
         """Factor by which to reduce learning rate."""
         if self.dynamic_learning_rate:
             return self._get_value_verbose("factor_dynamic_learning_rate")
-    
+
     def _get_embedding_spec(self, embedding_spec: dict) -> dict:
         if isinstance(embedding_spec, bool) and embedding_spec:  #
             msg = [

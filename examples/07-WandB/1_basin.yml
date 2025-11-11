@@ -93,8 +93,11 @@ num_workers: 8
 # Log the training loss every n steps
 log_interval: 5
 
-# If true, writes logging results into tensorboard file
-log_tensorboard: True
+# Possible values are 'tensorboard' and 'wandb'
+logger_type: wandb
+
+# The project that will contain the run with the metrics
+wandb_project: my-example-project
 
 # If a value and greater than 0, logs n random basins as figures during validation
 log_n_figures: 1
@@ -108,7 +111,7 @@ save_weights_every: 1
 dataset: camels_us
 
 # Path to data set root
-data_dir: /home/patrick/data/hydrology/CAMELS_US
+data_dir: ../../data/CAMELS_US
 
 # Forcing product [daymet, maurer, maurer_extended, nldas, nldas_extended, nldas_hourly]
 # can be either a list of forcings or a single forcing product

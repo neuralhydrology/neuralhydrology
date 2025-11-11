@@ -1,0 +1,22 @@
+import matplotlib as mpl
+
+from neuralhydrology.training.logging.logger import Logger
+
+
+class NoOpLogger(Logger):
+    """Logger that does nothing."""
+
+    def start_logger(self):
+        pass
+
+    def stop_logger(self):
+        pass
+
+    def _log_figure(self, figure: mpl.figure.Figure, key: str, idx: int):
+        pass
+
+    def log_metric(self, name, value, step):
+        pass
+
+    def log_lr(self, learning_rate: float):
+        pass

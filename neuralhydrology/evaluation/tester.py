@@ -23,7 +23,7 @@ from neuralhydrology.evaluation.utils import load_basin_id_encoding, metrics_to_
 from neuralhydrology.modelzoo import get_model
 from neuralhydrology.modelzoo.basemodel import BaseModel
 from neuralhydrology.training import get_loss_obj, get_regularization_obj
-from neuralhydrology.training.logger import Logger
+from neuralhydrology.training.logging.tensorboard_logger import Logger
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import AllNaNError, NoEvaluationDataError
 
