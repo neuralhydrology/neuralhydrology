@@ -2,6 +2,7 @@ import warnings
 
 import torch.nn as nn
 
+from .persistent_lstm import PersistentLSTM
 from neuralhydrology.modelzoo.arlstm import ARLSTM
 from neuralhydrology.modelzoo.cudalstm import CudaLSTM
 from neuralhydrology.modelzoo.mamba import Mamba
