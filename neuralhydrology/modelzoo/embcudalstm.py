@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import warnings
 from builtins import FutureWarning
 from typing import Dict
