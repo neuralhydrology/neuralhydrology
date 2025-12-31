@@ -65,7 +65,7 @@ For development, you might want to install additional dependencies (like jupyter
 
 .. code-block::
 
-    uv sync --all-extras --dev
+    uv sync --all-groups
 
 Data
 ----
