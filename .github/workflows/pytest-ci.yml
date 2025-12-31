@@ -14,19 +14,26 @@ jobs:
   test:
     name: PyTest CI (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
+    env:
+      # Make sure matplotlib uses a non-interactive backend. Removing this leads to CI failure on Windows.
+      MPLBACKEND: Agg
     strategy:
       matrix:
         os: ["ubuntu-latest", "macos-latest", "windows-latest"]
-    defaults:
-      run:
-        shell: bash -el {0}
     steps:
       - uses: actions/checkout@v4
-      - uses: conda-incubator/setup-miniconda@v3
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
         with:
-          activate-environment: neuralhydrology
-          environment-file: environments/environment_cpu.yml
-          python-version: "3.10"
-          auto-activate-base: false
-      - run: |
-          pytest --cov=neuralhydrology
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+
+      - name: Set up Python
+        run: uv python install 3.10
+
+      - name: Install the project
+        run: uv sync
+
+      - name: Run tests
+        run: uv run pytest --cov=neuralhydrology

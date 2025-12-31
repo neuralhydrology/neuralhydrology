@@ -12,9 +12,16 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+
+      - name: Set up Python
+        run: uv python install 3.11
+
+      - name: Create virtual environment
+        run: uv venv --python 3.11 .venv
 
       - name: Try installing the package
-        run: pip install --no-deps .
+        run: |
+          source .venv/bin/activate
+          uv pip install --no-deps .

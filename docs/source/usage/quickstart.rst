@@ -3,21 +3,15 @@ Quick Start
 
 Prerequisites
 -------------
-As a first step you need a Python environment with all required dependencies. The recommended way is to use Mini-/Anaconda
-and to create a new environment using one of our predefined environment files in `environments/ <https://github.com/neuralhydrology/neuralhydrology/tree/master/environments>`__.
-Make sure to select the correct file, depending on your system.
+As a first step you need a Python environment with all required dependencies. We recommend using `uv <https://github.com/astral-sh/uv>`_ for environment management.
 
-If you don't have a CUDA-capable GPU, or if you want to train on MacOS with Metal support, use:
+First, install ``uv``:
 
 .. code-block::
 
-    conda env create -f environments/environment_cpu.yml
+    curl -LsSf https://astral.sh/uv/install.sh | sh
 
-If you do have a CUDA-capable GPU, use ``environment_cuda11_8.yml``, depending on your hardware.
-
-If you prefer to not use Mini-/Anaconda, make sure you have a Python environment with Python >= 3.10 with all packages installed that are listed in 
-these environment files. 
-The next steps should be executed from within this Python environment.
+If you already have a Python environment, you can install the package directly. However, we recommend creating a virtual environment.
 
 Installation
 ------------
@@ -27,13 +21,13 @@ installation. To install the latest release from PyPI:
 
 .. code-block::
 
-    pip install neuralhydrology
+    uv pip install neuralhydrology
 
 To install the package directly from the current master branch of this repository, including any changes that are not yet part of a release, run:
 
 .. code-block::
 
-    pip install git+https://github.com/neuralhydrology/neuralhydrology.git
+    uv pip install git+https://github.com/neuralhydrology/neuralhydrology.git
 
 If you want to try implementing your own models or datasets, you'll need an editable installation.
 For this, start by downloading or cloning the repository to your local machine.
@@ -46,15 +40,32 @@ If you use git, you can run:
 If you don't know git, you can also download the code from `here <https://github.com/neuralhydrology/neuralhydrology/zipball/master>`__ and extract the zip-file.
 
 After you cloned or downloaded the zip-file, you'll end up with a directory called "neuralhydrology" (or "neuralhydrology-master").
-Next, we'll go to that directory and install a local, editable copy of the package:
+Next, we'll go to that directory and install a local, editable copy of the package.
+This will also install all required dependencies (including PyTorch). ``uv`` will automatically select the appropriate PyTorch version for your system (CPU or CUDA).
 
 .. code-block::
 
     cd neuralhydrology
-    pip install -e .
+    uv sync
 
-The installation procedure (both the editable and the non-editable version) adds the package to your Python environment and installs three bash scripts:
-`nh-run`, `nh-schedule-runs` and `nh-results-ensemble`. For details, see below.
+This command creates a virtual environment in `.venv`. To use the installed scripts (`nh-run`, `nh-schedule-runs` and `nh-results-ensemble`), you can either activate the environment:
+
+.. code-block::
+
+    source .venv/bin/activate
+    nh-run ...
+
+Or run them directly with `uv run`:
+
+.. code-block::
+
+    uv run nh-run ...
+
+For development, you might want to install additional dependencies (like jupyter, pytest, etc.):
+
+.. code-block::
+
+    uv sync --all-extras --dev
 
 Data
 ----
@@ -68,12 +79,12 @@ Training a model
 ----------------
 To train a model, prepare a configuration file, then run::
 
-    nh-run train --config-file /path/to/config.yml
+    uv run nh-run train --config-file /path/to/config.yml
 
 If you want to train multiple models, you can make use of the ``nh-schedule-runs`` command.
 Place all configs in a folder, then run::
 
-    nh-schedule-runs train --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
+    uv run nh-schedule-runs train --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
 
 With X, you can specify how many models should be trained on parallel on a single GPU.
 With Y, you can specify which GPUs to use for training (use the id as specified in ``nvidia-smi``).
@@ -83,19 +94,19 @@ Evaluating a model
 ------------------
 To evaluate a trained model on the test set, run::
 
-    nh-run evaluate --run-dir /path/to/run_dir/
+    uv run nh-run evaluate --run-dir /path/to/run_dir/
 
 If the optional argument ``--epoch N`` (where N is the epoch to evaluate) is not specified,
 the weights of the last epoch are used.
 
 To evaluate all runs in a specific directory you can, similarly to training, run::
 
-    nh-schedule-runs evaluate --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
+    uv run nh-schedule-runs evaluate --directory /path/to/config_dir/ --runs-per-gpu X --gpu-ids Y
 
 
 To merge the predictons of a number of runs (stored in ``$DIR1``, ...) into one averaged ensemble,
 use the ``nh-results-ensemble`` script::
 
-    nh-results-ensemble --run-dirs $DIR1 $DIR2 ... --output-dir /path/to/output/directory --metrics NSE MSE ...
+    uv run nh-results-ensemble --run-dirs $DIR1 $DIR2 ... --output-dir /path/to/output/directory --metrics NSE MSE ...
 
 ``--metrics`` specifies which metrics will be calculated for the averaged predictions.
