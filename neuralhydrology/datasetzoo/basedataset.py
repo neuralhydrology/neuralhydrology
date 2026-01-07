@@ -643,7 +643,7 @@ class BaseDataset(Dataset):
             valid_samples = np.argwhere(flag == 1)
             for f in valid_samples:
                 # store pointer to basin and the sample's index in each frequency
-                lookup.append((basin, [frequency_maps[freq][int(f)] for freq in self.frequencies]))
+                lookup.append((basin, [frequency_maps[freq][f.item()] for freq in self.frequencies]))
 
             # only store data if this basin has at least one valid sample in the given period
             if valid_samples.size > 0:
