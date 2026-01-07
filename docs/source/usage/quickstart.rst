@@ -9,7 +9,10 @@ First, install ``uv``:
 
 .. code-block::
 
+    # On Linux and macOS:
     curl -LsSf https://astral.sh/uv/install.sh | sh
+    # On Windows, use PowerShell:
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
 
 If you already have a Python environment, you can install the package directly. However, we recommend creating a virtual environment.
 

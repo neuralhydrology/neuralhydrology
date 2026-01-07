@@ -99,13 +99,13 @@ If your PR introduces any changes that should be documented, you'll find the rel
 Particularly, for new configuration arguments, please add a description of each argument to the `"Configuration Arguments" page <https://github.com/neuralhydrology/neuralhydrology/blob/master/docs/source/usage/config.rst>`__.
 
 To build the documentation webpage locally and see if everything is rendered correctly, simply run ``uv run make html`` in the docs folder. Please check the output of this command to make sure there are no broken links, etc. (these will output red warnings or errors).
-Afterwards, you can start a local server via ``python -m http.server`` in ``docs/build/html/``. Once the server is running, you can access the local documentation pages in your browser at the URL ``localhost:8000``.
+Afterwards, you can check the local documentation by opening ``docs/build/html/index.html``.
 
 
 Continuous Integration Tests
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Our GitHub repository contains a suite of test cases that are run automatically on every pull request. These test cases must run successfully before we can merge your contribution. You'll see the status of these test cases at the bottom of your pull request.
-Ideally, you've made sure that all tests run smoothly on your local machine before submitting the PR. The test cases use the `pytest <https://docs.pytest.org/>`__ test framework, so you can run all test cases via ``uv run python -m pytest test``, or a specific test case via ``uv run python -m pytest test/test_config_runs.py -k "test_daily_regression_nan_targets"``. If you're using an IDE, it might also auto-detect the test cases for you and provide an option to run them via the IDE's GUI.
+Make sure that all tests run smoothly on your local machine before submitting the PR. The test cases use the `pytest <https://docs.pytest.org/>`__ test framework, so you can run all test cases via ``uv run python -m pytest test``, or a specific test case via ``uv run python -m pytest test/test_config_runs.py -k "test_daily_regression_nan_targets"``. If you're using an IDE, it might also auto-detect the test cases for you and provide an option to run them via the IDE's GUI.
 
 Ideally, if you create a PR that fixes a bug or adds some new feature, this PR would also contain one or more test cases that make sure the bug doesn't happen again, or that we don't do changes in the future that would break your new feature. You can find examples for test cases in the ``test/`` folder. If you don't know how to write test cases yourself, don't worry---you can still create a PR and we'll discuss how to create tests during the code review.
