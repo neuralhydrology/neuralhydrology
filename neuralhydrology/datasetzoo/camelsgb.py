@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Union
 
+from cloudpathlib import AnyPath
 import pandas as pd
 import xarray
 
@@ -70,7 +71,7 @@ class CamelsGB(BaseDataset):
         return load_camels_gb_attributes(self.cfg.data_dir, basins=self.basins)
 
 
-def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.DataFrame:
+def load_camels_gb_attributes(data_dir: Union[Path, AnyPath], basins: List[str] = []) -> pd.DataFrame:
     """Load CAMELS GB attributes from the dataset provided by [#]_
 
     Parameters
@@ -124,7 +125,7 @@ def load_camels_gb_attributes(data_dir: Path, basins: List[str] = []) -> pd.Data
     return df
 
 
-def load_camels_gb_timeseries(data_dir: Path, basin: str) -> pd.DataFrame:
+def load_camels_gb_timeseries(data_dir: Union[Path, AnyPath], basin: str) -> pd.DataFrame:
     """Load the time series data for one basin of the CAMELS GB data set.
 
     Parameters

@@ -1,6 +1,7 @@
 from pathlib import Path
 from typing import List, Dict, Union, Optional
 
+from cloudpathlib import AnyPath
 import pandas as pd
 import xarray
 
@@ -70,7 +71,7 @@ class Caravan(BaseDataset):
         return load_caravan_attributes(data_dir=self.cfg.data_dir, basins=self.basins)
 
 
-def load_caravan_attributes(data_dir: Path,
+def load_caravan_attributes(data_dir: Union[Path, AnyPath],
                             basins: Optional[List[str]] = None,
                             subdataset: Optional[str] = None) -> pd.DataFrame:
     """Load the attributes of the Caravan dataset.
@@ -145,7 +146,7 @@ def load_caravan_attributes(data_dir: Path,
     return df
 
 
-def load_caravan_timeseries(data_dir: Path, basin: str, filetype: str = "netcdf") -> pd.DataFrame:
+def load_caravan_timeseries(data_dir: Union[Path, AnyPath], basin: str, filetype: str = "netcdf") -> pd.DataFrame:
     """Loads the timeseries data of one basin from the Caravan dataset.
     
     Parameters
@@ -190,7 +191,7 @@ def load_caravan_timeseries(data_dir: Path, basin: str, filetype: str = "netcdf"
     return df
 
 
-def _load_attribute_files_of_subdataset(subdataset_dir: Path) -> pd.DataFrame:
+def _load_attribute_files_of_subdataset(subdataset_dir: Union[Path, AnyPath]) -> pd.DataFrame:
     """Loads all attribute files for one subdataset and merges them into one DataFrame."""
     dfs = []
     for csv_file in subdataset_dir.glob("*.csv"):
