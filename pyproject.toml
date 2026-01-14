@@ -49,6 +49,7 @@ docs = [
     "sphinx-rtd-theme>=3.0.0",
     "nbsphinx>=0.8.0",
     "nbsphinx-link>=1.3.0",
+    "docutils<0.21",  # To avoid https://github.com/vidartf/nbsphinx-link/issues/25.
     "ipython",
 ]
 
