@@ -80,32 +80,32 @@ def get_priestley_taylor_pet(t_min: np.ndarray, t_max: np.ndarray, s_rad: np.nda
 def get_jensen_haise_pet(t_avg: np.ndarray, s_rad: np.ndarray, daily: bool = True) -> np.ndarray:
     """Calculate potential evapotranspiration (PET) using the Jensen-Haise Method from Jensen et al. (2016).
         
-        This method estimates PET from shortwave radiation and mean temperature. Modified from jensen_haise method
-        from PyEt python package. 
+    This method estimates PET from shortwave radiation and mean temperature. Modified from jensen_haise method
+    from PyEt python package. 
+    
+    Parameters
+    ----------
+    t_avg : np.ndarray
+        Average temperature (degree C)
+    s_rad : np.ndarray
+        Shortwave radiation (W/m²)
+    daily : bool, optional
+        If True (default), inputs are assumed to be daily values and PET is
+        computed on a daily timescale. If False, inputs are assumed to be
+        sub-daily (e.g., hourly), and PET is computed accordingly.
+    
+    Returns
+    -------
+    np.ndarray
+        Estimated potential evapotranspiration (PET) in mm per day or hour. 
         
-        Parameters
-        ----------
-        t_avg : np.ndarray
-            Average temperature (degree C)
-        s_rad : np.ndarray
-            Shortwave radiation (W/m²)
-        daily : bool, optional
-            If True (default), inputs are assumed to be daily values and PET is
-            computed on a daily timescale. If False, inputs are assumed to be
-            sub-daily (e.g., hourly), and PET is computed accordingly.
-        
-        Outputs
-        -------
-        np.ndarray
-            Estimated potential evapotranspiration (PET) in mm per day or hour. 
-            
-        References
-        ----------
-        ..  [#] M. E. Jensen and R. G. Allen, Evaporation, evapotranspiration, and irrigation water requirements. 
-            American Society of Civil Engineers (ASCE), Jan. 2016, pp. 632–633,isbn: 9780784479209. 
-            doi: 10.1061/9780784414057.
-        ..  [#] M. Vremec, M. Collenteur, and S. Birk, Technical note: Improved handling of potential evapotranspiration 
-            in hydrological studies with PyEt. (2023). Python. doi: https://doi.org/10.5194/hess-2022-417.
+    References
+    ----------
+    ..  [#] M. E. Jensen and R. G. Allen, Evaporation, evapotranspiration, and irrigation water requirements. 
+        American Society of Civil Engineers (ASCE), Jan. 2016, pp. 632–633,isbn: 9780784479209. 
+        doi: 10.1061/9780784414057.
+    ..  [#] M. Vremec, M. Collenteur, and S. Birk, Technical note: Improved handling of potential evapotranspiration 
+        in hydrological studies with PyEt. (2023). Python. doi: https://doi.org/10.5194/hess-2022-417.
 
     """
     J_to_MJ = 1/1000000
