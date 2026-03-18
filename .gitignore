@@ -1,4 +1,5 @@
 uv.lock
+.DS_Store
 
 # file extensions
 **/*.pyc
