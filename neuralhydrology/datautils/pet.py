@@ -115,11 +115,11 @@ def get_jensen_haise_pet(t_avg: np.ndarray, s_rad: np.ndarray, daily: bool = Tru
     lambd_latent_heat_vaporization_MJ_per_kg = 2.501 - 0.002361 * t_avg
     
     if daily:
-        s_rad_MJ_per_m2_timestep = s_rad * day_in_seconds * J_to_MJ 
         # convert from [W/m^2] to [MJ/m^2 day]
+        s_rad_MJ_per_m2_timestep = s_rad * day_in_seconds * J_to_MJ 
     else:
-        s_rad_MJ_per_m2_timestep = s_rad * hour_in_seconds * J_to_MJ
         # convert from [W/m^2] to [MJ/m^2 hr]
+        s_rad_MJ_per_m2_timestep = s_rad * hour_in_seconds * J_to_MJ
         
     pet_mm_per_timestep_raw = (0.025 * s_rad_MJ_per_m2_timestep * (t_avg - (-3.0)) / lambd_latent_heat_vaporization_MJ_per_kg)
     pet_mm_per_timestep = np.clip(pet_mm_per_timestep_raw, 0, None)
