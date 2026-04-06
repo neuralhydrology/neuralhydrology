@@ -41,10 +41,12 @@ class SHM(BaseConceptualModel):
             model is going to be run for. The n_inputs refer to the dynamic forcings used to run the conceptual model
             (e.g. Precipitation, Temperature...)
             The order of n_inputs can be specified under dynamic_conceptual_inputs in the configuration and must be
-                0: Precipitation [mm/day]
-                1: PET [mm/day]
-                2: Tmin [°C]
-                3: Tmax [°C]
+                
+            - 0: Precipitation [mm/day]
+            - 1: PET [mm/day]
+            - 2: Tmin [°C]
+            - 3: Tmax [°C]
+                
             If a dataset, such as CAMELS_US, does not have PET then compute PET into a generic dataset for use in this model. 
             
         lstm_out: torch.Tensor

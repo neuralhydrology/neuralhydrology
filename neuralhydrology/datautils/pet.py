@@ -78,10 +78,10 @@ def get_priestley_taylor_pet(t_min: np.ndarray, t_max: np.ndarray, s_rad: np.nda
 
 @njit
 def get_jensen_haise_pet(t_avg: np.ndarray, s_rad: np.ndarray, daily: bool = True) -> np.ndarray:
-    """Calculate potential evapotranspiration (PET) using the Jensen-Haise Method from Jensen et al. (2016).
+    """Calculate potential evapotranspiration (PET) using the Jensen-Haise Method from Jensen et al. (2016) [#]_.
         
     This method estimates PET from shortwave radiation and mean temperature. Modified from jensen_haise method
-    from PyEt python package. 
+    from PyEt python package [#]_. 
     
     Parameters
     ----------
