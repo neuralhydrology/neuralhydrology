@@ -103,7 +103,10 @@ Validation settings
    where each key-value pair corresponds to one target variable and
    the metrics that should be computed for this target. Like this,
    it is possible to compute different metrics per target during 
-   validation and/or evaluation after the training.
+   validation and/or evaluation after the training. The sample-based
+   metrics ``CRPS``, ``PICP``, and ``MPIW`` are available for
+   probabilistic predictions, e.g., from ``gmm``, ``cmal``, ``umal``,
+   or Monte-Carlo dropout.
 
 -  ``save_validation_results``: True/False, if True, stores the
    validation results to disk as a pickle file. Otherwise they are only

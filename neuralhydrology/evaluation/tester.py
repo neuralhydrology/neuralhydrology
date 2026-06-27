@@ -313,12 +313,9 @@ class BaseTester(object):
                             if target_variable in self.cfg.clip_targets_to_zero:
                                 sim = xarray.where(sim < 0, 0, sim)
 
-                            if 'samples' in sim.dims:
-                                sim = sim.mean(dim='samples')
-
                             var_metrics = metrics if isinstance(metrics, list) else metrics[target_variable]
                             if 'all' in var_metrics:
-                                var_metrics = get_available_metrics()
+                                var_metrics = get_available_metrics(include_probabilistic=self._has_samples(sim))
                             try:
                                 values = calculate_metrics(obs, sim, metrics=var_metrics, resolution=freq)
                             except AllNaNError as err:
@@ -400,7 +397,7 @@ class BaseTester(object):
             if isinstance(metrics_list, dict):
                 metrics_list = list(set(metrics_list.values()))
             if "all" in metrics_list:
-                metrics_list = get_available_metrics()
+                metrics_list = get_available_metrics(include_probabilistic=self._has_sample_results(results))
             df = metrics_to_dataframe(results, metrics_list, self.cfg.target_variables)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
@@ -419,6 +416,24 @@ class BaseTester(object):
             with result_file.open("wb") as fp:
                 pickle.dump(states, fp)
             LOGGER.info(f"Stored states at {result_file}")
+
+    @staticmethod
+    def _has_samples(sim: xarray.DataArray) -> bool:
+        return 'samples' in sim.dims
+
+    def _has_sample_results(self, results: Optional[dict]) -> bool:
+        if not results:
+            return False
+        for basin_data in results.values():
+            for freq_results in basin_data.values():
+                xr = freq_results.get('xr')
+                if xr is None:
+                    continue
+                for target_var in self.cfg.target_variables:
+                    sim_key = f"{target_var}_sim"
+                    if sim_key in xr and self._has_samples(xr[sim_key]):
+                        return True
+        return False
 
     def _evaluate(self, model: BaseModel, loader: DataLoader, frequencies: List[str], save_all_output: bool = False):
         """Evaluate model"""
