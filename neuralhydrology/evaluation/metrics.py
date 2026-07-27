@@ -10,6 +10,7 @@ from neuralhydrology.datautils import utils
 from neuralhydrology.utils.errors import AllNaNError
 
 LOGGER = logging.getLogger(__name__)
+_PROBABILISTIC_METRICS = ("CRPS", "PICP", "MPIW")
 
 
 def get_available_metrics(include_probabilistic: bool = False) -> List[str]:
@@ -30,7 +31,7 @@ def get_available_metrics(include_probabilistic: bool = False) -> List[str]:
         "Peak-Timing", "Missed-Peaks", "Peak-MAPE"
     ]
     if include_probabilistic:
-        metrics += ["CRPS", "PICP", "MPIW"]
+        metrics += list(_PROBABILISTIC_METRICS)
     return metrics
 
 
@@ -63,7 +64,7 @@ def _validate_ensemble_inputs(obs: DataArray, sim: DataArray):
 
 
 def _mask_valid_ensemble(obs: DataArray, sim: DataArray) -> Tuple[DataArray, DataArray]:
-    idx = (~obs.isnull()) & sim.notnull().all(dim='samples')
+    idx = obs.notnull() & sim.notnull().all(dim='samples')
 
     obs = obs[idx]
     sim = sim.where(idx, drop=True)
@@ -848,8 +849,7 @@ def picp(obs: DataArray, sim: DataArray, alpha: float = 0.1) -> float:
     if len(obs) < 1:
         return np.nan
 
-    lower = sim.quantile(alpha / 2, dim='samples')
-    upper = sim.quantile(1 - alpha / 2, dim='samples')
+    lower, upper = sim.quantile([alpha / 2, 1 - alpha / 2], dim='samples')
 
     coverage = (obs >= lower) & (obs <= upper)
     return float(coverage.mean())
@@ -884,8 +884,7 @@ def mpiw(obs: DataArray, sim: DataArray, alpha: float = 0.1) -> float:
     if len(obs) < 1:
         return np.nan
 
-    lower = sim.quantile(alpha / 2, dim='samples')
-    upper = sim.quantile(1 - alpha / 2, dim='samples')
+    lower, upper = sim.quantile([alpha / 2, 1 - alpha / 2], dim='samples')
 
     return float((upper - lower).mean())
 
@@ -919,7 +918,8 @@ def calculate_all_metrics(obs: DataArray,
     """
     _check_all_nan(obs, sim)
 
-    sim_mean = sim.mean(dim='samples') if 'samples' in sim.dims else sim
+    has_samples = 'samples' in sim.dims
+    sim_mean = sim.mean(dim='samples') if has_samples else sim
 
     results = {
         "NSE": nse(obs, sim_mean),
@@ -938,7 +938,7 @@ def calculate_all_metrics(obs: DataArray,
         "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim_mean)
     }
 
-    if 'samples' in sim.dims:
+    if has_samples:
         results.update({
             "CRPS": crps(obs, sim),
             "PICP": picp(obs, sim),
@@ -983,50 +983,52 @@ def calculate_metrics(obs: DataArray,
 
     _check_all_nan(obs, sim)
 
+    has_samples = 'samples' in sim.dims
+    sim_mean = sim.mean(dim='samples') if has_samples else sim
+
     values = {}
     for metric in metrics:
-        sim_metric = sim.mean(dim='samples') if 'samples' in sim.dims and metric.lower() not in [
-            'crps', 'picp', 'mpiw'
-        ] else sim
-        if metric.lower() == "nse":
+        metric_name = metric.lower()
+        sim_metric = sim if metric.upper() in _PROBABILISTIC_METRICS else sim_mean
+        if metric_name == "nse":
             values["NSE"] = nse(obs, sim_metric)
-        elif metric.lower() == "mse":
+        elif metric_name == "mse":
             values["MSE"] = mse(obs, sim_metric)
-        elif metric.lower() == "rmse":
+        elif metric_name == "rmse":
             values["RMSE"] = rmse(obs, sim_metric)
-        elif metric.lower() == "kge":
+        elif metric_name == "kge":
             values["KGE"] = kge(obs, sim_metric)
-        elif metric.lower() == "alpha-nse":
+        elif metric_name == "alpha-nse":
             values["Alpha-NSE"] = alpha_nse(obs, sim_metric)
-        elif metric.lower() == "beta-kge":
+        elif metric_name == "beta-kge":
             values["Beta-KGE"] = beta_kge(obs, sim_metric)
-        elif metric.lower() == "beta-nse":
+        elif metric_name == "beta-nse":
             values["Beta-NSE"] = beta_nse(obs, sim_metric)
-        elif metric.lower() == "pearson-r":
+        elif metric_name == "pearson-r":
             values["Pearson-r"] = pearsonr(obs, sim_metric)
-        elif metric.lower() == "fhv":
+        elif metric_name == "fhv":
             values["FHV"] = fdc_fhv(obs, sim_metric)
-        elif metric.lower() == "fms":
+        elif metric_name == "fms":
             values["FMS"] = fdc_fms(obs, sim_metric)
-        elif metric.lower() == "flv":
+        elif metric_name == "flv":
             values["FLV"] = fdc_flv(obs, sim_metric)
-        elif metric.lower() == "peak-timing":
+        elif metric_name == "peak-timing":
             values["Peak-Timing"] = mean_peak_timing(obs,
                                                      sim_metric,
                                                      resolution=resolution,
                                                      datetime_coord=datetime_coord)
-        elif metric.lower() == "missed-peaks":
+        elif metric_name == "missed-peaks":
             values["Missed-Peaks"] = missed_peaks(obs,
                                                   sim_metric,
                                                   resolution=resolution,
                                                   datetime_coord=datetime_coord)
-        elif metric.lower() == "peak-mape":
+        elif metric_name == "peak-mape":
             values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim_metric)
-        elif metric.lower() == "crps":
+        elif metric_name == "crps":
             values["CRPS"] = crps(obs, sim_metric)
-        elif metric.lower() == "picp":
+        elif metric_name == "picp":
             values["PICP"] = picp(obs, sim_metric)
-        elif metric.lower() == "mpiw":
+        elif metric_name == "mpiw":
             values["MPIW"] = mpiw(obs, sim_metric)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
