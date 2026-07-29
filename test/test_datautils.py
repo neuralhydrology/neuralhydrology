@@ -1,9 +1,36 @@
 """Unit tests for datautils functions. """
+import numpy as np
 import pandas as pd
 import pytest
 
+from neuralhydrology.datautils.pet import _get_clear_sky_rad
 from neuralhydrology.datautils.utils import (get_frequency_factor, infer_frequency, sort_frequencies, _ME_FREQ,
                                              _QE_FREQ, _YE_FREQ)
+
+
+def test_clear_sky_radiation_does_not_exceed_extraterrestrial_radiation():
+    """Test the physical upper bound for clear-sky radiation."""
+    et_rad = np.array([10.0])
+
+    for elev in np.linspace(0, 3000, 31):
+        cs_rad = _get_clear_sky_rad(elev, et_rad)
+        assert np.all(cs_rad <= et_rad), (
+            f"Clear-sky radiation must not exceed extraterrestrial radiation at {elev} m elevation.")
+
+
+def test_clear_sky_radiation_at_sea_level():
+    """Test clear-sky radiation at sea level."""
+    et_rad = np.array([10.0])
+
+    assert np.array_equal(_get_clear_sky_rad(0, et_rad), 0.75 * et_rad)
+
+
+def test_clear_sky_radiation_at_elevation():
+    """Test clear-sky radiation against a known FAO-56 value."""
+    et_rad = np.array([10.0])
+    expected = np.array([7.6648])  # (0.75 + 2e-5 * 824 m) * 10 MJm-2day-1
+
+    assert np.allclose(_get_clear_sky_rad(824, et_rad), expected)
 
 
 def test_sort_frequencies():

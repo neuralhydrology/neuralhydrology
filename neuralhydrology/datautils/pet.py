@@ -280,7 +280,7 @@ def _get_clear_sky_rad(elev: float, et_rad: np.ndarray) -> np.ndarray:
     np.ndarray
         Clear sky radiation MJm-2day-1
     """
-    cs_rad = (0.75 + 2 * 10e-5 * elev) * et_rad
+    cs_rad = (0.75 + 2e-5 * elev) * et_rad
     return cs_rad
 
 
