@@ -7,22 +7,20 @@ from neuralhydrology.evaluation.metrics import (calculate_all_metrics, calculate
                                                 mpiw, picp)
 
 
-def test_ensemble_metrics():
+@pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8)])
+def test_ensemble_metrics(metric, expected):
     obs = xarray.DataArray([1.0, 2.0], dims=['datetime'])
     sim = xarray.DataArray([[0.0, 2.0], [1.0, 3.0]], dims=['datetime', 'samples'])
 
-    assert crps(obs, sim) == pytest.approx(0.5)
-    assert picp(obs, sim, alpha=0.1) == pytest.approx(1.0)
-    assert mpiw(obs, sim, alpha=0.1) == pytest.approx(1.8)
+    assert metric(obs, sim) == pytest.approx(expected)
 
 
-def test_ensemble_metrics_ignore_invalid_samples():
+@pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8)])
+def test_ensemble_metrics_ignore_invalid_samples(metric, expected):
     obs = xarray.DataArray([1.0, 2.0], dims=['datetime'])
     sim = xarray.DataArray([[0.0, 2.0], [np.nan, 3.0]], dims=['datetime', 'samples'])
 
-    assert crps(obs, sim) == pytest.approx(0.5)
-    assert picp(obs, sim) == pytest.approx(1.0)
-    assert mpiw(obs, sim) == pytest.approx(1.8)
+    assert metric(obs, sim) == pytest.approx(expected)
 
 
 def test_calculate_metrics_mixes_deterministic_and_ensemble_metrics():
