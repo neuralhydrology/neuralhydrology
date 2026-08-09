@@ -30,6 +30,10 @@ from neuralhydrology.utils.errors import AllNaNError, NoEvaluationDataError
 LOGGER = logging.getLogger(__name__)
 
 
+def _has_samples(sim: xarray.DataArray) -> bool:
+    return 'samples' in sim.dims
+
+
 class BaseTester(object):
     """Base class to run inference on a model.
 
@@ -313,12 +317,9 @@ class BaseTester(object):
                             if target_variable in self.cfg.clip_targets_to_zero:
                                 sim = xarray.where(sim < 0, 0, sim)
 
-                            if 'samples' in sim.dims:
-                                sim = sim.mean(dim='samples')
-
                             var_metrics = metrics if isinstance(metrics, list) else metrics[target_variable]
                             if 'all' in var_metrics:
-                                var_metrics = get_available_metrics()
+                                var_metrics = get_available_metrics(include_probabilistic=_has_samples(sim))
                             try:
                                 values = calculate_metrics(obs, sim, metrics=var_metrics, resolution=freq)
                             except AllNaNError as err:
@@ -400,7 +401,7 @@ class BaseTester(object):
             if isinstance(metrics_list, dict):
                 metrics_list = list(set(metrics_list.values()))
             if "all" in metrics_list:
-                metrics_list = get_available_metrics()
+                metrics_list = get_available_metrics(include_probabilistic=self._has_sample_results(results))
             df = metrics_to_dataframe(results, metrics_list, self.cfg.target_variables)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
@@ -419,6 +420,17 @@ class BaseTester(object):
             with result_file.open("wb") as fp:
                 pickle.dump(states, fp)
             LOGGER.info(f"Stored states at {result_file}")
+
+    def _has_sample_results(self, results: Optional[dict]) -> bool:
+        if not results:
+            return False
+        basin_data = next(iter(results.values()))
+        if not basin_data or not self.cfg.target_variables:
+            return False
+        freq_results = next(iter(basin_data.values()))
+        ds = freq_results["xr"]
+        sim_key = f"{self.cfg.target_variables[0]}_sim"
+        return _has_samples(ds[sim_key])
 
     def _evaluate(self, model: BaseModel, loader: DataLoader, frequencies: List[str], save_all_output: bool = False):
         """Evaluate model"""

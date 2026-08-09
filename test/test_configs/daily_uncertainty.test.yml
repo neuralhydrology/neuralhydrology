@@ -26,6 +26,9 @@ metrics:
   - KGE
   - Alpha-NSE
   - Beta-NSE
+  - CRPS
+  - PICP
+  - MPIW
 
 # --- Model configuration --------------------------------------------------------------------------
 model: cudalstm

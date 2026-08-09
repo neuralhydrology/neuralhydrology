@@ -10,10 +10,16 @@ from neuralhydrology.datautils import utils
 from neuralhydrology.utils.errors import AllNaNError
 
 LOGGER = logging.getLogger(__name__)
+_PROBABILISTIC_METRICS = ("CRPS", "PICP", "MPIW")
 
 
-def get_available_metrics() -> List[str]:
+def get_available_metrics(include_probabilistic: bool = False) -> List[str]:
     """Get list of available metrics.
+
+    Parameters
+    ----------
+    include_probabilistic : bool, optional
+        If True, include metrics that require forecast samples. By default False.
 
     Returns
     -------
@@ -24,6 +30,8 @@ def get_available_metrics() -> List[str]:
         "NSE", "MSE", "RMSE", "KGE", "Alpha-NSE", "Pearson-r", "Beta-KGE", "Beta-NSE", "FHV", "FMS", "FLV",
         "Peak-Timing", "Missed-Peaks", "Peak-MAPE"
     ]
+    if include_probabilistic:
+        metrics += list(_PROBABILISTIC_METRICS)
     return metrics
 
 
@@ -47,6 +55,21 @@ def _mask_valid(obs: DataArray, sim: DataArray) -> Tuple[DataArray, DataArray]:
 
 def _get_fdc(da: DataArray) -> np.ndarray:
     return da.sortby(da, ascending=False).values
+
+
+def _validate_ensemble_inputs(obs: DataArray, sim: DataArray):
+    if 'samples' not in sim.dims:
+        raise RuntimeError("Ensemble metrics require simulations with a 'samples' dimension.")
+    _validate_inputs(obs, sim.mean(dim='samples'))
+
+
+def _mask_valid_ensemble(obs: DataArray, sim: DataArray) -> Tuple[DataArray, DataArray]:
+    idx = obs.notnull() & sim.notnull().all(dim='samples')
+
+    obs = obs[idx]
+    sim = sim.where(idx, drop=True)
+
+    return obs, sim
 
 
 def nse(obs: DataArray, sim: DataArray) -> float:
@@ -755,6 +778,117 @@ def mean_absolute_percentage_peak_error(obs: DataArray, sim: DataArray) -> float
     return peak_mape
 
 
+def crps(obs: DataArray, sim: DataArray) -> float:
+    r"""Calculate the ensemble approximation of the Continuous Ranked Probability Score.
+
+    CRPS evaluates the full predictive distribution and reduces to the mean absolute error for deterministic
+    forecasts. Lower values indicate better probabilistic forecasts.
+
+    .. math::
+        \text{CRPS} = \frac{1}{T}\sum_{t=1}^T
+        \left(\frac{1}{M}\sum_{m=1}^M |x_{t,m} - y_t|
+        - \frac{1}{2M^2}\sum_{m=1}^M\sum_{j=1}^M |x_{t,m} - x_{t,j}|\right),
+
+    where :math:`x_{t,m}` are forecast samples and :math:`y_t` are observations.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated samples with a ``samples`` dimension.
+
+    Returns
+    -------
+    float
+        Continuous Ranked Probability Score.
+    """
+    _validate_ensemble_inputs(obs, sim)
+
+    obs, sim = _mask_valid_ensemble(obs, sim)
+    if len(obs) < 1:
+        return np.nan
+
+    samples = np.sort(sim.transpose(..., 'samples').values, axis=-1)
+    observations = obs.values[..., None]
+    n_samples = samples.shape[-1]
+
+    absolute_error = np.mean(np.abs(samples - observations), axis=-1)
+    weights = 2 * np.arange(1, n_samples + 1) - n_samples - 1
+    ensemble_spread = np.sum(weights * samples, axis=-1) / n_samples**2
+
+    return float(np.mean(absolute_error - ensemble_spread))
+
+
+def picp(obs: DataArray, sim: DataArray, alpha: float = 0.1) -> float:
+    r"""Calculate prediction interval coverage probability.
+
+    PICP is the fraction of observations that fall inside the central ``1 - alpha`` prediction interval. For the
+    default ``alpha=0.1``, the metric evaluates the 90% prediction interval.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated samples with a ``samples`` dimension.
+    alpha : float, optional
+        Size of the excluded probability mass, by default 0.1.
+
+    Returns
+    -------
+    float
+        Fraction of observations inside the prediction interval.
+    """
+    if (alpha <= 0) or (alpha >= 1):
+        raise ValueError("alpha has to be in range ]0,1[")
+
+    _validate_ensemble_inputs(obs, sim)
+
+    obs, sim = _mask_valid_ensemble(obs, sim)
+    if len(obs) < 1:
+        return np.nan
+
+    lower, upper = sim.quantile([alpha / 2, 1 - alpha / 2], dim='samples')
+
+    coverage = (obs >= lower) & (obs <= upper)
+    return float(coverage.mean())
+
+
+def mpiw(obs: DataArray, sim: DataArray, alpha: float = 0.1) -> float:
+    r"""Calculate mean prediction interval width.
+
+    MPIW is the average width of the central ``1 - alpha`` prediction interval. For the default ``alpha=0.1``, the
+    metric evaluates the 90% prediction interval.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated samples with a ``samples`` dimension.
+    alpha : float, optional
+        Size of the excluded probability mass, by default 0.1.
+
+    Returns
+    -------
+    float
+        Mean prediction interval width.
+    """
+    if (alpha <= 0) or (alpha >= 1):
+        raise ValueError("alpha has to be in range ]0,1[")
+
+    _validate_ensemble_inputs(obs, sim)
+
+    obs, sim = _mask_valid_ensemble(obs, sim)
+    if len(obs) < 1:
+        return np.nan
+
+    lower, upper = sim.quantile([alpha / 2, 1 - alpha / 2], dim='samples')
+
+    return float((upper - lower).mean())
+
+
 def calculate_all_metrics(obs: DataArray,
                           sim: DataArray,
                           resolution: str = "1D",
@@ -784,21 +918,32 @@ def calculate_all_metrics(obs: DataArray,
     """
     _check_all_nan(obs, sim)
 
+    has_samples = 'samples' in sim.dims
+    sim_mean = sim.mean(dim='samples') if has_samples else sim
+
     results = {
-        "NSE": nse(obs, sim),
-        "MSE": mse(obs, sim),
-        "RMSE": rmse(obs, sim),
-        "KGE": kge(obs, sim),
-        "Alpha-NSE": alpha_nse(obs, sim),
-        "Beta-KGE": beta_kge(obs, sim),
-        "Beta-NSE": beta_nse(obs, sim),
-        "Pearson-r": pearsonr(obs, sim),
-        "FHV": fdc_fhv(obs, sim),
-        "FMS": fdc_fms(obs, sim),
-        "FLV": fdc_flv(obs, sim),
-        "Peak-Timing": mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord),
-        "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim)
+        "NSE": nse(obs, sim_mean),
+        "MSE": mse(obs, sim_mean),
+        "RMSE": rmse(obs, sim_mean),
+        "KGE": kge(obs, sim_mean),
+        "Alpha-NSE": alpha_nse(obs, sim_mean),
+        "Beta-KGE": beta_kge(obs, sim_mean),
+        "Beta-NSE": beta_nse(obs, sim_mean),
+        "Pearson-r": pearsonr(obs, sim_mean),
+        "FHV": fdc_fhv(obs, sim_mean),
+        "FMS": fdc_fms(obs, sim_mean),
+        "FLV": fdc_flv(obs, sim_mean),
+        "Peak-Timing": mean_peak_timing(obs, sim_mean, resolution=resolution, datetime_coord=datetime_coord),
+        "Missed-Peaks": missed_peaks(obs, sim_mean, resolution=resolution, datetime_coord=datetime_coord),
+        "Peak-MAPE": mean_absolute_percentage_peak_error(obs, sim_mean)
     }
+
+    if has_samples:
+        results.update({
+            "CRPS": crps(obs, sim),
+            "PICP": picp(obs, sim),
+            "MPIW": mpiw(obs, sim)
+        })
 
     return results
 
@@ -834,40 +979,57 @@ def calculate_metrics(obs: DataArray,
         If all observations or all simulations are NaN.
     """
     if 'all' in metrics:
-        return calculate_all_metrics(obs, sim, resolution=resolution)
+        return calculate_all_metrics(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
 
     _check_all_nan(obs, sim)
 
+    has_samples = 'samples' in sim.dims
+    sim_mean = sim.mean(dim='samples') if has_samples else sim
+
     values = {}
     for metric in metrics:
-        if metric.lower() == "nse":
-            values["NSE"] = nse(obs, sim)
-        elif metric.lower() == "mse":
-            values["MSE"] = mse(obs, sim)
-        elif metric.lower() == "rmse":
-            values["RMSE"] = rmse(obs, sim)
-        elif metric.lower() == "kge":
-            values["KGE"] = kge(obs, sim)
-        elif metric.lower() == "alpha-nse":
-            values["Alpha-NSE"] = alpha_nse(obs, sim)
-        elif metric.lower() == "beta-kge":
-            values["Beta-KGE"] = beta_kge(obs, sim)
-        elif metric.lower() == "beta-nse":
-            values["Beta-NSE"] = beta_nse(obs, sim)
-        elif metric.lower() == "pearson-r":
-            values["Pearson-r"] = pearsonr(obs, sim)
-        elif metric.lower() == "fhv":
-            values["FHV"] = fdc_fhv(obs, sim)
-        elif metric.lower() == "fms":
-            values["FMS"] = fdc_fms(obs, sim)
-        elif metric.lower() == "flv":
-            values["FLV"] = fdc_flv(obs, sim)
-        elif metric.lower() == "peak-timing":
-            values["Peak-Timing"] = mean_peak_timing(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
-        elif metric.lower() == "missed-peaks":
-            values["Missed-Peaks"] = missed_peaks(obs, sim, resolution=resolution, datetime_coord=datetime_coord)
-        elif metric.lower() == "peak-mape":
-            values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim)
+        metric_name = metric.lower()
+        sim_metric = sim if metric.upper() in _PROBABILISTIC_METRICS else sim_mean
+        if metric_name == "nse":
+            values["NSE"] = nse(obs, sim_metric)
+        elif metric_name == "mse":
+            values["MSE"] = mse(obs, sim_metric)
+        elif metric_name == "rmse":
+            values["RMSE"] = rmse(obs, sim_metric)
+        elif metric_name == "kge":
+            values["KGE"] = kge(obs, sim_metric)
+        elif metric_name == "alpha-nse":
+            values["Alpha-NSE"] = alpha_nse(obs, sim_metric)
+        elif metric_name == "beta-kge":
+            values["Beta-KGE"] = beta_kge(obs, sim_metric)
+        elif metric_name == "beta-nse":
+            values["Beta-NSE"] = beta_nse(obs, sim_metric)
+        elif metric_name == "pearson-r":
+            values["Pearson-r"] = pearsonr(obs, sim_metric)
+        elif metric_name == "fhv":
+            values["FHV"] = fdc_fhv(obs, sim_metric)
+        elif metric_name == "fms":
+            values["FMS"] = fdc_fms(obs, sim_metric)
+        elif metric_name == "flv":
+            values["FLV"] = fdc_flv(obs, sim_metric)
+        elif metric_name == "peak-timing":
+            values["Peak-Timing"] = mean_peak_timing(obs,
+                                                     sim_metric,
+                                                     resolution=resolution,
+                                                     datetime_coord=datetime_coord)
+        elif metric_name == "missed-peaks":
+            values["Missed-Peaks"] = missed_peaks(obs,
+                                                  sim_metric,
+                                                  resolution=resolution,
+                                                  datetime_coord=datetime_coord)
+        elif metric_name == "peak-mape":
+            values["Peak-MAPE"] = mean_absolute_percentage_peak_error(obs, sim_metric)
+        elif metric_name == "crps":
+            values["CRPS"] = crps(obs, sim_metric)
+        elif metric_name == "picp":
+            values["PICP"] = picp(obs, sim_metric)
+        elif metric_name == "mpiw":
+            values["MPIW"] = mpiw(obs, sim_metric)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 
@@ -882,7 +1044,7 @@ def _check_all_nan(obs: DataArray, sim: DataArray):
     AllNaNError
         If all observations or all simulations are NaN.
     """
-    if all(obs.isnull()):
+    if obs.isnull().all():
         raise AllNaNError("All observed values are NaN, thus metrics will be NaN, too.")
-    if all(sim.isnull()):
+    if sim.isnull().all():
         raise AllNaNError("All simulated values are NaN, thus metrics will be NaN, too.")
