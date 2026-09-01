@@ -1,9 +1,20 @@
 """Unit tests for datautils functions. """
+import numpy as np
 import pandas as pd
 import pytest
 
+from neuralhydrology.datautils.pet import _get_clear_sky_rad
 from neuralhydrology.datautils.utils import (get_frequency_factor, infer_frequency, sort_frequencies, _ME_FREQ,
                                              _QE_FREQ, _YE_FREQ)
+
+
+@pytest.mark.parametrize("elev, expected", [(0, np.array([7.5])), (824, np.array([7.6648000000000005])),
+                                            (3000, np.array([8.100000000000001]))])
+def test_clear_sky_radiation(elev, expected):
+    """Test clear-sky radiation at selected elevations."""
+    et_rad = np.array([10.0])
+
+    np.testing.assert_array_equal(_get_clear_sky_rad(elev, et_rad), expected)
 
 
 def test_sort_frequencies():
