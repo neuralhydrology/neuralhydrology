@@ -16,7 +16,7 @@ from tqdm import tqdm
 
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, load_scaler, sort_frequencies
+from neuralhydrology.datautils.utils import get_frequency_factor, load_basin_file, sort_frequencies
 from neuralhydrology.evaluation import plots
 from neuralhydrology.evaluation.metrics import calculate_metrics, get_available_metrics
 from neuralhydrology.evaluation.utils import load_basin_id_encoding, metrics_to_dataframe
@@ -71,7 +71,6 @@ class BaseTester(object):
 
         # pre-initialize variables, defined in class methods
         self.basins = None
-        self.scaler = None
         self.id_to_int = {}
         self.additional_features = []
 
@@ -113,15 +112,6 @@ class BaseTester(object):
         # get list of basins
         self.basins = load_basin_file(getattr(self.cfg, f"{self.period}_basin_file"))
 
-        # load feature scaler
-        self.scaler = load_scaler(self.run_dir)
-
-        # check for old scaler files, where the center/scale parameters had still old names
-        if "xarray_means" in self.scaler.keys():
-            self.scaler["xarray_feature_center"] = self.scaler.pop("xarray_means")
-        if "xarray_stds" in self.scaler.keys():
-            self.scaler["xarray_feature_scale"] = self.scaler.pop("xarray_stds")
-
         # load basin_id to integer dictionary for one-hot-encoding
         if self.cfg.use_basin_id_encoding:
             self.id_to_int = load_basin_id_encoding(self.run_dir)
@@ -154,7 +144,7 @@ class BaseTester(object):
                          basin=basin,
                          additional_features=self.additional_features,
                          id_to_int=self.id_to_int,
-                         scaler=self.scaler)
+                         compute_scaler=False)
         return ds
 
     def evaluate(self,
@@ -247,23 +237,8 @@ class BaseTester(object):
                     continue  # this frequency is not being predicted
                 results[basin][freq] = {}
 
-                # rescale observations
-                feature_scaler = self.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values
-                feature_center = self.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values
-                y_freq = y[freq] * feature_scaler + feature_center
-                # rescale predictions
-                if y_hat[freq].ndim == 3 or (len(feature_scaler) == 1):
-                    y_hat_freq = y_hat[freq] * feature_scaler + feature_center
-                elif y_hat[freq].ndim == 4:
-                    # if y_hat has 4 dim and we have multiple features we expand the dimensions for scaling
-                    feature_scaler = np.expand_dims(feature_scaler, (0, 1, 3))
-                    feature_center = np.expand_dims(feature_center, (0, 1, 3))
-                    y_hat_freq = y_hat[freq] * feature_scaler + feature_center
-                else:
-                    raise RuntimeError(f"Simulations have {y_hat[freq].ndim} dimension. Only 3 and 4 are supported.")
-
                 # Create data_vars dictionary for the xarray.Dataset
-                data_vars = self._create_xarray_data_vars(y_hat_freq, y_freq)
+                data_vars = self._create_xarray_data_vars(y_hat[freq], y[freq])
 
                 # freq_range are the steps of the current frequency at each lowest-frequency step
                 frequency_factor = int(get_frequency_factor(lowest_freq, freq))
@@ -285,6 +260,7 @@ class BaseTester(object):
                         pd.DatetimeIndex(pd.date_range(xr["date"].values[0], xr["date"].values[-1], freq=lowest_freq),
                                          name='date')
                 })
+                xr = ds.scaler.unscale(xr)
                 results[basin][freq]['xr'] = xr
 
                 # create datetime range at the current frequency

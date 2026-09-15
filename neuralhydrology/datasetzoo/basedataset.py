@@ -3,7 +3,6 @@ import pickle
 import re
 import sys
 import warnings
-from collections import defaultdict
 from typing import List, Dict, Union
 
 import numpy as np
@@ -18,6 +17,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from neuralhydrology.datautils import utils
+from neuralhydrology.datautils.scaler import Scaler
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.errors import NoTrainDataError, NoEvaluationDataError
 from neuralhydrology.utils import samplingutils
@@ -38,8 +38,8 @@ class BaseDataset(Dataset):
     is_train : bool 
         Defines if the dataset is used for training or evaluating. If True (training), means/stds for each feature
         are computed and stored to the run directory. If one-hot encoding is used, the mapping for the one-hot encoding 
-        is created and also stored to disk. If False, a `scaler` input is expected and similarly the `id_to_int` input
-        if one-hot encoding is used. 
+        is created and also stored to disk. If False, the scaler must be calculated (`compute_scaler` must be True),
+        and similarly the `id_to_int` input is required if one-hot encoding is used. 
     period : {'train', 'validation', 'test'}
         Defines the period for which the data will be loaded
     basin : str, optional
@@ -52,9 +52,9 @@ class BaseDataset(Dataset):
     id_to_int : Dict[str, int], optional
         If the config argument 'use_basin_id_encoding' is True in the config and period is either 'validation' or 
         'test', this input is required. It is a dictionary, mapping from basin id to an integer (the one-hot encoding).
-    scaler : Dict[str, Union[pd.Series, xarray.DataArray]], optional
-        If period is either 'validation' or 'test', this input is required. It contains the centering and scaling
-        for each feature and is stored to the run directory during training (train_data/train_data_scaler.yml).
+    compute_scaler : bool
+        Forces the dataset to calculate a new scaler instead of loading a precalculated scaler. Used during training, but
+        not finetuning.
     """
 
     def __init__(self,
@@ -64,7 +64,7 @@ class BaseDataset(Dataset):
                  basin: str = None,
                  additional_features: List[Dict[str, pd.DataFrame]] = [],
                  id_to_int: Dict[str, int] = {},
-                 scaler: Dict[str, Union[pd.Series, xarray.DataArray]] = {}):
+                 compute_scaler: bool = True):
         super(BaseDataset, self).__init__()
         self.cfg = cfg
         self.is_train = is_train
@@ -74,12 +74,23 @@ class BaseDataset(Dataset):
         else:
             self.period = period
 
-        if period in ["validation", "test"]:
-            if not scaler:
-                raise ValueError("During evaluation of validation or test period, scaler dictionary has to be passed")
+        # initialize scaler
+        if period in ["validation", "test"] or cfg.is_finetuning:
+            if compute_scaler:
+                raise ValueError("Scaler must be loaded (not computed) for validation, test, and finetuning.")
+        self._compute_scaler = compute_scaler
+        if cfg.is_finetuning:
+            scaler_dir = cfg.base_run_dir
+        else:
+            scaler_dir = cfg.run_dir
+        self.scaler = Scaler(
+            scaler_dir=scaler_dir,
+            calculate_scaler=self._compute_scaler,
+            custom_normalization=cfg.custom_normalization
+        )
 
-            if cfg.use_basin_id_encoding and not id_to_int:
-                raise ValueError("For basin id embedding, the id_to_int dictionary has to be passed anything but train")
+        if period in ["validation", "test"] and cfg.use_basin_id_encoding and not id_to_int:
+            raise ValueError("For basin id embedding, the id_to_int dictionary has to be passed anything but train.")
 
         if self.cfg.timestep_counter:
             if not self.cfg.forecast_inputs_flattened:
@@ -99,13 +110,7 @@ class BaseDataset(Dataset):
             self.basins = [basin]
         self.additional_features = additional_features
         self.id_to_int = id_to_int
-        self.scaler = scaler
-        # don't compute scale when finetuning
-        if is_train and not scaler:
-            self._compute_scaler = True
-        else:
-            self._compute_scaler = False
-
+        
         # check and extract frequency information from config
         self.frequencies = []
         self.seq_len = None
@@ -142,7 +147,7 @@ class BaseDataset(Dataset):
         self._load_data()
 
         if self.is_train:
-            self._dump_scaler()
+            self.scaler.save()
 
     def __len__(self):
         return self.num_samples
@@ -250,20 +255,6 @@ class BaseDataset(Dataset):
         with file_path.open("w") as fp:
             yaml = YAML()
             yaml.dump(self.id_to_int, fp)
-
-    def _dump_scaler(self):
-        # dump scaler dictionary into run directory for inference
-        scaler = defaultdict(dict)
-        for key, value in self.scaler.items():
-            if isinstance(value, pd.Series) or isinstance(value, xarray.Dataset):
-                scaler[key] = value.to_dict()
-            else:
-                raise RuntimeError(f"Unknown datatype for scaler: {key}. Supported are pd.Series and xarray.Dataset")
-        file_path = self.cfg.train_dir / "train_data_scaler.yml"
-        file_path.parent.mkdir(parents=True, exist_ok=True)
-        with file_path.open("w") as fp:
-            yaml = YAML()
-            yaml.dump(dict(scaler), fp)
 
     def _get_start_and_end_dates(self):
 
@@ -530,7 +521,6 @@ class BaseDataset(Dataset):
             pickle.dump(xr.to_dict(), fp)
 
     def _calculate_per_basin_std(self, xr: xarray.Dataset):
-        basin_coordinates = xr["basin"].values.tolist()
         if not self._disable_pbar:
             LOGGER.info("Calculating target variable stds per basin")
         nan_basins = []
@@ -718,22 +708,17 @@ class BaseDataset(Dataset):
             if missing_columns:
                 raise ValueError(f"The following attributes are not available in the dataset: {missing_columns}")
 
-            # fix the order of the columns to be alphabetically
+            # fix the order of the columns to be alphabetical
             df = df.sort_index(axis=1)
 
             # calculate statistics and normalize features
             if self._compute_scaler:
-                self.scaler["attribute_means"] = df.mean()
-                self.scaler["attribute_stds"] = df.std()
+                self.scaler.calculate(df.to_xarray())
+            
+            if any([k.startswith("camels_attr") for k in self.scaler.scaler.data_vars]):
+                ValueError("Using old scaler files is no longer supported.")
 
-            if any([k.startswith("camels_attr") for k in self.scaler.keys()]):
-                LOGGER.warning(
-                    "Deprecation warning: Using old scaler files won't be supported in the upcoming release.")
-
-                # Here we assume that only camels attributes are used
-                df = (df - self.scaler['camels_attr_means']) / self.scaler["camels_attr_stds"]
-            else:
-                df = (df - self.scaler['attribute_means']) / self.scaler["attribute_stds"]
+            df = self.scaler.scale(df.to_xarray()).to_dataframe()
 
             # preprocess each basin feature vector as pytorch tensor
             for basin in self.basins:
@@ -752,50 +737,12 @@ class BaseDataset(Dataset):
 
         if self._compute_scaler:
             # get feature-wise center and scale values for the feature normalization
-            self._setup_normalization(xr)
+            self.scaler.calculate(xr)
 
         # performs normalization
-        xr = (xr - self.scaler["xarray_feature_center"]) / self.scaler["xarray_feature_scale"]
+        xr = self.scaler.scale(xr)
 
         self._create_lookup_table(xr)
-
-    def _setup_normalization(self, xr: xarray.Dataset):
-        # default center and scale values are feature mean and std
-        self.scaler["xarray_feature_scale"] = xr.std(skipna=True)
-        self.scaler["xarray_feature_center"] = xr.mean(skipna=True)
-
-        # check for feature-wise custom normalization
-        for feature, feature_specs in self.cfg.custom_normalization.items():
-            for key, val in feature_specs.items():
-                # check for custom treatment of the feature center
-                if key == "centering":
-                    if (val is None) or (val.lower() == "none"):
-                        self.scaler["xarray_feature_center"][feature] = np.float32(0.0)
-                    elif val.lower() == "median":
-                        self.scaler["xarray_feature_center"][feature] = xr[feature].median(skipna=True)
-                    elif val.lower() == "min":
-                        self.scaler["xarray_feature_center"][feature] = xr[feature].min(skipna=True)
-                    elif val.lower() == "mean":
-                        # Do nothing, since this is the default
-                        pass
-                    else:
-                        raise ValueError(f"Unknown centering method {val}")
-
-                # check for custom treatment of the feature scale
-                elif key == "scaling":
-                    if (val is None) or (val.lower() == "none"):
-                        self.scaler["xarray_feature_scale"][feature] = np.float32(1.0)
-                    elif val == "minmax":
-                        self.scaler["xarray_feature_scale"][feature] = xr[feature].max(skipna=True) - \
-                                                                       xr[feature].min(skipna=True)
-                    elif val == "std":
-                        # Do nothing, since this is the default
-                        pass
-                    else:
-                        raise ValueError(f"Unknown scaling method {val}")
-                else:
-                    # raise ValueError to point to the correct argument names
-                    raise ValueError("Unknown dict key. Use 'centering' and/or 'scaling' for each feature.")
 
     def get_period_start(self, basin: str) -> pd.Timestamp:
         """Return the first date in the period for a given basin

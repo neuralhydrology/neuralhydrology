@@ -7,11 +7,12 @@ import xarray
 from numba import njit
 from torch.distributions import Categorical
 
+from neuralhydrology.datautils.scaler import Scaler
 from neuralhydrology.utils.config import Config
 
 
 def sample_pointpredictions(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int,
-                            scaler: Dict[str, Union[pd.Series, xarray.Dataset]]) -> Dict[str, torch.Tensor]:
+                            scaler: Scaler) -> Dict[str, torch.Tensor]:
     """Point prediction samplers for the different uncertainty estimation approaches.
     
     This function provides different point sampling functions for the different uncertainty estimation approaches 
@@ -31,7 +32,7 @@ def sample_pointpredictions(model: 'BaseModel', data: Dict[str, torch.Tensor], n
         Dictionary, containing input features as key-value pairs.
     n_samples : int
         The number of point prediction samples that should be created.
-    scaler : Dict[str, Union[pd.Series, xarray.Dataset]]
+    scaler : Scaler
         Scaler of the run.
 
     Returns
@@ -65,7 +66,7 @@ def _subset_target(parameter: Dict[str, torch.Tensor], n_target: int, steps: int
 
 
 def _handle_negative_values(cfg: Config, values: torch.Tensor, sample_values: Callable,
-                            scaler: Dict[str, Union[pd.Series, xarray.Dataset]], nth_target: int) -> torch.Tensor:
+                            scaler: Scaler, nth_target: int) -> torch.Tensor:
     """Handle negative samples that arise while sampling from the uncertainty estimates.
 
     Currently supports (a) 'clip' for directly clipping values at zero and (b) 'truncate' for resampling values 
@@ -79,7 +80,7 @@ def _handle_negative_values(cfg: Config, values: torch.Tensor, sample_values: Ca
         Tensor with the sampled values.
     sample_values : Callable
         Sampling function to allow for repeated sampling in the case of truncation-handling. 
-    scaler : Dict[str, Union[pd.Series, xarray.Dataset]]
+    scaler : Scaler
         Scaler of the run.
     nth_target : int
         Index of the sampled target variable in cfg.target_variables.
@@ -89,9 +90,9 @@ def _handle_negative_values(cfg: Config, values: torch.Tensor, sample_values: Ca
     torch.Tensor
         Bound values according to user specifications.  
     """
-    center = scaler["xarray_feature_center"][cfg.target_variables[nth_target]]
-    scale = scaler["xarray_feature_scale"][cfg.target_variables[nth_target]]
-    normalized_zero = -torch.from_numpy((center / scale).values).to(values)
+    center = scaler.scaler[cfg.target_variables[nth_target]].sel(parameter="center").item()
+    scale = scaler.scaler[cfg.target_variables[nth_target]].sel(parameter="scale").item()
+    normalized_zero = -torch.tensor(center / scale).to(values)
     if cfg.negative_sample_handling.lower() == 'clip':
         values = torch.clamp(values, min=normalized_zero)
     elif cfg.negative_sample_handling.lower() == 'truncate':
@@ -228,7 +229,7 @@ def _get_frequency_last_n(predict_last_n: dict[str, int] | int, freq_suffix: str
 
 
 def sample_mcd(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int,
-               scaler: Dict[str, Union[pd.Series, xarray.Dataset]]) -> Dict[str, torch.Tensor]:
+               scaler: Scaler) -> Dict[str, torch.Tensor]:
     """MC-Dropout based point predictions sampling.
 
     Naive sampling. This function does `n_samples` forward passes for each sample in the batch. Currently it is 
@@ -248,7 +249,7 @@ def sample_mcd(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
         Dictionary, containing input features as key-value pairs.
     n_samples : int
         Number of samples to generate for each input sample.
-    scaler : Dict[str, Union[pd.Series, xarray.Dataset]]
+    scaler : Scaler
         Scaler of the run.
 
     Returns
@@ -298,7 +299,7 @@ def sample_mcd(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
 
 
 def sample_gmm(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int,
-               scaler: Dict[str, Union[pd.Series, xarray.Dataset]]) -> Dict[str, torch.Tensor]:
+               scaler: Scaler) -> Dict[str, torch.Tensor]:
     """Sample point predictions with the Gaussian Mixture (GMM) head.
 
     This function generates `n_samples` GMM sample points for each entry in the batch. Concretely, the model is 
@@ -320,7 +321,7 @@ def sample_gmm(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
         Dictionary, containing input features as key-value pairs.
     n_samples : int
         Number of samples to generate for each input sample.
-    scaler : Dict[str, Union[pd.Series, xarray.Dataset]]
+    scaler : Scaler
         Scaler of the run.
 
     Returns
@@ -389,7 +390,7 @@ def sample_gmm(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int
 
 
 def sample_cmal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int,
-                scaler: Dict[str, Union[pd.Series, xarray.Dataset]]) -> Dict[str, torch.Tensor]:
+                scaler: Scaler) -> Dict[str, torch.Tensor]:
     """Sample point predictions with the Countable Mixture of Asymmetric Laplacians (CMAL) head.
 
     This function generates `n_samples` CMAL sample points for each entry in the batch. Concretely, the model is 
@@ -411,7 +412,7 @@ def sample_cmal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
         Dictionary, containing input features as key-value pairs.
     n_samples : int
         Number of samples to generate for each input sample.
-    scaler : Dict[str, Union[pd.Series, xarray.Dataset]]
+    scaler : Scaler
         Scaler of the run.
 
     Returns
@@ -494,7 +495,7 @@ def sample_cmal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
 
 
 def sample_umal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: int,
-                scaler: Dict[str, Union[pd.Series, xarray.Dataset]]) -> Dict[str, torch.Tensor]:
+                scaler: Scaler) -> Dict[str, torch.Tensor]:
     """Sample point predictions with the Uncountable Mixture of Asymmetric Laplacians (UMAL) head.
 
     This function generates `n_samples` UMAL sample points for each entry in the batch. Concretely, the model is 
@@ -516,7 +517,7 @@ def sample_umal(model: 'BaseModel', data: Dict[str, torch.Tensor], n_samples: in
         Dictionary, containing input features as key-value pairs.
     n_samples : int
         Number of samples to generate for each input sample.
-    scaler : Dict[str, Union[pd.Series, xarray.Dataset]]
+    scaler : Scaler
         Scaler of the run.
 
     Returns

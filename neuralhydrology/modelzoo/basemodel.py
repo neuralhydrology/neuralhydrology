@@ -3,7 +3,7 @@ from typing import Dict
 import torch
 import torch.nn as nn
 
-from neuralhydrology.datautils.utils import load_scaler
+from neuralhydrology.datautils.scaler import Scaler
 from neuralhydrology.utils.config import Config
 from neuralhydrology.utils.samplingutils import sample_pointpredictions, umal_extend_batch
 
@@ -54,7 +54,8 @@ class BaseModel(nn.Module):
         Dict[str, torch.Tensor]
             Sampled point predictions 
         """
-        scaler = load_scaler(self.cfg.run_dir)
+        scaler = Scaler(scaler_dir=self.cfg.run_dir, calculate_scaler=False)
+        scaler.load()
         return sample_pointpredictions(self, data, n_samples, scaler)
 
     def forward(self, data: dict[str, torch.Tensor | dict[str, torch.Tensor]]) -> Dict[str, torch.Tensor]:
