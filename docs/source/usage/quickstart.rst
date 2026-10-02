@@ -93,6 +93,41 @@ With X, you can specify how many models should be trained on parallel on a singl
 With Y, you can specify which GPUs to use for training (use the id as specified in ``nvidia-smi``).
 
 
+Continuing training
+--------------------
+Training doesn't always finish in one sitting, for example when you're on a cluster with a walltime
+limit. To resume a single run from its last saved checkpoint, run::
+
+    uv run nh-run continue_training --run-dir /path/to/run_dir/
+
+``run_dir`` must point to the directory of the run you want to resume (the one created by the
+original ``train`` run), not to a config file. The ``epochs`` value in that run's ``config.yml``
+is read as the *total* number of epochs you want in the end, not as "how many more epochs to run" —
+so you never need to edit it between sessions, unless you want to push the target further than
+originally planned.
+
+To resume every unfinished run in a folder at once, across multiple GPUs::
+
+    uv run nh-schedule-runs continue_training --directory /path/to/runs_dir/ --runs-per-gpu X --gpu-ids Y
+
+This scans ``runs_dir`` for run directories, checks each one's last saved epoch against its
+``epochs`` target, and resumes only the ones that haven't reached it yet; runs that are already
+complete are skipped silently. If you'd rather get an explicit error when the given directory
+doesn't contain any run that has ever saved a checkpoint (for example because of a wrong path),
+use ``continue_training_only`` instead of ``continue_training``.
+
+.. note::
+    If ``compile_model`` is enabled (the default, see the Configuration Arguments page), make sure
+    you resume with the same NeuralHydrology version (or at least
+    the same ``compile_model`` setting) that produced the checkpoint. Compiling wraps the model and
+    prefixes every key in its saved weights with ``_orig_mod.``; checkpoints are always saved and
+    loaded through the unwrapped model, so a checkpoint written by one version/setting loads
+    correctly under another. But if you ever see an error like
+    ``Missing key(s) ... "_orig_mod.lstm..."`` or ``Unexpected key(s) ... "lstm..."`` when resuming
+    or evaluating, it means the checkpoint was produced by a version of the code that did not yet
+    unwrap the model before saving — upgrade and the checkpoint will load normally.
+
+
 Evaluating a model
 ------------------
 To evaluate a trained model on the test set, run::
