@@ -662,7 +662,8 @@ class BaseDataset(Dataset):
         if basins_without_samples:
             LOGGER.info(
                 f"These basins do not have a single valid sample in the {self.period} period: {basins_without_samples}")
-        self.lookup_table = {i: elem for i, elem in enumerate(lookup)}
+        # list is faster than a dict for integer-indexed access, which is all __getitem__ ever does
+        self.lookup_table = lookup
         self.num_samples = len(self.lookup_table)
 
         if self.num_samples == 0:
