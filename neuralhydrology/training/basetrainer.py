@@ -98,6 +98,17 @@ class BaseTrainer(object):
     def _set_regularization(self):
         self.loss_obj.set_regularization_terms(get_regularization_obj(cfg=self.cfg))
 
+    def _raw_model(self) -> torch.nn.Module:
+        """Return the model without its torch.compile() wrapper, if any.
+
+        torch.compile() wraps the model in an OptimizedModule whose state_dict keys are
+        prefixed with '_orig_mod.'. Checkpoints must always be saved/loaded through the
+        wrapped module directly, so that files on disk have the same keys regardless of
+        whether the model happens to be compiled — otherwise continue_training, finetuning,
+        and evaluation (which never compiles) can't read each other's checkpoints.
+        """
+        return getattr(self.model, '_orig_mod', self.model)
+
     def _get_tester(self) -> BaseTester:
         return get_tester(cfg=self.cfg, run_dir=self.cfg.run_dir, period="validation", init_model=False)
 
@@ -106,7 +117,11 @@ class BaseTrainer(object):
                           batch_size=self.cfg.batch_size,
                           shuffle=True,
                           num_workers=self.cfg.num_workers,
-                          collate_fn=ds.collate_fn)
+                          collate_fn=ds.collate_fn,
+                          # pinned memory lets CUDA transfer batches asynchronously while the GPU is busy
+                          pin_memory=self.device.type == 'cuda',
+                          # keeps worker processes alive between epochs instead of restarting them every time
+                          persistent_workers=self.cfg.num_workers > 0)
 
     def _freeze_model_parts(self):
         # freeze all model weights
@@ -157,14 +172,26 @@ class BaseTrainer(object):
         self.loader = self._get_data_loader(ds=ds)
 
         self.model = self._get_model().to(self.device)
+
+        # torch.compile() fuses and optimizes the computation graph — first epoch is slower (compilation),
+        # all subsequent ones are faster. Only available on PyTorch >= 2.0 and worthwhile only on CUDA.
+        # Opt-out via `compile_model: False` in the run config: compilation needs a writable disk
+        # cache for Triton's generated kernels, which can fail on clusters with tight disk quotas.
+        if self.cfg.compile_model and hasattr(torch, 'compile') and self.device.type == 'cuda':
+            self.model = torch.compile(self.model)
+            LOGGER.info("Model compiled with torch.compile()")
+
         if self.cfg.checkpoint_path is not None:
             LOGGER.info(f"Starting training from Checkpoint {self.cfg.checkpoint_path}")
-            self.model.load_state_dict(torch.load(str(self.cfg.checkpoint_path), map_location=self.device))
+            # weights_only=False needed for PyTorch >= 2.6 compatibility with optimizer states
+            self._raw_model().load_state_dict(
+                torch.load(str(self.cfg.checkpoint_path), map_location=self.device, weights_only=False))
         elif self.cfg.checkpoint_path is None and self.cfg.is_finetuning:
             # the default for finetuning is the last model state
             checkpoint_path = [x for x in sorted(list(self.cfg.base_run_dir.glob('model_epoch*.pt')))][-1]
             LOGGER.info(f"Starting training from checkpoint {checkpoint_path}")
-            self.model.load_state_dict(torch.load(str(checkpoint_path), map_location=self.device))
+            self._raw_model().load_state_dict(
+                torch.load(str(checkpoint_path), map_location=self.device, weights_only=False))
 
         # Freeze model parts from pre-trained model.
         if self.cfg.is_finetuning:
@@ -214,7 +241,7 @@ class BaseTrainer(object):
         """
         if self._early_stopping:
             if self.cfg.is_continue_training:
-                LOGGER.warning("Early stopping state is reset.")   
+                LOGGER.warning("Early stopping state is reset.")
             early_stopper = EarlyStopper(patience = self._patience_early_stopping, min_delta = 0.0001)
 
         if self._dynamic_learning_rate:
@@ -222,7 +249,13 @@ class BaseTrainer(object):
                 LOGGER.warning("Scheduler state is reset.")
             scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, mode='min', factor=self._factor_dynamic_learning_rate, patience=self._patience_dynamic_learning_rate)
 
-        for epoch in range(self._epoch + 1, self._epoch + self.cfg.epochs + 1):
+        # cfg.epochs is the total target epoch, not the number of additional epochs to run.
+        # This way continue_training works correctly without modifying the config between sessions.
+        if self._epoch >= self.cfg.epochs:
+            LOGGER.info(f"Already at epoch {self._epoch}, target is {self.cfg.epochs}. Nothing to train.")
+            return
+
+        for epoch in range(self._epoch + 1, self.cfg.epochs + 1):
             if not self._dynamic_learning_rate:
                 if epoch in self.cfg.learning_rate.keys():
                     LOGGER.info(f"Setting learning rate to {self.cfg.learning_rate[epoch]}")
@@ -263,13 +296,27 @@ class BaseTrainer(object):
         if self.cfg.log_tensorboard:
             self.experiment_logger.stop_tb()
 
+    def _find_latest_checkpoint(self, search_dir: Path) -> Path:
+        """Find the most recent model checkpoint in a run directory.
+
+        Searches both the run directory itself and any continue_training subfolders,
+        since continued runs save their weights one level deeper.
+        """
+        all_weights = list(search_dir.glob('model_epoch*.pt'))
+        # also pick up weights from previous continue_training sessions
+        all_weights += list(search_dir.glob('continue_training_from_epoch*/model_epoch*.pt'))
+        if not all_weights:
+            raise FileNotFoundError(f"No model checkpoint found in {search_dir}")
+        # sort by epoch number in the filename, not by path (paths differ between root and subfolders)
+        return max(all_weights, key=lambda p: int(p.stem[-3:]))
+
     def _get_start_epoch_number(self):
         if self.cfg.is_continue_training:
             if self.cfg.continue_from_epoch is not None:
                 epoch = self.cfg.continue_from_epoch
             else:
-                weight_path = [x for x in sorted(list(self.cfg.run_dir.glob('model_epoch*.pt')))][-1]
-                epoch = weight_path.name[-6:-3]
+                weight_path = self._find_latest_checkpoint(self.cfg.run_dir)
+                epoch = weight_path.stem[-3:]
         else:
             epoch = 0
         return int(epoch)
@@ -279,18 +326,18 @@ class BaseTrainer(object):
             epoch = f"{self.cfg.continue_from_epoch:03d}"
             weight_path = self.cfg.base_run_dir / f"model_epoch{epoch}.pt"
         else:
-            weight_path = [x for x in sorted(list(self.cfg.base_run_dir.glob('model_epoch*.pt')))][-1]
-            epoch = weight_path.name[-6:-3]
+            weight_path = self._find_latest_checkpoint(self.cfg.base_run_dir)
+            epoch = weight_path.stem[-3:]
 
-        optimizer_path = self.cfg.base_run_dir / f"optimizer_state_epoch{epoch}.pt"
+        optimizer_path = weight_path.parent / f"optimizer_state_epoch{epoch}.pt"
 
         LOGGER.info(f"Continue training from epoch {int(epoch)}")
-        self.model.load_state_dict(torch.load(weight_path, map_location=self.device))
-        self.optimizer.load_state_dict(torch.load(str(optimizer_path), map_location=self.device))
+        self._raw_model().load_state_dict(torch.load(weight_path, map_location=self.device, weights_only=False))
+        self.optimizer.load_state_dict(torch.load(str(optimizer_path), map_location=self.device, weights_only=False))
 
     def _save_weights_and_optimizer(self, epoch: int):
         weight_path = self.cfg.run_dir / f"model_epoch{epoch:03d}.pt"
-        torch.save(self.model.state_dict(), str(weight_path))
+        torch.save(self._raw_model().state_dict(), str(weight_path))
 
         optimizer_path = self.cfg.run_dir / f"optimizer_state_epoch{epoch:03d}.pt"
         torch.save(self.optimizer.state_dict(), str(optimizer_path))
@@ -310,46 +357,64 @@ class BaseTrainer(object):
             if self._max_updates_per_epoch is not None and i >= self._max_updates_per_epoch:
                 break
 
+            # non_blocking=True lets the transfer overlap with GPU computation on the previous batch
             for key in data.keys():
                 if key.startswith('x_d'):
-                    data[key] = {k: v.to(self.device) for k, v in data[key].items()}
+                    data[key] = {k: v.to(self.device, non_blocking=True) for k, v in data[key].items()}
                 elif not key.startswith('date'):
-                    data[key] = data[key].to(self.device)
+                    data[key] = data[key].to(self.device, non_blocking=True)
 
             # apply possible pre-processing to the batch before the forward pass
             data = self.model.pre_model_hook(data, is_train=True)
 
-            # get predictions
-            predictions = self.model(data)
+            # autocast runs the forward pass and loss in reduced precision (BF16 or FP16 on CUDA),
+            # which uses the GPU's tensor cores and roughly doubles throughput on modern hardware
+            with torch.autocast(device_type=self.device.type, dtype=self._amp_dtype, enabled=self._use_amp):
+                predictions = self.model(data)
 
-            if self.noise_sampler_y is not None:
-                for key in filter(lambda k: 'y' in k, data.keys()):
-                    noise = self.noise_sampler_y.sample(data[key].shape)
-                    # make sure we add near-zero noise to originally near-zero targets
-                    data[key] += (data[key] + self._target_mean / self._target_std) * noise.to(self.device)
+                if self.noise_sampler_y is not None:
+                    for key in filter(lambda k: 'y' in k, data.keys()):
+                        noise = self.noise_sampler_y.sample(data[key].shape)
+                        # make sure we add near-zero noise to originally near-zero targets
+                        data[key] += (data[key] + self._target_mean / self._target_std) * noise.to(self.device)
 
-            loss, all_losses = self.loss_obj(predictions, data)
+                loss, all_losses = self.loss_obj(predictions, data)
 
-            # early stop training if loss is NaN
+            # early stop training if loss or gradients are NaN/Inf
             if torch.isnan(loss):
-                nan_count += 1
-                if nan_count > self._allow_subsequent_nan_losses:
-                    raise RuntimeError(f"Loss was NaN for {nan_count} times in a row. Stopped training.")
-                LOGGER.warning(f"Loss is Nan; ignoring step. (#{nan_count}/{self._allow_subsequent_nan_losses})")
+                step_ok = False
             else:
-                nan_count = 0
-
-                # delete old gradients
                 self.optimizer.zero_grad()
 
-                # get gradients
-                loss.backward()
+                if self._grad_scaler is not None:
+                    # FP16 needs loss scaling to avoid underflow in gradients
+                    self._grad_scaler.scale(loss).backward()
+                    self._grad_scaler.unscale_(self.optimizer)
+                else:
+                    loss.backward()
 
-                if self.cfg.clip_gradient_norm is not None:
-                    torch.nn.utils.clip_grad_norm_(self.model.parameters(), self.cfg.clip_gradient_norm)
+                # clip_grad_norm_ also returns the pre-clip gradient norm, which lets us catch a
+                # NaN/Inf gradient (e.g. from an unstable batch) before it corrupts the weights.
+                # With BF16 there is no GradScaler to catch this automatically like there is for FP16.
+                grad_norm = torch.nn.utils.clip_grad_norm_(
+                    self.model.parameters(),
+                    self.cfg.clip_gradient_norm if self.cfg.clip_gradient_norm is not None else 1e9)
+                step_ok = bool(torch.isfinite(grad_norm))
 
-                # update weights
-                self.optimizer.step()
+                if step_ok:
+                    if self._grad_scaler is not None:
+                        self._grad_scaler.step(self.optimizer)
+                        self._grad_scaler.update()
+                    else:
+                        self.optimizer.step()
+
+            if step_ok:
+                nan_count = 0
+            else:
+                nan_count += 1
+                if nan_count > self._allow_subsequent_nan_losses:
+                    raise RuntimeError(f"Loss/gradients were NaN for {nan_count} times in a row. Stopped training.")
+                LOGGER.warning(f"Loss or gradients are NaN; ignoring step. (#{nan_count}/{self._allow_subsequent_nan_losses})")
 
             pbar.set_postfix_str(f"Loss: {loss.item():.4f}")
 
@@ -388,30 +453,56 @@ class BaseTrainer(object):
                 self.device = torch.device("cpu")
         LOGGER.info(f"### Device {self.device} will be used for training")
 
-    def _create_folder_structure(self):
-        # create as subdirectory within run directory of base run
-        if self.cfg.is_continue_training:
-            folder_name = f"continue_training_from_epoch{self._epoch:03d}"
+        if self.device.type == 'cuda':
+            # lets cuDNN benchmark different kernel implementations and pick the fastest one for our input sizes.
+            # pays off quickly since seq_length and hidden_size are fixed for the whole training run.
+            torch.backends.cudnn.benchmark = True
 
-            # store dir of base run for easier access in weight loading
+            # BF16 keeps the same dynamic range as FP32 (no underflow risk), so no GradScaler needed.
+            # Fall back to FP16 + GradScaler on older GPUs that don't support BF16 (pre-Ampere).
+            if torch.cuda.is_bf16_supported():
+                self._use_amp = True
+                self._amp_dtype = torch.bfloat16
+                self._grad_scaler = None
+                LOGGER.info("AMP enabled with BF16 (no gradient scaling needed)")
+            else:
+                self._use_amp = True
+                self._amp_dtype = torch.float16
+                self._grad_scaler = torch.cuda.amp.GradScaler()
+                LOGGER.info("AMP enabled with FP16 + GradScaler")
+        else:
+            self._use_amp = False
+            self._amp_dtype = None
+            self._grad_scaler = None
+
+    def _create_folder_structure(self):
+        if self.cfg.is_continue_training:
+            # Train directly inside the original run directory instead of a nested
+            # continue_training_from_epochXXX/ subfolder. This keeps checkpoints, optimizer
+            # states, and output.log in one place across every resume — evaluation
+            # (evaluation/tester.py) only looks for model_epoch*.pt in the top-level run dir.
             self.cfg.base_run_dir = self.cfg.run_dir
-            self.cfg.run_dir = self.cfg.run_dir / folder_name
+            self.cfg.train_dir = self.cfg.run_dir / "train_data"
+            self.cfg.train_dir.mkdir(parents=True, exist_ok=True)
+            if self.cfg.log_n_figures is not None:
+                self.cfg.img_log_dir = self.cfg.run_dir / "img_log"
+                self.cfg.img_log_dir.mkdir(parents=True, exist_ok=True)
+            return
 
         # create as new folder structure
-        else:
-            now = datetime.now()
-            day = f"{now.day}".zfill(2)
-            month = f"{now.month}".zfill(2)
-            hour = f"{now.hour}".zfill(2)
-            minute = f"{now.minute}".zfill(2)
-            second = f"{now.second}".zfill(2)
-            run_name = f'{self.cfg.experiment_name}_{day}{month}_{hour}{minute}{second}'
+        now = datetime.now()
+        day = f"{now.day}".zfill(2)
+        month = f"{now.month}".zfill(2)
+        hour = f"{now.hour}".zfill(2)
+        minute = f"{now.minute}".zfill(2)
+        second = f"{now.second}".zfill(2)
+        run_name = f'{self.cfg.experiment_name}_{day}{month}_{hour}{minute}{second}'
 
-            # if no directory for the runs is specified, a 'runs' folder will be created in the current working dir
-            if self.cfg.run_dir is None:
-                self.cfg.run_dir = Path().cwd() / "runs" / run_name
-            else:
-                self.cfg.run_dir = self.cfg.run_dir / run_name
+        # if no directory for the runs is specified, a 'runs' folder will be created in the current working dir
+        if self.cfg.run_dir is None:
+            self.cfg.run_dir = Path().cwd() / "runs" / run_name
+        else:
+            self.cfg.run_dir = self.cfg.run_dir / run_name
 
         # create folder + necessary subfolder
         if not self.cfg.run_dir.is_dir():

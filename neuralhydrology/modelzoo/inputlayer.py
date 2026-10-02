@@ -238,7 +238,8 @@ class InputLayer(nn.Module):
             ret_val = dynamics_out, statics_out
         else:
             if statics_out is not None:
-                statics_out = statics_out.unsqueeze(0).repeat(dynamics_out.shape[0], 1, 1)
+                # expand() creates a view without copying memory, unlike repeat() which allocates seq_len copies
+                statics_out = statics_out.unsqueeze(0).expand(dynamics_out.shape[0], -1, -1)
                 ret_val = torch.cat([dynamics_out, statics_out], dim=-1)
             else:
                 ret_val = dynamics_out

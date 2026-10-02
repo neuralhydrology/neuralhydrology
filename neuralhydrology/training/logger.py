@@ -37,8 +37,10 @@ class Logger(object):
         # Additionally, the package version is stored in the config
         cfg.update_config({"package_version": __version__})
 
-        # store a copy of the config into the run folder
-        cfg.dump_config(folder=self.log_dir)
+        # store a copy of the config into the run folder — continue_training reuses the
+        # original run directory, so config.yml already exists there and must be overwritten
+        # rather than treated as a conflict.
+        cfg.dump_config(folder=self.log_dir, overwrite=cfg.is_continue_training)
 
         self.epoch = 0
         self.update = 0
