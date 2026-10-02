@@ -372,8 +372,16 @@ Training settings
    losses can be added :py:mod:`here <neuralhydrology.training.loss>`.
 
 - ``allow_subsequent_nan_losses``: Define a number of training steps for
-   which a loss value of ``NaN`` is ignored and no error is raised but 
-   instead the training loop proceeds to the next iteration step.
+   which a loss value of ``NaN`` is ignored and no error is raised but
+   instead the training loop proceeds to the next iteration step. This also
+   covers a step whose *gradient* is ``NaN``/``Inf`` even though the loss
+   itself is finite: on CUDA with BF16 (the default on GPUs that support
+   it), there is no ``GradScaler`` to catch this automatically the way
+   there is with FP16, so an unstable batch could otherwise corrupt the
+   weights irrecoverably by applying a bad update. Both cases count
+   towards the same limit, and raise the same
+   ``RuntimeError: Loss/gradients were NaN for N times in a row`` once
+   exceeded.
 
 -  ``target_loss_weights``: A list of float values specifying the 
    per-target loss weight, when training on multiple targets at once. 
