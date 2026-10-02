@@ -398,7 +398,9 @@ Training settings
 
 -  ``batch_size``: Mini-batch size used for training.
 
--  ``epochs``: Number of training epochs.
+-  ``epochs``: Number of training epochs. When resuming a run with ``continue_training``
+   (see Quick Start), this is read as the *total* epoch target, not as additional epochs
+   to run on top of what's already done.
 
 -  ``max_updates_per_epoch``: Maximum number of weight updates per training epoch.
    Leave unspecified to go through all data in every epoch.
@@ -454,7 +456,20 @@ Training settings
 -  ``save_weights_every``: Interval, in which the weights of the model
    are stored to disk. ``1`` means to store the weights after each
    epoch, which is the default if not otherwise specified.
-   
+
+-  ``compile_model``: If ``True`` (the default), the model is compiled with
+   ``torch.compile()`` on CUDA devices, which speeds up training after a slower first epoch.
+   Set to ``False`` to disable this, for example on a cluster where the disk quota is too
+   tight for the compiler's kernel cache, which can otherwise fail partway through training.
+
+-  ``checkpoint_path``: Path to a ``.pt`` weight file to initialize the model from before
+   training starts. Unlike ``continue_training``, this only loads the model weights, not the
+   optimizer state or the epoch counter — training still starts at epoch 1.
+
+-  ``continue_from_epoch``: Only used with ``continue_training`` (see Quick Start). By default,
+   resuming picks up from the last epoch that has a saved checkpoint in the run directory. Set
+   this to an epoch number to resume from that specific checkpoint instead.
+
 Finetune settings
 -----------------
 
