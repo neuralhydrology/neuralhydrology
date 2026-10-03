@@ -39,8 +39,8 @@ def _validate_inputs(obs: DataArray, sim: DataArray):
     if obs.shape != sim.shape:
         raise RuntimeError("Shapes of observations and simulations must match")
 
-    if (len(obs.shape) > 1) and (obs.shape[1] > 1):
-        raise RuntimeError("Metrics only defined for time series (1d or 2d with second dimension 1)")
+    if obs.ndim != 1:
+        raise RuntimeError("Metrics only defined for 1d time series")
 
 
 def _mask_valid(obs: DataArray, sim: DataArray) -> Tuple[DataArray, DataArray]:
