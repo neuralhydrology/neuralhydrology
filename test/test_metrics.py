@@ -4,7 +4,7 @@ import pytest
 import xarray
 
 from neuralhydrology.evaluation.metrics import (calculate_all_metrics, calculate_metrics, crps, get_available_metrics,
-                                                mpiw, picp)
+                                                mpiw, nse, picp)
 
 
 @pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8)])
@@ -78,3 +78,11 @@ def test_ensemble_metrics_return_nan_when_masking_removes_all_values(metric, obs
 def test_available_metrics_only_include_probabilistic_metrics_on_request():
     assert 'CRPS' not in get_available_metrics()
     assert 'CRPS' in get_available_metrics(include_probabilistic=True)
+
+
+@pytest.mark.parametrize('shape', [(5, 1), (1, 1)])
+def test_metrics_reject_2d_inputs(shape):
+    obs = xarray.DataArray(np.ones(shape), dims=['date', 'time_step'])
+
+    with pytest.raises(RuntimeError, match='1d'):
+        nse(obs, obs)
