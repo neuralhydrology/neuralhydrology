@@ -942,13 +942,13 @@ class Config(object):
     @property
     def dynamic_learning_rate(self) -> bool:
         """Whether to use  dynamic learning rate. Defaults to False if not set."""
-        early_stopping = self._cfg.get("early_stopping", False)
-        if early_stopping and self.validate_every != 1:
+        dynamic_lr = self._cfg.get("dynamic_learning_rate", False)
+        if dynamic_lr and self.validate_every != 1:
             raise ValueError(
-                "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
-                "Set validate_every=1 in the config to use early stopping."
+                "Dynamic learning rate can only be used if validation is performed every epoch (validate_every=1). "
+                "Set validate_every=1 in the config to use dynamic learning rate."
             )
-        return early_stopping
+        return dynamic_lr
     
     @property
     def patience_dynamic_learning_rate(self) -> int:
