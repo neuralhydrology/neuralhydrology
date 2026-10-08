@@ -110,12 +110,12 @@ Validation settings
 
 -  ``save_validation_results``: True/False, if True, stores the
    validation results to disk as a pickle file. Otherwise they are only
-   used for TensorBoard. This is different than ``save_all_validation_output``
+   used for TensorBoard. This is different than ``save_all_output``
    in that only the predictive outputs are saved, and not all of the
    model output features.
 
--  ``save_all_validation_output``: True/False, if True, stores all model
-   outputs from the validation runs to disk as a pickle file. 
+-  ``save_all_output``: True/False, if True, stores all model
+   outputs from the validation and evaluation runs to disk as a pickle file. 
    Defaults to False. This differs from ``save_validation_results``, in 
    that here all model output is saved. This can result in files that
    are quite large. Predictions in this file will not be scaled. 
@@ -128,6 +128,10 @@ General model configuration
    have to match the values in `this
    function <https://github.com/neuralhydrology/neuralhydrology/blob/master/neuralhydrology/modelzoo/__init__.py#L17>`__,
    e.g., [``cudalstm``, ``ealstm``, ``mtslstm``]
+
+-  ``checkpoint_path``: Path to a weight file (``.pt``) that will be used as
+   initial model weights. If empty, starts from random weights (or from the
+   last epoch of ``base_run_dir`` in ``finetune`` mode).
 
 -  ``head``: The prediction head that is used on top of the output of
    the model class. Currently supported are ``regression``, ``gmm``, ``cmal``, and ``umal``.
@@ -253,7 +257,7 @@ These are used if ``model == transformer``.
 -  ``transformer_positional_dropout``: Dropout applied only to the positional
    encoding before using in transformer encoder.
 -  ``transformer_dropout``: Dropout used in transformer encoder layers.
--  ``transformer_nhead``: Number of parallel transformer heads.
+-  ``transformer_nheads``: Number of parallel transformer heads.
 
 XLSTM settings
 ~~~~~~~~~~~~~~
@@ -403,6 +407,32 @@ Training settings
 -  ``max_updates_per_epoch``: Maximum number of weight updates per training epoch.
    Leave unspecified to go through all data in every epoch.
 
+-  ``dynamic_learning_rate``: True/False. If True, reduces the learning rate
+   by ``factor_dynamic_learning_rate`` when the validation loss does not
+   improve for ``patience_dynamic_learning_rate`` epochs. Requires
+   ``validate_every: 1``. Defaults to False.
+
+-  ``patience_dynamic_learning_rate``: Number of epochs with no validation
+   loss improvement before reducing the learning rate (if
+   ``dynamic_learning_rate`` is True).
+
+-  ``factor_dynamic_learning_rate``: Factor by which to reduce the learning
+   rate (if ``dynamic_learning_rate`` is True).
+
+-  ``early_stopping``: True/False. If True, stops training early when the
+   validation loss does not improve for ``patience_early_stopping`` epochs.
+   Requires ``validate_every: 1``. Defaults to False.
+
+-  ``patience_early_stopping``: Number of epochs with no validation loss
+   improvement before stopping training (if ``early_stopping`` is True).
+
+-  ``minimum_epochs_before_early_stopping``: Minimum number of epochs before
+   early stopping can be triggered (if ``early_stopping`` is True).
+
+-  ``continue_from_epoch``: Epoch from which to resume training when running
+   in ``continue_training`` mode. If empty, continues from the last stored
+   epoch.
+
 -  ``use_frequencies``: Defines the time step frequencies to use (daily,
    hourly, ...). Use `pandas frequency
    strings <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#timeseries-offset-aliases>`__
@@ -460,6 +490,9 @@ Finetune settings
 
 Ignored if ``mode != finetune``
 
+-  ``base_run_dir``: Full or relative path to the run directory of the
+   pre-trained model.
+
 -  ``finetune_modules``: List of model parts that will be trained
    during fine-tuning. All parts *not* listed here will not be
    updated. Check the documentation of each model to see a list
@@ -485,6 +518,10 @@ Logger settings
    To make sure everything is configured correctly, you can simply check that the
    output of ``git diff HEAD`` only contains your code changes.
 
+-  ``verbose``: Defines the level of verbosity. ``0`` only logs info messages
+   and does not show progress bars; ``1`` (default) logs info messages and
+   shows progress bars.
+
 Data settings
 -------------
 
@@ -501,6 +538,9 @@ Data settings
    see :py:class:`documentation <neuralhydrology.datasetzoo.genericdataset>` for further informations).
 
 -  ``data_dir``: Full or relative path to the root directory of the data set.
+
+-  ``save_train_data``: True/False. If True, stores the processed training
+   data in the run directory. Defaults to False.
 
 -  ``train_data_file``: If not empty, uses the pickled file at this path
    as the training data. Can be used to not create the same data set
@@ -581,7 +621,7 @@ Data settings
    for details). If a list of integers is provided, only unique values are considered.
    We append ``_shiftN`` to each lagged feature, where `N` is the shift count.
    
-   ``autoregressive_inputs``: Currently, only one autoregressive input is allowed, 
+-  ``autoregressive_inputs``: Currently, only one autoregressive input is allowed, 
    and only one output feature is allowed in an autoregressive model.
    This is a list of target feature(s) to be used as model inputs. These 
    will be lagged by some number of timesteps > 0, and therefore must appear in the list
@@ -664,7 +704,7 @@ Data settings
    basin-one-hot encoding as a(n) (additional) static feature vector for
    each sample.
 
-   ``timestep_counter``: True/False. If True, creates a sequence of counting integers
+-  ``timestep_counter``: True/False. If True, creates a sequence of counting integers
    over the forecast sequence length as a dynamic input. This input is used to signal
    forecast lead time for an unrolling forecast. A similar dynamic input of constant
    zeros is added to the hindcast inputs. If a forecast model is not used then setting
@@ -687,3 +727,9 @@ Can be ignored if ``dataset not in ['camels_us', 'hourly_camels_us']``
    correspond to forcing products in the camels data set. Also supports
    ``maurer_extended``, ``nldas_extended``, and (for
    ``hourly_camels_us``) ``nldas_hourly``.
+
+-  ``rating_curve_file``: Path to a pickle file containing a dictionary of
+   :py:class:`RatingCurve <neuralhydrology.utils.ratingcurve.RatingCurve>`
+   objects (indexed by basin id), used to convert discharge into synthetic
+   stage when ``synthetic_qobs_stage_meters`` is in ``target_variables``
+   (for ``hourly_camels_us``).
