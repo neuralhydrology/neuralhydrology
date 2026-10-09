@@ -30,10 +30,6 @@ from neuralhydrology.utils.errors import AllNaNError, NoEvaluationDataError
 LOGGER = logging.getLogger(__name__)
 
 
-def _has_samples(sim: xarray.DataArray) -> bool:
-    return 'samples' in sim.dims
-
-
 class BaseTester(object):
     """Base class to run inference on a model.
 
@@ -132,10 +128,20 @@ class BaseTester(object):
 
     def _get_weight_file(self, epoch: int):
         """Get file path to weight file"""
+        # search the run directory and any (older-style) continue_training_from_epoch*/ subfolders,
+        # since resumed runs may have saved checkpoints one level deeper than the run directory.
+        all_weights = list(self.run_dir.glob('model_epoch*.pt'))
+        all_weights += list(self.run_dir.glob('continue_training_from_epoch*/model_epoch*.pt'))
+        if not all_weights:
+            raise FileNotFoundError(f"No model weights found in {self.run_dir}")
+
         if epoch is None:
-            weight_file = sorted(list(self.run_dir.glob('model_epoch*.pt')))[-1]
+            weight_file = max(all_weights, key=lambda p: int(p.stem[-3:]))
         else:
-            weight_file = self.run_dir / f"model_epoch{str(epoch).zfill(3)}.pt"
+            matches = [p for p in all_weights if int(p.stem[-3:]) == epoch]
+            if not matches:
+                raise FileNotFoundError(f"No weight file for epoch {epoch} found in {self.run_dir}")
+            weight_file = matches[0]
 
         return weight_file
 
@@ -144,7 +150,7 @@ class BaseTester(object):
         weight_file = self._get_weight_file(epoch)
 
         LOGGER.info(f"Using the model weights from {weight_file}")
-        self.model.load_state_dict(torch.load(weight_file, map_location=self.device))
+        self.model.load_state_dict(torch.load(weight_file, map_location=self.device, weights_only=False))
 
     def _get_dataset(self, basin: str) -> BaseDataset:
         """Get dataset for a single basin."""
@@ -225,7 +231,8 @@ class BaseTester(object):
                 if self.cfg.cache_validation_data and self.period == "validation":
                     self.cached_datasets[basin] = ds
 
-            loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=0, collate_fn=ds.collate_fn)
+            loader = DataLoader(ds, batch_size=self.cfg.batch_size, num_workers=self.cfg.num_workers,
+                               pin_memory=self.device.type == 'cuda', collate_fn=ds.collate_fn)
 
             y_hat, y, dates, all_losses, all_output[basin] = self._evaluate(model, loader, ds.frequencies,
                                                                             save_all_output)
@@ -317,9 +324,12 @@ class BaseTester(object):
                             if target_variable in self.cfg.clip_targets_to_zero:
                                 sim = xarray.where(sim < 0, 0, sim)
 
+                            if 'samples' in sim.dims:
+                                sim = sim.mean(dim='samples')
+
                             var_metrics = metrics if isinstance(metrics, list) else metrics[target_variable]
                             if 'all' in var_metrics:
-                                var_metrics = get_available_metrics(include_probabilistic=_has_samples(sim))
+                                var_metrics = get_available_metrics()
                             try:
                                 values = calculate_metrics(obs, sim, metrics=var_metrics, resolution=freq)
                             except AllNaNError as err:
@@ -401,7 +411,7 @@ class BaseTester(object):
             if isinstance(metrics_list, dict):
                 metrics_list = list(set(metrics_list.values()))
             if "all" in metrics_list:
-                metrics_list = get_available_metrics(include_probabilistic=self._has_sample_results(results))
+                metrics_list = get_available_metrics()
             df = metrics_to_dataframe(results, metrics_list, self.cfg.target_variables)
             metrics_file = parent_directory / f"{self.period}_metrics.csv"
             df.to_csv(metrics_file)
@@ -420,17 +430,6 @@ class BaseTester(object):
             with result_file.open("wb") as fp:
                 pickle.dump(states, fp)
             LOGGER.info(f"Stored states at {result_file}")
-
-    def _has_sample_results(self, results: Optional[dict]) -> bool:
-        if not results:
-            return False
-        basin_data = next(iter(results.values()))
-        if not basin_data or not self.cfg.target_variables:
-            return False
-        freq_results = next(iter(basin_data.values()))
-        ds = freq_results["xr"]
-        sim_key = f"{self.cfg.target_variables[0]}_sim"
-        return _has_samples(ds[sim_key])
 
     def _evaluate(self, model: BaseModel, loader: DataLoader, frequencies: List[str], save_all_output: bool = False):
         """Evaluate model"""

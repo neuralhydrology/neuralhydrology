@@ -88,7 +88,7 @@ class Config(object):
         """
         return self._cfg
 
-    def dump_config(self, folder: Path, filename: str = 'config.yml'):
+    def dump_config(self, folder: Path, filename: str = 'config.yml', overwrite: bool = False):
         """Save the run configuration as a .yml file to disk.
 
         Parameters
@@ -97,14 +97,19 @@ class Config(object):
             Folder in which the configuration will be stored.
         filename : str, optional
             Name of the file that will be stored. Default: 'config.yml'.
+        overwrite : bool, optional
+            If True, overwrite an existing file instead of raising. Used by continue_training,
+            which reuses the original run directory and legitimately needs to refresh the
+            on-disk config.yml (e.g. updated commit_hash / package_version) across resumes.
 
         Raises
         ------
         FileExistsError
-            If the specified folder already contains a file named `filename`.
+            If the specified folder already contains a file named `filename` and `overwrite`
+            is False.
         """
         yml_path = folder / filename
-        if not yml_path.exists():
+        if overwrite or not yml_path.exists():
             with yml_path.open('w') as fp:
                 temp_cfg = {}
                 for key, val in self._cfg.items():
@@ -303,6 +308,13 @@ class Config(object):
     @property
     def clip_targets_to_zero(self) -> List[str]:
         return self._as_default_list(self._cfg.get("clip_targets_to_zero", []))
+
+    @property
+    def compile_model(self) -> bool:
+        # torch.compile() needs a writable disk cache for its compiled kernels (Triton).
+        # On clusters with tight disk quotas this can fail well into training (on the first
+        # forward pass, not at compile time), so it's a config option, not a hardcoded default.
+        return self._cfg.get("compile_model", True)
 
     @property
     def continue_from_epoch(self) -> int:
@@ -942,13 +954,13 @@ class Config(object):
     @property
     def dynamic_learning_rate(self) -> bool:
         """Whether to use  dynamic learning rate. Defaults to False if not set."""
-        early_stopping = self._cfg.get("early_stopping", False)
-        if early_stopping and self.validate_every != 1:
+        dynamic_learning_rate = self._cfg.get("dynamic_learning_rate", False)
+        if dynamic_learning_rate and self.validate_every != 1:
             raise ValueError(
-                "Early stopping can only be used if validation is performed every epoch (validate_every=1). "
-                "Set validate_every=1 in the config to use early stopping."
+                "Dynamic learning rate can only be used if validation is performed every epoch (validate_every=1). "
+                "Set validate_every=1 in the config to use dynamic learning rate."
             )
-        return early_stopping
+        return dynamic_learning_rate
     
     @property
     def patience_dynamic_learning_rate(self) -> int:
