@@ -10,7 +10,7 @@ from neuralhydrology.datautils import utils
 from neuralhydrology.utils.errors import AllNaNError
 
 LOGGER = logging.getLogger(__name__)
-_PROBABILISTIC_METRICS = ("CRPS", "PICP", "MPIW")
+_PROBABILISTIC_METRICS = ("CRPS", "PICP", "MPIW", "Alpha-Reliability")
 
 
 def get_available_metrics(include_probabilistic: bool = False) -> List[str]:
@@ -889,6 +889,95 @@ def mpiw(obs: DataArray, sim: DataArray, alpha: float = 0.1) -> float:
     return float((upper - lower).mean())
 
 
+def pit(obs: DataArray, sim: DataArray) -> DataArray:
+    r"""Calculate probability integral transform (PIT) values of observations under an ensemble forecast.
+
+    The PIT value of an observation is the value of the predictive cumulative distribution function at that
+    observation [#]_. Here, the predictive distribution is the empirical distribution of the forecast samples,
+    and ties are assigned the midpoint of the jump of the empirical CDF:
+
+    .. math::
+        p_t = \frac{1}{M}\left(\sum_{m=1}^M \mathbb{1}[x_{t,m} < y_t]
+        + \frac{1}{2}\sum_{m=1}^M \mathbb{1}[x_{t,m} = y_t]\right),
+
+    where :math:`x_{t,m}` are the forecast samples and :math:`y_t` is the observation. The midpoint rule keeps the
+    result deterministic when many samples equal the observation, e.g. zero flows after negative samples have been
+    clipped to zero. For a reliable forecast, PIT values are (approximately) uniformly distributed on [0, 1].
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated samples with a ``samples`` dimension.
+
+    Returns
+    -------
+    DataArray
+        PIT values for all time steps with a valid observation and valid samples.
+
+    References
+    ----------
+    .. [#] Dawid, A. P. (1984). Present position and potential developments: Some personal views. Statistical
+        theory. The prequential approach. Journal of the Royal Statistical Society A, 147(2), 278-292.
+        doi:10.2307/2981683.
+    """
+    _validate_ensemble_inputs(obs, sim)
+
+    obs, sim = _mask_valid_ensemble(obs, sim)
+
+    below = (sim < obs).sum(dim='samples')
+    equal = (sim == obs).sum(dim='samples')
+    n_samples = sim.sizes['samples']
+
+    return (below + 0.5 * equal) / n_samples
+
+
+def alpha_reliability(obs: DataArray, sim: DataArray) -> float:
+    r"""Calculate the alpha reliability index of an ensemble forecast [#]_.
+
+    The index measures how far the sorted PIT values (see :func:`pit`) deviate from the quantiles of a uniform
+    distribution, i.e., how far the predictive QQ plot deviates from the 1:1 line:
+
+    .. math::
+        \alpha = 1 - \frac{2}{T}\sum_{t=1}^T \left|p_{(t)} - \frac{t}{T+1}\right|,
+
+    where :math:`p_{(t)}` is the :math:`t`-th smallest PIT value. Renard et al. (2010, Eq. 23) compare the sorted
+    PIT values with "theoretical p-values" without fixing a plotting position; here, :math:`t/(T+1)` is used, which is
+    the expected value of the :math:`t`-th order statistic of :math:`T` uniform random variables. The index ranges
+    from 0 (worst reliability, all PIT values equal to 0 or 1) to 1 (perfect reliability). It summarises the
+    probability plots that are commonly used to evaluate uncertainty estimates, but it does not distinguish over- from
+    underconfidence; for that, inspect the PIT values, e.g., as a histogram.
+
+    Parameters
+    ----------
+    obs : DataArray
+        Observed time series.
+    sim : DataArray
+        Simulated samples with a ``samples`` dimension.
+
+    Returns
+    -------
+    float
+        Alpha reliability index.
+
+    References
+    ----------
+    .. [#] Renard, B., Kavetski, D., Kuczera, G., Thyer, M., & Franks, S. W. (2010). Understanding predictive
+        uncertainty in hydrologic modeling: The challenge of identifying input and structural errors. Water
+        Resources Research, 46(5), W05521. doi:10.1029/2009WR008328.
+    """
+    pit_values = pit(obs, sim)
+    if pit_values.size < 1:
+        return np.nan
+
+    n = pit_values.size
+    sorted_pit = np.sort(pit_values.values)
+    uniform_quantiles = np.arange(1, n + 1) / (n + 1)
+
+    return float(1 - 2 * np.mean(np.abs(sorted_pit - uniform_quantiles)))
+
+
 def calculate_all_metrics(obs: DataArray,
                           sim: DataArray,
                           resolution: str = "1D",
@@ -942,7 +1031,8 @@ def calculate_all_metrics(obs: DataArray,
         results.update({
             "CRPS": crps(obs, sim),
             "PICP": picp(obs, sim),
-            "MPIW": mpiw(obs, sim)
+            "MPIW": mpiw(obs, sim),
+            "Alpha-Reliability": alpha_reliability(obs, sim)
         })
 
     return results
@@ -989,7 +1079,7 @@ def calculate_metrics(obs: DataArray,
     values = {}
     for metric in metrics:
         metric_name = metric.lower()
-        sim_metric = sim if metric.upper() in _PROBABILISTIC_METRICS else sim_mean
+        sim_metric = sim if metric.upper() in (m.upper() for m in _PROBABILISTIC_METRICS) else sim_mean
         if metric_name == "nse":
             values["NSE"] = nse(obs, sim_metric)
         elif metric_name == "mse":
@@ -1030,6 +1120,8 @@ def calculate_metrics(obs: DataArray,
             values["PICP"] = picp(obs, sim_metric)
         elif metric_name == "mpiw":
             values["MPIW"] = mpiw(obs, sim_metric)
+        elif metric_name == "alpha-reliability":
+            values["Alpha-Reliability"] = alpha_reliability(obs, sim_metric)
         else:
             raise RuntimeError(f"Unknown metric {metric}")
 
