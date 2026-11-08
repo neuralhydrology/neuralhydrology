@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from neuralhydrology.datautils.pet import _get_clear_sky_rad
+from neuralhydrology.datautils.pet import _get_clear_sky_rad, get_priestley_taylor_pet
 from neuralhydrology.datautils.utils import (get_frequency_factor, infer_frequency, sort_frequencies, _ME_FREQ,
                                              _QE_FREQ, _YE_FREQ)
 
@@ -15,6 +15,23 @@ def test_clear_sky_radiation(elev, expected):
     et_rad = np.array([10.0])
 
     np.testing.assert_array_equal(_get_clear_sky_rad(elev, et_rad), expected)
+
+
+def test_priestley_taylor_pet():
+    """Test Priestley-Taylor PET with the inputs of FAO-56 Example 18 (Uccle, 6 July)."""
+    # The example's solar radiation is 22.07 MJm-2day-1; the function expects the corresponding 24-hour mean in Wm-2.
+    pet = get_priestley_taylor_pet(t_min=np.array([12.3]),
+                                   t_max=np.array([21.5]),
+                                   s_rad=np.array([22.07 / 0.0864]),
+                                   lat=50.8,
+                                   elev=100.0,
+                                   doy=np.array([187]))
+
+    # alpha * delta / (delta + gamma) * Rn / lambda with the values of the example: delta = 0.122 kPa/degree C,
+    # gamma = 0.0666 kPa/degree C, Rn = 13.28 MJm-2day-1, and 1 / lambda = 0.408. The example derives the actual vapor
+    # pressure from humidity, the function from t_min, which makes the result about 0.3 % higher.
+    expected = 1.26 * 0.122 / (0.122 + 0.0666) * 13.28 * 0.408
+    np.testing.assert_allclose(pet, expected, rtol=0.01)
 
 
 def test_sort_frequencies():
