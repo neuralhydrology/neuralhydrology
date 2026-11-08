@@ -17,7 +17,9 @@ def get_priestley_taylor_pet(t_min: np.ndarray, t_max: np.ndarray, s_rad: np.nda
     t_max : np.ndarray
         Daily max temperature (degree C)
     s_rad : np.ndarray
-        Solar radiation (Wm-2)
+        Solar radiation (Wm-2), averaged over the full 24 hours of the day. Some products, e.g. the CAMELS US
+        forcings (Daymet, Maurer, NLDAS), report the average over the daylight period instead; multiply these values
+        by the day length (s) / 86400 first.
     lat : float
         Latitude in degree
     elev : float
