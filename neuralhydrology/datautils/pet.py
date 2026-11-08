@@ -68,10 +68,9 @@ def get_priestley_taylor_pet(t_min: np.ndarray, t_max: np.ndarray, s_rad: np.nda
 
     # PET MJm-2day-1
     alpha = 1.26  # Calibrated in CAMELS, here static
-    _lambda = 2.45  # Kept constant, MJkg-1
-    pet = (alpha / _lambda) * (slope_svp * net_rad) / (slope_svp + gamma)
+    pet = alpha * (slope_svp * net_rad) / (slope_svp + gamma)
 
-    # convert energy to evap
+    # convert energy to evap: 0.408 = 1 / lambda, with the latent heat of vaporization lambda = 2.45 MJkg-1
     pet = pet * 0.408
 
     return pet
