@@ -1,8 +1,12 @@
 """Unit tests for datautils functions. """
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
 
+from neuralhydrology.datasetzoo.camelsus import load_camels_us_attributes
+from neuralhydrology.datautils.climateindices import calculate_camels_us_dyn_climate_indices
 from neuralhydrology.datautils.pet import _get_clear_sky_rad, get_priestley_taylor_pet
 from neuralhydrology.datautils.utils import (get_frequency_factor, infer_frequency, sort_frequencies, _ME_FREQ,
                                              _QE_FREQ, _YE_FREQ)
@@ -32,6 +36,25 @@ def test_priestley_taylor_pet():
     # pressure from humidity, the function from t_min, which makes the result about 0.3 % higher.
     expected = 1.26 * 0.122 / (0.122 + 0.0666) * 13.28 * 0.408
     np.testing.assert_allclose(pet, expected, rtol=0.01)
+
+
+@pytest.mark.parametrize("forcings", ['daymet', 'maurer_extended', 'nldas'])
+def test_camels_us_dyn_climate_indices_pet(forcings):
+    """Test that the PET of the CAMELS US climate indices is close to the PET published with the CAMELS attributes.
+
+    The CAMELS US forcings report solar radiation as the average over the daylight period, which has to be converted to
+    a 24-hour average before PET is calculated.
+    """
+    data_dir = Path('./test/test_data/camels_us')
+    basins = ['01022500', '01547700', '02064000', '03015500']
+    climate_indices = calculate_camels_us_dyn_climate_indices(data_dir, basins, window_length=1096, forcings=forcings)
+    published_pet = load_camels_us_attributes(data_dir, basins=basins)['pet_mean']
+
+    # The published values were estimated with a Priestley-Taylor coefficient calibrated for each catchment, from
+    # Daymet data of 1989-2009 (Addor et al., 2017), so they agree only approximately.
+    for basin in basins:
+        ratio = climate_indices[basin]['pet_mean_dyn'].iloc[-1] / published_pet[basin]
+        assert 0.8 < ratio < 1.25, f"Basin {basin}: PET is {ratio:.2f} times the published value"
 
 
 def test_sort_frequencies():
