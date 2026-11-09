@@ -14,6 +14,8 @@ from neuralhydrology.datautils import pet
 
 LOGGER = logging.getLogger(__name__)
 
+_SECONDS_PER_DAY = 86400
+
 
 def calculate_camels_us_dyn_climate_indices(data_dir: Path,
                                          basins: List[str],
@@ -85,7 +87,7 @@ def calculate_camels_us_dyn_climate_indices(data_dir: Path,
         s_rad = df[variable_names['srad']].values
         if 'dayl' in variable_names:
             # radiation averaged over the daylight period -> average over 24 hours, as expected by the PET function
-            s_rad = s_rad * df[variable_names['dayl']].values / 86400
+            s_rad = s_rad * df[variable_names['dayl']].values / _SECONDS_PER_DAY
         df["PET(mm/d)"] = pet.get_priestley_taylor_pet(t_min=df[variable_names['tmin']].values,
                                                        t_max=df[variable_names['tmax']].values,
                                                        s_rad=s_rad,
