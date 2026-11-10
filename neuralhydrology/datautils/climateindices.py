@@ -84,13 +84,13 @@ def calculate_camels_us_dyn_climate_indices(data_dir: Path,
         df, _ = load_camels_us_forcings(data_dir=data_dir, basin=basin, forcings=forcings)
         lat = camels_attributes.loc[camels_attributes.index == basin, 'gauge_lat'].values
         elev = camels_attributes.loc[camels_attributes.index == basin, 'elev_mean'].values
-        s_rad = df[variable_names['srad']].values
+        s_rad = df[variable_names['srad']]
         if 'dayl' in variable_names:
             # radiation averaged over the daylight period -> average over 24 hours, as expected by the PET function
-            s_rad = s_rad * df[variable_names['dayl']].values / _SECONDS_PER_DAY
+            s_rad = s_rad * df[variable_names['dayl']] / _SECONDS_PER_DAY
         df["PET(mm/d)"] = pet.get_priestley_taylor_pet(t_min=df[variable_names['tmin']].values,
                                                        t_max=df[variable_names['tmax']].values,
-                                                       s_rad=s_rad,
+                                                       s_rad=s_rad.values,
                                                        lat=lat,
                                                        elev=elev,
                                                        doy=df.index.dayofyear.values)
