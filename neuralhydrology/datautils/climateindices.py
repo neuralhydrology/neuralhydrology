@@ -14,6 +14,8 @@ from neuralhydrology.datautils import pet
 
 LOGGER = logging.getLogger(__name__)
 
+_SECONDS_PER_DAY = 86400
+
 
 def calculate_camels_us_dyn_climate_indices(data_dir: Path,
                                          basins: List[str],
@@ -43,7 +45,9 @@ def calculate_camels_us_dyn_climate_indices(data_dir: Path,
     variable_names : Dict[str, str], optional
         Mapping of the forcings' variable names, needed if forcings other than DayMet, Maurer, or NLDAS are used.
         If provided, this must be a dictionary that maps the keys 'prcp', 'tmin', 'tmax', 'srad' to the forcings'
-        respective variable names.
+        respective variable names. If 'srad' is averaged over the daylight period only (as in the CAMELS US forcings),
+        also map the key 'dayl' to the day length variable (s); 'srad' is then converted to a 24-hour average before
+        PET is calculated.
     output_file : Path, optional
         If specified, stores the resulting dictionary of DataFrames to this location as a pickle dump.
 
@@ -57,10 +61,23 @@ def calculate_camels_us_dyn_climate_indices(data_dir: Path,
     additional_features = {}
 
     if variable_names is None:
-        if forcings.startswith('nldas'):
-            variable_names = {'prcp': 'PRCP(mm/day)', 'tmin': 'Tmin(C)', 'tmax': 'Tmax(C)', 'srad': 'SRAD(W/m2)'}
+        # original Maurer files use the NLDAS column names, maurer_extended the Daymet ones
+        if forcings.startswith('nldas') or forcings == 'maurer':
+            variable_names = {
+                'prcp': 'PRCP(mm/day)',
+                'tmin': 'Tmin(C)',
+                'tmax': 'Tmax(C)',
+                'srad': 'SRAD(W/m2)',
+                'dayl': 'Dayl(s)'
+            }
         elif forcings.startswith('daymet') or forcings.startswith('maurer'):
-            variable_names = {'prcp': 'prcp(mm/day)', 'tmin': 'tmin(C)', 'tmax': 'tmax(C)', 'srad': 'srad(W/m2)'}
+            variable_names = {
+                'prcp': 'prcp(mm/day)',
+                'tmin': 'tmin(C)',
+                'tmax': 'tmax(C)',
+                'srad': 'srad(W/m2)',
+                'dayl': 'dayl(s)'
+            }
         else:
             raise ValueError(f'No predefined variable mapping for {forcings} forcings. Provide one in variable_names.')
 
@@ -68,9 +85,13 @@ def calculate_camels_us_dyn_climate_indices(data_dir: Path,
         df, _ = load_camels_us_forcings(data_dir=data_dir, basin=basin, forcings=forcings)
         lat = camels_attributes.loc[camels_attributes.index == basin, 'gauge_lat'].values
         elev = camels_attributes.loc[camels_attributes.index == basin, 'elev_mean'].values
+        s_rad = df[variable_names['srad']]
+        if 'dayl' in variable_names:
+            # radiation averaged over the daylight period -> average over 24 hours, as expected by the PET function
+            s_rad = s_rad * df[variable_names['dayl']] / _SECONDS_PER_DAY
         df["PET(mm/d)"] = pet.get_priestley_taylor_pet(t_min=df[variable_names['tmin']].values,
                                                        t_max=df[variable_names['tmax']].values,
-                                                       s_rad=df[variable_names['srad']].values,
+                                                       s_rad=s_rad.values,
                                                        lat=lat,
                                                        elev=elev,
                                                        doy=df.index.dayofyear.values)
