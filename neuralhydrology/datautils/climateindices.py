@@ -61,7 +61,8 @@ def calculate_camels_us_dyn_climate_indices(data_dir: Path,
     additional_features = {}
 
     if variable_names is None:
-        if forcings.startswith('nldas'):
+        # original Maurer files use the NLDAS column names, maurer_extended the Daymet ones
+        if forcings.startswith('nldas') or forcings == 'maurer':
             variable_names = {
                 'prcp': 'PRCP(mm/day)',
                 'tmin': 'Tmin(C)',
