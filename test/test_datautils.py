@@ -38,7 +38,7 @@ def test_priestley_taylor_pet():
     np.testing.assert_allclose(pet, expected, rtol=0.01)
 
 
-@pytest.mark.parametrize("forcings", ['daymet', 'maurer_extended', 'nldas'])
+@pytest.mark.parametrize("forcings", ['daymet', 'maurer', 'maurer_extended', 'nldas'])
 def test_camels_us_dyn_climate_indices_pet(forcings):
     """Test that the PET of the CAMELS US climate indices is close to the PET published with the CAMELS attributes.
 
