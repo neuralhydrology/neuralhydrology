@@ -3,8 +3,8 @@ import pandas as pd
 import pytest
 import xarray
 
-from neuralhydrology.evaluation.metrics import (calculate_all_metrics, calculate_metrics, crps, get_available_metrics,
-                                                mpiw, nse, picp)
+from neuralhydrology.evaluation.metrics import (alpha_reliability, calculate_all_metrics, calculate_metrics, crps,
+                                                get_available_metrics, mpiw, nse, picp, pit)
 
 
 @pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8)])
@@ -27,12 +27,13 @@ def test_calculate_metrics_mixes_deterministic_and_ensemble_metrics():
     obs = xarray.DataArray([1.0, 2.0], dims=['datetime'])
     sim = xarray.DataArray([[0.0, 2.0], [1.0, 3.0]], dims=['datetime', 'samples'])
 
-    metrics = calculate_metrics(obs, sim, metrics=['MSE', 'CRPS', 'PICP', 'MPIW'])
+    metrics = calculate_metrics(obs, sim, metrics=['MSE', 'CRPS', 'PICP', 'MPIW', 'alpha-reliability'])
 
     assert metrics['MSE'] == pytest.approx(0.0)
     assert metrics['CRPS'] == pytest.approx(0.5)
     assert metrics['PICP'] == pytest.approx(1.0)
     assert metrics['MPIW'] == pytest.approx(1.8)
+    assert metrics['Alpha-Reliability'] == pytest.approx(2 / 3)
 
 
 def test_calculate_all_metrics_includes_ensemble_metrics_for_samples():
@@ -51,6 +52,7 @@ def test_calculate_all_metrics_includes_ensemble_metrics_for_samples():
     assert metrics['CRPS'] == pytest.approx(0.5)
     assert metrics['PICP'] == pytest.approx(1.0)
     assert metrics['MPIW'] == pytest.approx(1.8)
+    assert metrics['Alpha-Reliability'] == pytest.approx(0.6)
 
 
 def test_calculate_all_metrics_excludes_ensemble_metrics_without_samples():
@@ -63,7 +65,7 @@ def test_calculate_all_metrics_excludes_ensemble_metrics_without_samples():
     assert set(metrics) == set(get_available_metrics())
 
 
-@pytest.mark.parametrize('metric', [crps, picp, mpiw])
+@pytest.mark.parametrize('metric', [crps, picp, mpiw, alpha_reliability])
 @pytest.mark.parametrize('obs_values, sim_values', [
     ([np.nan, np.nan], [[1.0, 2.0], [2.0, 3.0]]),
     ([1.0, 2.0], [[np.nan, np.nan], [np.nan, np.nan]]),
@@ -86,3 +88,39 @@ def test_metrics_reject_2d_inputs(shape):
 
     with pytest.raises(RuntimeError, match='1d'):
         nse(obs, obs)
+
+
+def test_pit_counts_ties_as_half():
+    obs = xarray.DataArray([1.0, 0.0, 5.0], dims=['datetime'])
+    sim = xarray.DataArray([[0.0, 1.0, 2.0, 3.0], [0.0, 0.0, 0.0, 1.0], [1.0, 2.0, 3.0, 4.0]],
+                           dims=['datetime', 'samples'])
+
+    assert pit(obs, sim).values == pytest.approx([0.375, 0.375, 1.0])
+
+
+def test_pit_ignores_invalid_values():
+    obs = xarray.DataArray([1.0, np.nan, 2.0], dims=['datetime'])
+    sim = xarray.DataArray([[0.0, 2.0], [0.0, 2.0], [np.nan, 3.0]], dims=['datetime', 'samples'])
+
+    assert pit(obs, sim).values == pytest.approx([0.5])
+
+
+def test_alpha_reliability_is_high_for_calibrated_and_low_for_overconfident_ensembles():
+    rng = np.random.default_rng(42)
+    n_steps, n_samples = 2000, 100
+    obs = xarray.DataArray(rng.normal(size=n_steps), dims=['datetime'])
+    calibrated = xarray.DataArray(rng.normal(size=(n_steps, n_samples)), dims=['datetime', 'samples'])
+    overconfident = xarray.DataArray(0.3 * rng.normal(size=(n_steps, n_samples)), dims=['datetime', 'samples'])
+
+    assert alpha_reliability(obs, calibrated) > 0.95
+    assert alpha_reliability(obs, overconfident) < 0.7
+
+
+def test_alpha_reliability_is_one_when_pit_values_match_uniform_plotting_positions():
+    # PIT values 0.25, 0.5 and 0.75 equal the plotting positions t / (T + 1) for T = 3.
+    obs = xarray.DataArray([1.0, 2.0, 3.0], dims=['datetime'])
+    sim = xarray.DataArray([[0.0, 2.0, 3.0, 4.0], [0.0, 1.0, 3.0, 4.0], [0.0, 1.0, 2.0, 4.0]],
+                           dims=['datetime', 'samples'])
+
+    assert pit(obs, sim).values == pytest.approx([0.25, 0.5, 0.75])
+    assert alpha_reliability(obs, sim) == pytest.approx(1.0)

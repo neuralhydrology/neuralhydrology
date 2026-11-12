@@ -104,7 +104,7 @@ Validation settings
    the metrics that should be computed for this target. Like this,
    it is possible to compute different metrics per target during 
    validation and/or evaluation after the training. The sample-based
-   metrics ``CRPS``, ``PICP``, and ``MPIW`` are available for
+   metrics ``CRPS``, ``PICP``, ``MPIW``, and ``Alpha-Reliability`` are available for
    probabilistic predictions, e.g., from ``gmm``, ``cmal``, ``umal``,
    or Monte-Carlo dropout.
 
