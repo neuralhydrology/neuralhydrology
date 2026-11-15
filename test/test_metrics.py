@@ -7,7 +7,7 @@ from neuralhydrology.evaluation.metrics import (alpha_reliability, calculate_all
                                                 get_available_metrics, mpiw, nse, picp, pit)
 
 
-@pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8)])
+@pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8), (alpha_reliability, 2 / 3)])
 def test_ensemble_metrics(metric, expected):
     obs = xarray.DataArray([1.0, 2.0], dims=['datetime'])
     sim = xarray.DataArray([[0.0, 2.0], [1.0, 3.0]], dims=['datetime', 'samples'])
@@ -15,7 +15,7 @@ def test_ensemble_metrics(metric, expected):
     assert metric(obs, sim) == pytest.approx(expected)
 
 
-@pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8)])
+@pytest.mark.parametrize('metric, expected', [(crps, 0.5), (picp, 1.0), (mpiw, 1.8), (alpha_reliability, 1.0)])
 def test_ensemble_metrics_ignore_invalid_samples(metric, expected):
     obs = xarray.DataArray([1.0, 2.0], dims=['datetime'])
     sim = xarray.DataArray([[0.0, 2.0], [np.nan, 3.0]], dims=['datetime', 'samples'])
@@ -95,25 +95,29 @@ def test_pit_counts_ties_as_half():
     sim = xarray.DataArray([[0.0, 1.0, 2.0, 3.0], [0.0, 0.0, 0.0, 1.0], [1.0, 2.0, 3.0, 4.0]],
                            dims=['datetime', 'samples'])
 
-    assert pit(obs, sim).values == pytest.approx([0.375, 0.375, 1.0])
+    expected = xarray.DataArray([0.375, 0.375, 1.0], dims=['datetime'])
+    xarray.testing.assert_allclose(pit(obs, sim), expected)
 
 
 def test_pit_ignores_invalid_values():
     obs = xarray.DataArray([1.0, np.nan, 2.0], dims=['datetime'])
     sim = xarray.DataArray([[0.0, 2.0], [0.0, 2.0], [np.nan, 3.0]], dims=['datetime', 'samples'])
 
-    assert pit(obs, sim).values == pytest.approx([0.5])
+    expected = xarray.DataArray([0.5], dims=['datetime'])
+    xarray.testing.assert_allclose(pit(obs, sim), expected)
 
 
-def test_alpha_reliability_is_high_for_calibrated_and_low_for_overconfident_ensembles():
+def test_alpha_reliability_is_high_for_calibrated_and_low_for_miscalibrated_ensembles():
     rng = np.random.default_rng(42)
     n_steps, n_samples = 2000, 100
     obs = xarray.DataArray(rng.normal(size=n_steps), dims=['datetime'])
     calibrated = xarray.DataArray(rng.normal(size=(n_steps, n_samples)), dims=['datetime', 'samples'])
     overconfident = xarray.DataArray(0.3 * rng.normal(size=(n_steps, n_samples)), dims=['datetime', 'samples'])
+    underconfident = xarray.DataArray(3.0 * rng.normal(size=(n_steps, n_samples)), dims=['datetime', 'samples'])
 
     assert alpha_reliability(obs, calibrated) > 0.95
     assert alpha_reliability(obs, overconfident) < 0.7
+    assert alpha_reliability(obs, underconfident) < 0.8
 
 
 def test_alpha_reliability_is_one_when_pit_values_match_uniform_plotting_positions():
@@ -122,5 +126,17 @@ def test_alpha_reliability_is_one_when_pit_values_match_uniform_plotting_positio
     sim = xarray.DataArray([[0.0, 2.0, 3.0, 4.0], [0.0, 1.0, 3.0, 4.0], [0.0, 1.0, 2.0, 4.0]],
                            dims=['datetime', 'samples'])
 
-    assert pit(obs, sim).values == pytest.approx([0.25, 0.5, 0.75])
+    expected = xarray.DataArray([0.25, 0.5, 0.75], dims=['datetime'])
+    xarray.testing.assert_allclose(pit(obs, sim), expected)
     assert alpha_reliability(obs, sim) == pytest.approx(1.0)
+
+
+@pytest.mark.parametrize('sign, expected_pit', [(1.0, 1.0), (-1.0, 0.0)])
+def test_alpha_reliability_is_zero_when_all_observations_are_outside_the_ensemble(sign, expected_pit):
+    # All observations above (sign = 1) or below (sign = -1) every sample give PIT values of 1 or 0.
+    obs = xarray.DataArray(sign * np.array([5.0, 6.0, 7.0]), dims=['datetime'])
+    sim = xarray.DataArray(np.zeros((3, 4)), dims=['datetime', 'samples'])
+
+    expected = xarray.DataArray([expected_pit] * 3, dims=['datetime'])
+    xarray.testing.assert_allclose(pit(obs, sim), expected)
+    assert alpha_reliability(obs, sim) == pytest.approx(0.0)

@@ -902,7 +902,16 @@ def pit(obs: DataArray, sim: DataArray) -> DataArray:
 
     where :math:`x_{t,m}` are the forecast samples and :math:`y_t` is the observation. The midpoint rule keeps the
     result deterministic when many samples equal the observation, e.g. zero flows after negative samples have been
-    clipped to zero. For a reliable forecast, PIT values are (approximately) uniformly distributed on [0, 1].
+    clipped to zero. For a reliable forecast of a continuous variable, PIT values are (approximately) uniformly
+    distributed on [0, 1].
+
+    Note that this does not hold when the observations have a point mass, e.g. zero flows in intermittent rivers.
+    If a reliable forecast assigns probability :math:`q` to zero flow, all zero-flow observations receive the same PIT
+    value of about :math:`q/2` instead of being spread uniformly over :math:`[0, q]`. The PIT values are then not
+    uniform even for a perfectly reliable forecast, and :func:`alpha_reliability` is below 1 (approximately
+    :math:`1 - q^2/2` for long records and large ensembles, e.g. about 0.96 for :math:`q = 0.3` and 0.88 for
+    :math:`q = 0.5`). Compare alpha values only between forecasts of the same observations, or restrict the
+    evaluation to non-zero observations, when a large fraction of the observations is zero.
 
     Parameters
     ----------
@@ -947,7 +956,8 @@ def alpha_reliability(obs: DataArray, sim: DataArray) -> float:
     the expected value of the :math:`t`-th order statistic of :math:`T` uniform random variables. The index ranges
     from 0 (worst reliability, all PIT values equal to 0 or 1) to 1 (perfect reliability). It summarises the
     probability plots that are commonly used to evaluate uncertainty estimates, but it does not distinguish over- from
-    underconfidence; for that, inspect the PIT values, e.g., as a histogram.
+    underconfidence; for that, inspect the PIT values, e.g., as a histogram. With many zero-flow observations, the
+    index is below 1 even for a reliable forecast (see :func:`pit`).
 
     Parameters
     ----------
@@ -1077,9 +1087,10 @@ def calculate_metrics(obs: DataArray,
     sim_mean = sim.mean(dim='samples') if has_samples else sim
 
     values = {}
+    probabilistic_metrics = {m.lower() for m in _PROBABILISTIC_METRICS}
     for metric in metrics:
         metric_name = metric.lower()
-        sim_metric = sim if metric.upper() in (m.upper() for m in _PROBABILISTIC_METRICS) else sim_mean
+        sim_metric = sim if metric_name in probabilistic_metrics else sim_mean
         if metric_name == "nse":
             values["NSE"] = nse(obs, sim_metric)
         elif metric_name == "mse":
