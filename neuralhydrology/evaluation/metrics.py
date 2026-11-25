@@ -910,9 +910,9 @@ def pit(obs: DataArray, sim: DataArray) -> DataArray:
     value of about :math:`q/2` instead of being spread uniformly over :math:`[0, q]`. The PIT values are then not
     uniform even for a perfectly reliable forecast, and :func:`alpha_reliability` is below 1 (approximately
     :math:`1 - q^2/2` for long records and large ensembles, e.g. about 0.96 for :math:`q = 0.3` and 0.88 for
-    :math:`q = 0.5`). Compare alpha values only between forecasts of the same observations, or restrict the
-    evaluation to non-zero observations, when a large fraction of the observations is zero.
-
+    :math:`q = 0.5`). Compare alpha values only between forecasts of the same observations when a large fraction of
+    the observations is zero.
+    
     Parameters
     ----------
     obs : DataArray
