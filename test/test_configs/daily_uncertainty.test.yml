@@ -29,6 +29,7 @@ metrics:
   - CRPS
   - PICP
   - MPIW
+  - Alpha-Reliability
 
 # --- Model configuration --------------------------------------------------------------------------
 model: cudalstm
