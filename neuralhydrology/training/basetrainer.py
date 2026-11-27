@@ -1,10 +1,8 @@
 import logging
-import pickle
 import random
 import sys
 from datetime import datetime
 from pathlib import Path
-from typing import Dict
 
 import numpy as np
 import torch
@@ -14,7 +12,7 @@ from tqdm import tqdm
 import neuralhydrology.training.loss as loss
 from neuralhydrology.datasetzoo import get_dataset
 from neuralhydrology.datasetzoo.basedataset import BaseDataset
-from neuralhydrology.datautils.utils import load_basin_file, load_scaler
+from neuralhydrology.datautils.utils import load_basin_file
 from neuralhydrology.evaluation import get_tester
 from neuralhydrology.evaluation.tester import BaseTester
 from neuralhydrology.modelzoo import get_model
@@ -48,7 +46,6 @@ class BaseTrainer(object):
         self.noise_sampler_y = None
         self._target_mean = None
         self._target_std = None
-        self._scaler = {}
         self._allow_subsequent_nan_losses = cfg.allow_subsequent_nan_losses
         self._disable_pbar = cfg.verbose == 0
         self._max_updates_per_epoch = cfg.max_updates_per_epoch
@@ -83,8 +80,8 @@ class BaseTrainer(object):
         self._set_random_seeds()
         self._set_device()
 
-    def _get_dataset(self) -> BaseDataset:
-        return get_dataset(cfg=self.cfg, period="train", is_train=True, scaler=self._scaler)
+    def _get_dataset(self, compute_scaler: bool) -> BaseDataset:
+        return get_dataset(cfg=self.cfg, period="train", is_train=True, compute_scaler=compute_scaler)
 
     def _get_model(self) -> torch.nn.Module:
         return get_model(cfg=self.cfg)
@@ -146,12 +143,8 @@ class BaseTrainer(object):
         tensorboard logging, and Tester class.
         If called in a ``continue_training`` context, this model will also restore the model and optimizer state.
         """
-        if self.cfg.is_finetuning:
-            # Load scaler from pre-trained model.
-            self._scaler = load_scaler(self.cfg.base_run_dir)
-
         # Initialize dataset before the model is loaded.
-        ds = self._get_dataset()
+        ds = self._get_dataset(compute_scaler=(not self.cfg.is_finetuning))
         if len(ds) == 0:
             raise ValueError("Dataset contains no samples.")
         self.loader = self._get_data_loader(ds=ds)
@@ -201,10 +194,10 @@ class BaseTrainer(object):
 
         if self.cfg.target_noise_std is not None:
             self.noise_sampler_y = torch.distributions.Normal(loc=0, scale=self.cfg.target_noise_std)
-            self._target_mean = torch.from_numpy(
-                ds.scaler["xarray_feature_center"][self.cfg.target_variables].to_array().values).to(self.device)
-            self._target_std = torch.from_numpy(
-                ds.scaler["xarray_feature_scale"][self.cfg.target_variables].to_array().values).to(self.device)
+            target_means = [ds.scaler.scaler.sel(parameter='mean')[feature].item() for feature in self.cfg.target_variables]
+            self._target_mean = torch.tensor(target_means).to(self.device)
+            target_stds = [ds.scaler.scaler.sel(parameter='std')[feature].item() for feature in self.cfg.target_variables]
+            self._target_std = torch.tensor(target_stds).to(self.device)
 
     def train_and_validate(self):
         """Train and validate the model.
